@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 12;
+export const CURRENT_SCHEMA_VERSION = 13;
 
 /** Canonical schema for a new install. Existing databases continue through versioned migrations. */
 export const CURRENT_SCHEMA_SQL = `
@@ -25,7 +25,8 @@ export const CURRENT_SCHEMA_SQL = `
     tank_capacity_liters REAL,
     scooter_brand_id TEXT,
     scooter_model_id TEXT,
-    scooter_version_id TEXT
+    scooter_version_id TEXT,
+    scooter_variant_id TEXT
   );
 
   CREATE TABLE vehicle_vitals (
@@ -80,6 +81,17 @@ export const CURRENT_SCHEMA_SQL = `
     last_run_at TEXT
   );
 
+  CREATE TABLE pre_ride_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL,
+    manual_id TEXT NOT NULL,
+    variant_id TEXT,
+    completed_at TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    completed_count INTEGER NOT NULL,
+    total_count INTEGER NOT NULL
+  );
+
   CREATE TABLE service_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -101,6 +113,19 @@ export const CURRENT_SCHEMA_SQL = `
     last_service_odometer_km INTEGER NOT NULL DEFAULT 0,
     type TEXT NOT NULL,
     has_known_odometer_baseline INTEGER NOT NULL DEFAULT 0,
+    canonical_task_id TEXT,
+    recommended_interval_km INTEGER,
+    recommended_interval_months INTEGER,
+    user_interval_km INTEGER,
+    user_override_active INTEGER NOT NULL DEFAULT 0,
+    recommendation_origin TEXT NOT NULL DEFAULT 'manual',
+    source_manual_id TEXT,
+    source_pages_json TEXT,
+    manual_guidance_json TEXT,
+    initial_milestones_json TEXT,
+    severe_use_note TEXT,
+    is_applicable INTEGER NOT NULL DEFAULT 1,
+    last_service_date TEXT,
     UNIQUE(vehicle_id, name)
   );
 
@@ -274,4 +299,6 @@ export const CURRENT_SCHEMA_SQL = `
   CREATE INDEX idx_service_intervals_vehicle_name ON service_intervals(vehicle_id, name);
   CREATE INDEX idx_vehicle_vitals_vehicle ON vehicle_vitals(vehicle_id);
   CREATE INDEX idx_pre_ride_checks_vehicle ON pre_ride_checks(vehicle_id);
+  CREATE INDEX idx_pre_ride_runs_vehicle_date ON pre_ride_runs(vehicle_id, completed_at DESC);
+  CREATE INDEX idx_service_intervals_vehicle_task ON service_intervals(vehicle_id, canonical_task_id, is_applicable);
 `;

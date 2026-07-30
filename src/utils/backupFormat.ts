@@ -47,15 +47,46 @@ type PriorVehicleProfile = Omit<
   | 'scooter_brand_id'
   | 'scooter_model_id'
   | 'scooter_version_id'
+  | 'scooter_variant_id'
 > & {
   service_history_setup_completed?: number;
   tank_capacity_liters?: number | null;
   scooter_brand_id?: string | null;
   scooter_model_id?: string | null;
   scooter_version_id?: string | null;
+  scooter_variant_id?: string | null;
 };
-type PriorServiceInterval = Omit<ServiceInterval, 'has_known_odometer_baseline'> & {
+type PriorServiceInterval = Omit<
+  ServiceInterval,
+  | 'has_known_odometer_baseline'
+  | 'canonical_task_id'
+  | 'recommended_interval_km'
+  | 'recommended_interval_months'
+  | 'user_interval_km'
+  | 'user_override_active'
+  | 'recommendation_origin'
+  | 'source_manual_id'
+  | 'source_pages_json'
+  | 'manual_guidance_json'
+  | 'initial_milestones_json'
+  | 'severe_use_note'
+  | 'is_applicable'
+  | 'last_service_date'
+> & {
   has_known_odometer_baseline?: number;
+  canonical_task_id?: string | null;
+  recommended_interval_km?: number | null;
+  recommended_interval_months?: number | null;
+  user_interval_km?: number | null;
+  user_override_active?: number;
+  recommendation_origin?: ServiceInterval['recommendation_origin'];
+  source_manual_id?: string | null;
+  source_pages_json?: string | null;
+  manual_guidance_json?: string | null;
+  initial_milestones_json?: string | null;
+  severe_use_note?: string | null;
+  is_applicable?: number;
+  last_service_date?: string | null;
 };
 type PriorServiceLog = Omit<ServiceLog, 'sets_odometer_baseline'> & {
   sets_odometer_baseline?: number;
@@ -226,11 +257,15 @@ export function validateDatabaseBackupData(value: unknown): asserts value is Dat
     const scooterBrandId = requireString(profile, 'scooter_brand_id', path, { nullable: true });
     const scooterModelId = requireString(profile, 'scooter_model_id', path, { nullable: true });
     const scooterVersionId = requireString(profile, 'scooter_version_id', path, { nullable: true });
+    const scooterVariantId = profile.scooter_variant_id === undefined
+      ? null
+      : requireString(profile, 'scooter_variant_id', path, { nullable: true });
     const hasAnyScooterField = scooterBrandId !== null || scooterModelId !== null || scooterVersionId !== null;
     if (hasAnyScooterField && !resolveScooterSelection({
       brandId: scooterBrandId ?? undefined,
       modelId: scooterModelId ?? undefined,
       versionId: scooterVersionId ?? undefined,
+      variantId: scooterVariantId ?? undefined,
     })) {
       invalid(`${path}.scooter_version_id`, 'must reference one complete scooter from the installed catalog');
     }
@@ -378,6 +413,29 @@ export function validateDatabaseBackupData(value: unknown): asserts value is Dat
       true
     );
   });
+
+  if (value.pre_ride_runs !== undefined) {
+    if (!Array.isArray(value.pre_ride_runs)) invalid('data.pre_ride_runs', 'must be an array when present');
+    const runIds = new Set<number>();
+    value.pre_ride_runs.forEach((run, index) => {
+      const path = `data.pre_ride_runs[${index}]`;
+      if (!isObject(run)) invalid(path, 'must be an object');
+      requireUniqueId(requirePositiveId(run, path), runIds, path);
+      requireVehicleReference(run, path, vehicleIds);
+      requireString(run, 'manual_id', path, { nonEmpty: true });
+      requireString(run, 'variant_id', path, { nullable: true });
+      requireDateTime(requireString(run, 'completed_at', path, { nonEmpty: true }), `${path}.completed_at`);
+      const encodedItems = requireString(run, 'items_json', path, { nonEmpty: true }) as string;
+      try {
+        if (!Array.isArray(JSON.parse(encodedItems))) invalid(`${path}.items_json`, 'must encode an array');
+      } catch {
+        invalid(`${path}.items_json`, 'must contain valid JSON');
+      }
+      const completed = requireNumber(run, 'completed_count', path, { integer: true, min: 0 }) as number;
+      const total = requireNumber(run, 'total_count', path, { integer: true, min: 0 }) as number;
+      if (completed > total) invalid(`${path}.completed_count`, 'cannot exceed total_count');
+    });
+  }
 }
 
 function validateEmbeddedDocumentFiles(
@@ -471,6 +529,19 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
           && log.sets_odometer_baseline === 1
       ) ? 1 : 0
     ),
+    canonical_task_id: interval.canonical_task_id ?? null,
+    recommended_interval_km: interval.recommended_interval_km ?? interval.interval_km,
+    recommended_interval_months: interval.recommended_interval_months ?? null,
+    user_interval_km: interval.user_interval_km ?? null,
+    user_override_active: interval.user_override_active ?? 0,
+    recommendation_origin: interval.recommendation_origin ?? 'manual',
+    source_manual_id: interval.source_manual_id ?? null,
+    source_pages_json: interval.source_pages_json ?? null,
+    manual_guidance_json: interval.manual_guidance_json ?? null,
+    initial_milestones_json: interval.initial_milestones_json ?? null,
+    severe_use_note: interval.severe_use_note ?? null,
+    is_applicable: interval.is_applicable ?? 1,
+    last_service_date: interval.last_service_date ?? null,
   }));
 
   const vehicleProfiles: VehicleProfile[] = data.vehicle_profiles.map((vehicle) => ({
@@ -483,6 +554,7 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
     scooter_brand_id: vehicle.scooter_brand_id ?? null,
     scooter_model_id: vehicle.scooter_model_id ?? null,
     scooter_version_id: vehicle.scooter_version_id ?? null,
+    scooter_variant_id: vehicle.scooter_variant_id ?? null,
   }));
 
   const gasLogs: GasLog[] = data.gas_logs.map((log) => ({

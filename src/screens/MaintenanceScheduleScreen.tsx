@@ -19,6 +19,9 @@ import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { formatScooterSelection, selectionFromProfile } from '../catalog/scooterCatalog';
+import SourceProvenance from '../components/SourceProvenance';
+import { getModelProfileForVehicle } from '../modelData/modelKnowledge';
+import { getMaintenanceDueResult } from '../utils/maintenanceDue';
 
 export default function MaintenanceScheduleScreen() {
     const navigation = useNavigation<VitalsNavigationProp>();
@@ -142,7 +145,15 @@ export default function MaintenanceScheduleScreen() {
         setEditModalVisible(true);
     };
 
-    const getStatusInfo = (item: ServiceInterval, currentMileage: number) => {
+    const getStatusInfo = (item: ServiceInterval, currentMileage: number, latestLog: ServiceLog | null) => {
+        const dueResult = getMaintenanceDueResult({
+            currentMileage,
+            intervalKm: item.interval_km,
+            intervalMonths: item.recommended_interval_months ?? null,
+            lastServiceMileage: item.last_service_odometer_km,
+            hasKnownMileageBaseline: item.has_known_odometer_baseline === 1,
+            lastServiceDate: latestLog?.date ?? item.last_service_date ?? null,
+        });
         const intervalProgress = getIntervalProgress(item, currentMileage);
 
         if (intervalProgress.status === 'manual') {
@@ -155,6 +166,7 @@ export default function MaintenanceScheduleScreen() {
                 progressColor: '#8e9196',
                 remainingLabel: 'Manual Check',
                 icon: 'cleaning-services',
+                dueReason: dueResult.reason,
             };
         }
 
@@ -168,12 +180,13 @@ export default function MaintenanceScheduleScreen() {
                 progressColor: '#8e9196',
                 remainingLabel: 'Add service history',
                 icon: 'help-outline',
+                dueReason: dueResult.reason,
             };
         }
 
         const remaining = intervalProgress.remainingKm ?? 0;
 
-        if (intervalProgress.status === 'overdue') {
+        if (intervalProgress.status === 'overdue' || dueResult.isDue) {
             return {
                 status: 'OVERDUE',
                 color: 'text-error',
@@ -183,6 +196,7 @@ export default function MaintenanceScheduleScreen() {
                 progressColor: '#ffb4ab',
                 remainingLabel: `${Math.abs(remaining).toLocaleString()} KM Over`,
                 icon: 'warning',
+                dueReason: dueResult.reason,
             };
         } else if (intervalProgress.status === 'due-soon') {
             return {
@@ -194,6 +208,7 @@ export default function MaintenanceScheduleScreen() {
                 progressColor: '#f59e0b',
                 remainingLabel: `${remaining.toLocaleString()} KM Left`,
                 icon: 'schedule',
+                dueReason: dueResult.reason,
             };
         } else {
             return {
@@ -205,6 +220,7 @@ export default function MaintenanceScheduleScreen() {
                 progressColor: '#10b981',
                 remainingLabel: `${remaining.toLocaleString()} KM Left`,
                 icon: item.type === 'replace' ? 'autorenew' : 'fact-check',
+                dueReason: dueResult.reason,
             };
         }
     };
@@ -213,6 +229,7 @@ export default function MaintenanceScheduleScreen() {
         return <ScreenLoadState error={loadError ?? (!loading ? 'The active vehicle is unavailable.' : null)} loading={loading} onRetry={reload} title="MAINTENANCE" />;
     }
     const scooterSelection = selectionFromProfile(profile);
+    const modelProfile = getModelProfileForVehicle(profile);
 
     return (
        <AppScreen>
@@ -254,14 +271,21 @@ export default function MaintenanceScheduleScreen() {
                 <View className="mx-2 mb-6 p-4 rounded-xl bg-primary/10 border border-primary/20 flex-row gap-3">
                     <MaterialIcons name="info-outline" size={20} color="#a9c7ff" />
                     <Text className="font-body text-xs text-on-surface-variant leading-5 flex-1">
-                        Starting intervals are editable planning templates, not manufacturer specifications. Confirm each one against your vehicle manual. Missing history stays Not set.
+                        Tasks come only from the selected owner manual. The recurring engine-oil recommendation is the approved 3azza 1,000 km policy; your edits remain separate user overrides. Missing history stays Not set.
                     </Text>
                 </View>
 
                 <View className="space-y-4 mb-20">
                     {intervals.map((item) => {
-                        const statusInfo = getStatusInfo(item, predictedOdometer);
                         const latestLog = latestLogs[item.name];
+                        const statusInfo = getStatusInfo(item, predictedOdometer, latestLog);
+                        const pages = item.source_pages_json ? JSON.parse(item.source_pages_json) as number[] : [];
+                        const initialMilestones = item.initial_milestones_json ? JSON.parse(item.initial_milestones_json) as number[] : [];
+                        const origin = item.recommendation_origin === 'user_override'
+                            ? 'user_override'
+                            : item.recommendation_origin === '3azza_policy'
+                                ? '3azza_policy'
+                                : 'manual';
                         return (
                             <View key={item.id} className={`bg-surface-container-lowest border-l-4 ${statusInfo.borderColor} rounded-xl p-5 mb-4 shadow-sm`}>
                                 <View className="flex-row justify-between items-start mb-4">
@@ -272,7 +296,8 @@ export default function MaintenanceScheduleScreen() {
                                         <View className="flex-1 min-w-0">
                                             <Text className="font-headline text-lg font-bold text-on-surface">{item.name}</Text>
                                             <Text className="font-label text-xs uppercase text-secondary/60 tracking-widest">
-                                                Every {item.interval_km ? `${item.interval_km.toLocaleString()} KM` : 'As Needed'}
+                                                {item.interval_km ? `Every ${item.interval_km.toLocaleString()} KM` : 'Manual / no fixed distance'}
+                                                {item.recommended_interval_months ? ` · or ${item.recommended_interval_months} month${item.recommended_interval_months === 1 ? '' : 's'}` : ''}
                                             </Text>
                                         </View>
                                     </View>
@@ -292,6 +317,23 @@ export default function MaintenanceScheduleScreen() {
                                         </Text>
                                     </View>
                                 )}
+
+                                <Text className={`font-body text-xs leading-5 mb-3 ${statusInfo.status === 'OVERDUE' ? 'text-error' : 'text-on-surface-variant'}`}>
+                                    {statusInfo.dueReason}
+                                </Text>
+
+                                {initialMilestones.length > 0 ? (
+                                    <View className="bg-tertiary/10 border border-tertiary/25 rounded-lg p-3 mb-3">
+                                        <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">Initial service retained</Text>
+                                        <Text className="font-body text-xs text-on-surface-variant mt-1">
+                                            Manual milestone{initialMilestones.length === 1 ? '' : 's'}: {initialMilestones.map((value) => `${value.toLocaleString()} km`).join(', ')}. These are not postponed by a recurring interval.
+                                        </Text>
+                                    </View>
+                                ) : null}
+
+                                {item.severe_use_note ? (
+                                    <Text className="font-body text-xs text-on-surface-variant leading-5 mb-3">Severe use: {item.severe_use_note}</Text>
+                                ) : null}
 
                                 {/* Progress Bar */}
                                 {item.interval_km !== null && (
@@ -331,7 +373,7 @@ export default function MaintenanceScheduleScreen() {
                                         <MaterialIcons name="check-circle-outline" size={18} color="#a9c7ff" />
                                         <Text className="font-label font-bold text-primary uppercase text-xs tracking-widest">Log as Completed</Text>
                                     </TouchableOpacity>
-                                    {item.name === 'Oil Change' && (
+                                    {item.canonical_task_id === 'engine-oil' && (
                                         <TouchableOpacity
                                             className="px-4 py-3 rounded-lg flex-row items-center justify-center gap-2 border border-primary/25 bg-primary/10"
                                             onPress={() => navigation.navigate('OilChangeDetails')}
@@ -341,6 +383,7 @@ export default function MaintenanceScheduleScreen() {
                                         </TouchableOpacity>
                                     )}
                                 </View>
+                                {modelProfile ? <SourceProvenance origin={origin} pages={pages} profile={modelProfile} /> : null}
                             </View>
                         );
                     })}

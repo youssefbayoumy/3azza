@@ -1,242 +1,205 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { getDailyPreRideState, savePreRideState } from '../services/database';
-import type { PreRideState } from '../types/database.types';
+import { getLatestPreRideRun, getVehicleProfile, recordPreRideRun } from '../services/database';
+import type { VehicleProfile } from '../types/database.types';
 import type { PreRideNavigationProp } from '../navigation/types';
 import ActiveVehicleChip from '../components/ActiveVehicleChip';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
+import SourceProvenance from '../components/SourceProvenance';
 import useFocusedLoader from '../hooks/useFocusedLoader';
+import {
+  formatKnowledgeValue,
+  getApplicablePreRideItems,
+  getModelProfileForVehicle,
+  getSelectedVariant,
+} from '../modelData/modelKnowledge';
+import type { KnowledgeRecord } from '../modelData/types';
+
+function recordTitle(record: KnowledgeRecord): string {
+  const attributes = record.attributes;
+  for (const key of ['item', 'component', 'check', 'title', 'name']) {
+    if (typeof attributes[key] === 'string') return String(attributes[key]);
+  }
+  return record.subject.replaceAll('_', ' ');
+}
 
 export default function PreRideCheckScreen() {
-    const navigation = useNavigation<PreRideNavigationProp>();
-    const { width: viewportWidth } = useWindowDimensions();
-    const [state, setState] = useState<PreRideState | null>(null);
-    const [saving, setSaving] = useState(false);
+  const navigation = useNavigation<PreRideNavigationProp>();
+  const { width: viewportWidth } = useWindowDimensions();
+  const [profile, setProfile] = useState<VehicleProfile | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
 
-    const loadState = useCallback(async (isCurrent: () => boolean) => {
-        const nextState = await getDailyPreRideState();
-        if (isCurrent()) setState(nextState);
-    }, []);
-
-    const { error: loadError, loading, reload } = useFocusedLoader(
-        loadState,
-        'Today’s pre-ride checklist could not be loaded. No check was recorded.',
-        'Failed to load pre-ride check:'
-    );
-
-    const toggleCheck = (key: keyof PreRideState, currentValue: number) => {
-        const newValue = currentValue === 1 ? 0 : 1;
-        setState(prev => prev ? { ...prev, [key]: newValue } : null);
-    };
-
-    const handleSaveCheck = () => {
-        if (systemReadiness < 100) {
-            Alert.alert(
-                'Incomplete Check',
-                `Only ${completedChecks} of 4 items are marked complete. Save this check with incomplete items?`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Save Anyway', onPress: performSave }
-                ]
-            );
-        } else {
-            performSave();
-        }
-    };
-
-    const performSave = async () => {
-        if (!state) return;
-        const now = new Date().toISOString();
-        setSaving(true);
-        try {
-            await savePreRideState({
-                brakes_checked: state.brakes_checked,
-                tires_checked: state.tires_checked,
-                lights_checked: state.lights_checked,
-                oil_checked: state.oil_checked,
-                last_run_at: now,
-            });
-            setState({ ...state, last_run_at: now });
-            Alert.alert('Pre-ride check saved', `${completedChecks} of 4 items recorded for today.`, [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
-        } catch (error) {
-            console.error('Failed to save pre-ride check:', error);
-            Alert.alert('Save failed', 'The pre-ride check could not be saved. Try again.');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (loading || loadError || !state) {
-        return <ScreenLoadState error={loadError ?? (!loading ? 'Today’s checklist is unavailable.' : null)} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="PRE-RIDE CHECK" />;
+  const loadState = useCallback(async (isCurrent: () => boolean) => {
+    const [vehicle, latestRun] = await Promise.all([getVehicleProfile(), getLatestPreRideRun()]);
+    if (!isCurrent()) return;
+    setProfile(vehicle);
+    const model = getModelProfileForVehicle(vehicle);
+    const variant = getSelectedVariant(vehicle, model);
+    const today = new Date().toISOString().slice(0, 10);
+    if (
+      latestRun
+      && model
+      && latestRun.manual_id === model.manualId
+      && latestRun.variant_id === (variant?.id ?? null)
+      && latestRun.completed_at.slice(0, 10) === today
+    ) {
+      const items = JSON.parse(latestRun.items_json) as { recordId: string; checked: boolean }[];
+      setChecked(Object.fromEntries(items.map((item) => [item.recordId, item.checked])));
+    } else {
+      setChecked({});
     }
+  }, []);
 
-    const { brakes_checked, tires_checked, lights_checked, oil_checked } = state;
-    const checksArray = [brakes_checked, tires_checked, lights_checked, oil_checked];
-    const completedChecks = checksArray.filter(v => v === 1).length;
-    const systemReadiness = Math.round((completedChecks / 4) * 100);
-    const gaugeSize = Math.min(Math.max(viewportWidth - 48, 180), 320);
+  const { error: loadError, loading, reload } = useFocusedLoader(
+    loadState,
+    'Today’s pre-ride checklist could not be loaded. No check was recorded.',
+    'Failed to load pre-ride check:'
+  );
 
-    // SVG Circular Gauge calculation
-    const radius = 45;
-    const circumference = 2 * Math.PI * radius; // approx 282.74
-    // Make it a semi-circle style gauge layout, full is 100% of the circle though for simplicity, wait design has a 3/4 circle.
-    // Length: 282, we'll map 0-100 to 0-282
-    const strokeDashoffset = circumference - (systemReadiness / 100) * circumference;
+  const modelProfile = getModelProfileForVehicle(profile);
+  const selectedVariant = getSelectedVariant(profile, modelProfile);
+  const items = useMemo(() => getApplicablePreRideItems(profile), [profile]);
+  const completedChecks = items.filter((item) => checked[item.recordId]).length;
+  const readiness = items.length > 0 ? Math.round((completedChecks / items.length) * 100) : 0;
+  const gaugeSize = Math.min(Math.max(viewportWidth - 48, 180), 320);
+  const radius = 45;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (readiness / 100) * circumference;
 
-    const CheckItem = ({ 
-        title, 
-        subtitle, 
-        icon, 
-        checkedKey, 
-        value, 
-        colorTheme
-    }: { 
-        title: string; 
-        subtitle: string; 
-        icon: string; 
-        checkedKey: keyof PreRideState; 
-        value: number; 
-        colorTheme: 'amber' | 'emerald'
-    }) => {
-        const isChecked = value === 1;
-        const activeBg = isChecked ? 'bg-surface-container-high' : 'bg-surface-container-low';
-        const activeColor = colorTheme === 'amber' ? '#f59e0b' : '#10b981';
-        
-        return (
-            <TouchableOpacity 
-                className={`${activeBg} rounded-xl p-5 flex-row items-center justify-between gap-3 border-l-4 mb-4`}
-                style={{ borderLeftColor: isChecked ? activeColor : 'transparent' }}
-                activeOpacity={0.8}
-                onPress={() => toggleCheck(checkedKey, value)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isChecked }}
-                accessibilityLabel={`${title}: ${isChecked ? 'checked' : 'not checked'}`}
-            >
-                <View className="flex-row items-center gap-4 flex-1 min-w-0">
-                    <View className="w-12 h-12 rounded-lg bg-surface-container-highest items-center justify-center">
-                        <MaterialIcons name={icon as any} size={24} color="#c6c6c6" />
-                    </View>
-                    <View className="flex-1 min-w-0">
-                        <Text className="font-headline text-secondary font-bold text-sm tracking-wide">{title}</Text>
-                        <Text className="font-label text-xs uppercase text-secondary/40">{subtitle}</Text>
-                    </View>
-                </View>
-                
-                {/* Industrial Toggle */}
-                <View
-                    className={`relative w-16 h-8 rounded-full p-1 flex-row items-center ${isChecked ? '' : 'bg-surface-container-lowest'} border border-outline-variant/10`}
-                    style={isChecked ? { backgroundColor: `${activeColor}1a` } : undefined}
+  const performSave = async () => {
+    if (!modelProfile || items.length === 0) return;
+    setSaving(true);
+    try {
+      await recordPreRideRun({
+        manualId: modelProfile.manualId,
+        variantId: selectedVariant?.id ?? null,
+        items: items.map((item) => ({
+          recordId: item.recordId,
+          subject: recordTitle(item),
+          checked: Boolean(checked[item.recordId]),
+        })),
+      });
+      Alert.alert('Pre-ride check saved', `${completedChecks} of ${items.length} exact-manual items recorded for today.`, [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      console.error('Failed to save pre-ride check:', error);
+      Alert.alert('Save failed', 'The pre-ride check could not be saved. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (completedChecks < items.length) {
+      Alert.alert(
+        'Incomplete check',
+        `Only ${completedChecks} of ${items.length} manual items are marked complete. Save this run without changing the unchecked items?`,
+        [{ text: 'Cancel', style: 'cancel' }, { text: 'Save anyway', onPress: performSave }]
+      );
+      return;
+    }
+    void performSave();
+  };
+
+  if (loading || loadError) {
+    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="PRE-RIDE CHECK" />;
+  }
+
+  return (
+    <AppScreen edges={['top', 'bottom', 'left', 'right']}>
+      <AppTopBar
+        tone="subtle"
+        className="z-50"
+        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+      >
+        <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#a9c7ff]" numberOfLines={1}>PRE-RIDE CHECK</Text>
+      </AppTopBar>
+
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 }}>
+        <ActiveVehicleChip />
+        {!modelProfile ? (
+          <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6 mt-5">
+            <Text className="font-headline text-xl font-bold text-on-surface">Scooter manual required</Text>
+            <Text className="font-body text-sm text-on-surface-variant leading-6 mt-2">Select the exact scooter in Vehicle Settings. No checklist from another model will be substituted.</Text>
+          </View>
+        ) : (
+          <>
+            <View className="bg-surface-container-lowest border border-primary/20 rounded-xl p-4 mt-4 mb-5">
+              <Text className="font-label text-xs font-bold text-primary uppercase tracking-wider">Checklist source</Text>
+              <Text className="font-headline text-base font-bold text-on-surface mt-1">{modelProfile.modelName} · {selectedVariant?.name ?? modelProfile.manualYears}</Text>
+              <Text className="font-body text-xs text-on-surface-variant mt-1">Saved runs retain this manual and variant identity, so a later model switch cannot reinterpret them.</Text>
+            </View>
+
+            <View className="relative mx-auto mb-8 items-center justify-center" style={{ height: gaugeSize, width: gaugeSize }}>
+              <Svg width={gaugeSize} height={gaugeSize} viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] }}>
+                <Defs>
+                  <LinearGradient id="gaugeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                    <Stop offset="0%" stopColor="#a9c7ff" />
+                    <Stop offset="100%" stopColor="#418df5" />
+                  </LinearGradient>
+                </Defs>
+                <Circle cx="50" cy="50" r="45" fill="none" stroke="#2a3644" strokeWidth="6" />
+                <Circle cx="50" cy="50" r="45" fill="none" stroke="url(#gaugeGradient)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={strokeDashoffset} />
+              </Svg>
+              <View className="items-center z-10">
+                <Text className="font-label text-xs uppercase tracking-widest text-secondary/60">Checks completed</Text>
+                <Text className="font-headline text-5xl font-bold tracking-tighter text-secondary mt-1">{readiness}%</Text>
+                <Text className="font-label text-xs uppercase font-bold text-primary mt-2">{completedChecks} of {items.length}</Text>
+              </View>
+            </View>
+
+            {items.length === 0 ? (
+              <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-5">
+                <Text className="font-headline text-base font-bold text-on-surface">Not specified in this manual.</Text>
+              </View>
+            ) : items.map((item) => {
+              const isChecked = Boolean(checked[item.recordId]);
+              return (
+                <TouchableOpacity
+                  accessibilityLabel={`${recordTitle(item)}: ${isChecked ? 'checked' : 'not checked'}`}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isChecked }}
+                  className={`rounded-xl p-5 border-l-4 mb-4 ${isChecked ? 'bg-surface-container-high border-emerald-500' : 'bg-surface-container-low border-transparent'}`}
+                  key={item.recordId}
+                  onPress={() => setChecked((current) => ({ ...current, [item.recordId]: !isChecked }))}
                 >
-                    <View
-                        className={`h-6 w-6 rounded-full border border-white/20 shadow-lg absolute ${isChecked ? 'right-1' : 'bg-outline-variant left-1'}`}
-                        style={isChecked ? { backgroundColor: activeColor } : undefined}
-                    />
-                </View>
-            </TouchableOpacity>
-        );
-    };
-
-    return (
-        <AppScreen edges={['top', 'bottom', 'left', 'right']}>
-            <AppTopBar
-                tone="subtle"
-                className="z-50"
-                leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
-                trailing={<View className="w-8 h-8 rounded-full border border-outline-variant overflow-hidden bg-surface-container-highest">
-                    <MaterialIcons name="person" size={20} color="#a9c7ff" style={{ alignSelf: 'center', marginTop: 4 }} />
-                </View>}
-            >
-                <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#a9c7ff]" numberOfLines={1}>PRE-RIDE CHECK</Text>
-            </AppTopBar>
-
-            <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 32 }}
-            >
-                <ActiveVehicleChip />
-                {/* Hero Gauge Visual */}
-                <View
-                    className="relative mx-auto mb-10 items-center justify-center"
-                    style={{
-                        height: gaugeSize,
-                        width: gaugeSize,
-                    }}
-                >
-                    <Svg
-                        width={gaugeSize}
-                        height={gaugeSize}
-                        viewBox="0 0 100 100"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            transform: [{ rotate: '-90deg' }],
-                        }}
-                    >
-                        <Defs>
-                            <LinearGradient id="gaugeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                                <Stop offset="0%" stopColor="#a9c7ff" />
-                                <Stop offset="100%" stopColor="#418df5" />
-                            </LinearGradient>
-                        </Defs>
-                        <Circle 
-                            cx="50" cy="50" r="45" 
-                            fill="none" 
-                            stroke="#2a3644" 
-                            strokeWidth="6" 
-                        />
-                        <Circle 
-                            cx="50" cy="50" r="45" 
-                            fill="none" 
-                            stroke="url(#gaugeGradient)" 
-                            strokeWidth="6" 
-                            strokeLinecap="round"
-                            strokeDasharray={`${circumference} ${circumference}`}
-                            strokeDashoffset={strokeDashoffset}
-                        />
-                    </Svg>
-                    <View className="items-center z-10">
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Checks Completed</Text>
-                        <View className="flex-row items-start">
-                            <Text className="font-headline text-5xl font-bold tracking-tighter text-secondary">{systemReadiness}</Text>
-                            <Text className="text-xl font-light opacity-50 text-secondary mt-1">%</Text>
-                        </View>
-                        <View className="mt-2 flex-row items-center justify-center gap-2">
-                            <View className={`w-2 h-2 rounded-full ${systemReadiness === 100 ? 'bg-emerald-500' : 'bg-primary'}`} />
-                            <Text className={`font-label text-xs uppercase font-bold ${systemReadiness === 100 ? 'text-emerald-500' : 'text-primary'}`}>Manual Checklist</Text>
-                        </View>
+                  <View className="flex-row items-start gap-4">
+                    <View className="w-11 h-11 rounded-lg bg-surface-container-highest items-center justify-center">
+                      <MaterialIcons name={isChecked ? 'check-circle' : 'fact-check'} size={23} color={isChecked ? '#10b981' : '#c6c6c6'} />
                     </View>
-                </View>
+                    <View className="flex-1">
+                      <Text className="font-headline text-sm font-bold text-on-surface capitalize">{recordTitle(item)}</Text>
+                      <Text className="font-body text-xs text-on-surface-variant leading-5 mt-1">{formatKnowledgeValue(item.value)}</Text>
+                      <SourceProvenance compact pages={item.pages} profile={modelProfile} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
 
-                {/* Check List Bento Grid */}
-                <View className="flex-col pb-6">
-                    <CheckItem title="Brakes" subtitle="Response & Fluid" icon="emergency" checkedKey="brakes_checked" value={brakes_checked} colorTheme="emerald" />
-                    <CheckItem title="Tires (Air/Wear)" subtitle="Visual Inspection" icon="tire-repair" checkedKey="tires_checked" value={tires_checked} colorTheme="amber" />
-                    <CheckItem title="Lights" subtitle="All Beacons Active" icon="lightbulb" checkedKey="lights_checked" value={lights_checked} colorTheme="emerald" />
-                    <CheckItem title="Oil Level" subtitle="If Applicable" icon="oil-barrel" checkedKey="oil_checked" value={oil_checked} colorTheme="emerald" />
-                </View>
-
-                {/* Master Confirmation Button */}
-                <View className="mt-4 px-2">
-                    <TouchableOpacity 
-                        className={`h-16 rounded-xl shadow-lg flex-row items-center justify-center gap-3 active:scale-95 border-t border-white/20 ${systemReadiness === 100 ? 'bg-emerald-600' : 'bg-secondary'}`}
-                        onPress={handleSaveCheck}
-                        disabled={saving}
-                        accessibilityRole="button"
-                    >
-                        {saving ? <ActivityIndicator color="#030f1c" /> : <MaterialIcons name="save" size={24} color="#030f1c" />}
-                        <Text className="text-[#030f1c] font-headline font-bold uppercase tracking-[0.2em]">{saving ? 'Saving' : 'Save Pre-Ride Check'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </AppScreen>
-    );
+            {items.length > 0 ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving, busy: saving }}
+                className={`h-16 rounded-xl mt-4 flex-row items-center justify-center gap-3 ${readiness === 100 ? 'bg-emerald-600' : 'bg-secondary'}`}
+                disabled={saving}
+                onPress={handleSave}
+              >
+                {saving ? <ActivityIndicator color="#030f1c" /> : <MaterialIcons name="save" size={24} color="#030f1c" />}
+                <Text className="text-[#030f1c] font-headline font-bold uppercase tracking-[0.16em]">{saving ? 'Saving' : 'Save pre-ride check'}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+    </AppScreen>
+  );
 }

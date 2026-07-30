@@ -37,7 +37,10 @@ describe('generated scooter catalog', () => {
       modelId: 'sym:new-symphony-st',
       versionId: 'sym:new-symphony-st:2021-present',
     };
-    const oil = getMaintenanceTemplate(selection).find((item) => item.name === 'Oil Change');
-    assert.deepEqual(oil, { name: 'Oil Change', intervalKm: 1000, type: 'replace' });
+    const oil = getMaintenanceTemplate(selection).find((item) => item.canonicalId === 'engine-oil');
+    assert.equal(oil?.intervalKm, 1000);
+    assert.equal(oil?.type, 'replace');
+    assert.equal(oil?.origin, '3azza_policy');
+    assert.ok(oil?.initialDistanceKm.includes(300));
   });
 });

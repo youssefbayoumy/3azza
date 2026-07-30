@@ -8,7 +8,7 @@ import { syncMaintenanceNotifications } from '../../services/notifications';
 import AppFormScreen from '../../components/ui/AppFormScreen';
 import { parseWholeNumberInput } from '../../utils/recordValidation';
 import ScooterSelectionFields from '../../components/ScooterSelectionFields';
-import { resolveScooterSelection, selectionFromProfile, type ScooterSelection } from '../../catalog/scooterCatalog';
+import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile, type ScooterSelection } from '../../catalog/scooterCatalog';
 
 type SetupFormData = {
     mileage: string;
@@ -39,9 +39,9 @@ export default function VehicleSetupScreen() {
 
     const onSubmit = async (data: SetupFormData) => {
         const resolvedSelection = resolveScooterSelection(selection);
-        if (!resolvedSelection) {
+        if (!resolvedSelection || !isScooterSelectionComplete(selection)) {
             setShowSelectionErrors(true);
-            Alert.alert('Select your scooter', 'Choose a brand, model, and version before continuing.');
+            Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before continuing.');
             return;
         }
         const mileageResult = parseWholeNumberInput(data.mileage, { label: 'Current odometer' });

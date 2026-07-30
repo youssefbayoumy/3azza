@@ -4,6 +4,7 @@ import type {
   DocumentItem,
   GasLog,
   InventoryItem,
+  PreRideRun,
   PreRideState,
   ServiceInterval,
   ServiceLog,
@@ -28,6 +29,7 @@ import {
 import { validateDatabaseBackupData } from '../utils/backupFormat';
 import { assertSupportedDatabaseVersion } from '../utils/databaseVersion';
 import { resetPreRideStateForNewLocalDay } from '../utils/preRide';
+import { reconcileMaintenancePlan } from '../utils/modelMaintenance';
 import { validateFuelLogFields, validateTankCapacityLiters } from '../utils/fuel';
 import {
   GAS_LOG_METRICS_QUERY,
@@ -37,7 +39,7 @@ import {
 import { CURRENT_SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './databaseSchema';
 import {
   getMaintenanceTemplate,
-  resolveScooterSelection,
+  isScooterSelectionComplete,
   selectionFromProfile,
   type ScooterSelection,
 } from '../catalog/scooterCatalog';
@@ -55,6 +57,7 @@ export type DatabaseBackupData = {
   inventory_items: InventoryItem[];
   documents_vault: DocumentItem[];
   pre_ride_checks: PreRideState[];
+  pre_ride_runs?: PreRideRun[];
 };
 
 async function getDb(): Promise<SQLite.SQLiteDatabase> {
@@ -76,6 +79,7 @@ async function ensureMetaTables(database: SQLite.SQLiteDatabase): Promise<void> 
       applied_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
 }
 
 async function getSchemaVersion(database: SQLite.SQLiteDatabase): Promise<number> {
@@ -645,6 +649,76 @@ async function addStorageIndexes(database: SQLite.SQLiteDatabase): Promise<void>
   `);
 }
 
+async function addModelKnowledgePersistence(database: SQLite.SQLiteDatabase): Promise<void> {
+  if (!(await columnExists(database, 'vehicle_profile', 'scooter_variant_id'))) {
+    await database.execAsync('ALTER TABLE vehicle_profile ADD COLUMN scooter_variant_id TEXT;');
+  }
+
+  const intervalColumns: [string, string][] = [
+    ['canonical_task_id', 'TEXT'],
+    ['recommended_interval_km', 'INTEGER'],
+    ['recommended_interval_months', 'INTEGER'],
+    ['user_interval_km', 'INTEGER'],
+    ['user_override_active', 'INTEGER NOT NULL DEFAULT 0'],
+    ['recommendation_origin', "TEXT NOT NULL DEFAULT 'manual'"],
+    ['source_manual_id', 'TEXT'],
+    ['source_pages_json', 'TEXT'],
+    ['manual_guidance_json', 'TEXT'],
+    ['initial_milestones_json', 'TEXT'],
+    ['severe_use_note', 'TEXT'],
+    ['is_applicable', 'INTEGER NOT NULL DEFAULT 1'],
+    ['last_service_date', 'TEXT'],
+  ];
+  const existingColumns = new Set(await tableColumns(database, 'service_intervals'));
+  const isLegacyIntervalTable = !existingColumns.has('canonical_task_id');
+  for (const [name, definition] of intervalColumns) {
+    if (!existingColumns.has(name)) {
+      await database.execAsync(`ALTER TABLE service_intervals ADD COLUMN ${name} ${definition};`);
+    }
+  }
+
+  if (isLegacyIntervalTable) {
+    await database.execAsync(`
+      UPDATE service_intervals
+      SET user_interval_km = interval_km,
+          user_override_active = 1,
+          recommendation_origin = CASE WHEN interval_km IS NULL THEN 'manual' ELSE 'user_override' END;
+    `);
+  }
+
+  await database.execAsync(`
+    UPDATE service_intervals
+    SET last_service_date = (
+      SELECT MAX(service_logs.date)
+      FROM service_logs
+      WHERE service_logs.vehicle_id = service_intervals.vehicle_id
+        AND service_logs.service_type = service_intervals.name
+    );
+  `);
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS pre_ride_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL,
+      manual_id TEXT NOT NULL,
+      variant_id TEXT,
+      completed_at TEXT NOT NULL,
+      items_json TEXT NOT NULL,
+      completed_count INTEGER NOT NULL,
+      total_count INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pre_ride_runs_vehicle_date ON pre_ride_runs(vehicle_id, completed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_service_intervals_vehicle_task
+      ON service_intervals(vehicle_id, canonical_task_id, is_applicable);
+  `);
+
+  const vehicles = await database.getAllAsync<VehicleProfile>('SELECT * FROM vehicle_profile');
+  for (const vehicle of vehicles) {
+    const selection = selectionFromProfile(vehicle);
+    if (selection) await applyScooterMaintenanceTemplate(database, vehicle.id, selection);
+  }
+}
+
 async function withWriteTransaction(
   database: SQLite.SQLiteDatabase,
   task: (transaction: SQLite.SQLiteDatabase) => Promise<void>
@@ -757,6 +831,12 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
     await setSchemaVersion(database, version);
   }
 
+  if (version < 13) {
+    await addModelKnowledgePersistence(database);
+    version = 13;
+    await setSchemaVersion(database, version);
+  }
+
   if (version < CURRENT_SCHEMA_VERSION) {
     await setSchemaVersion(database, CURRENT_SCHEMA_VERSION);
   }
@@ -767,13 +847,18 @@ async function seedDefaultIntervals(
   vehicleId: number,
   selection: ScooterSelection
 ): Promise<void> {
-  for (const interval of getMaintenanceTemplate(selection)) {
-    await database.runAsync(
-      `INSERT OR IGNORE INTO service_intervals (vehicle_id, name, interval_km, last_service_odometer_km, type)
-       VALUES (?, ?, ?, 0, ?)`,
-      [vehicleId, interval.name, interval.intervalKm, interval.type]
-    );
+  if (!(await columnExists(database, 'service_intervals', 'is_applicable'))) {
+    for (const interval of getMaintenanceTemplate(selection)) {
+      await database.runAsync(
+        `INSERT OR IGNORE INTO service_intervals (
+          vehicle_id, name, interval_km, last_service_odometer_km, type, has_known_odometer_baseline
+        ) VALUES (?, ?, ?, 0, ?, 0)`,
+        [vehicleId, interval.name, interval.intervalKm, interval.type]
+      );
+    }
+    return;
   }
+  await applyScooterMaintenanceTemplate(database, vehicleId, selection);
 }
 
 async function applyScooterMaintenanceTemplate(
@@ -781,15 +866,57 @@ async function applyScooterMaintenanceTemplate(
   vehicleId: number,
   selection: ScooterSelection
 ): Promise<void> {
-  for (const interval of getMaintenanceTemplate(selection)) {
+  const existingIntervals = await database.getAllAsync<ServiceInterval>(
+    'SELECT * FROM service_intervals WHERE vehicle_id = ?',
+    [vehicleId]
+  );
+  await database.runAsync('UPDATE service_intervals SET is_applicable = 0 WHERE vehicle_id = ?', [vehicleId]);
+  const template = getMaintenanceTemplate(selection);
+  const reconciliation = reconcileMaintenancePlan(existingIntervals, template);
+
+  for (const interval of template) {
+    const plannedMatch = reconciliation.matched.find((item) => item.template.canonicalId === interval.canonicalId);
+    const existing = plannedMatch
+      ? existingIntervals.find((candidate) => candidate.id === plannedMatch.existingId)
+      : undefined;
+    const userInterval = plannedMatch?.userIntervalKm ?? null;
+    const effectiveInterval = plannedMatch?.effectiveIntervalKm ?? interval.intervalKm;
+    const origin = plannedMatch?.origin ?? interval.origin;
+    const metadata = [
+      interval.canonicalId,
+      interval.intervalKm,
+      interval.intervalMonths,
+      userInterval,
+      plannedMatch?.hasUserOverride ? 1 : 0,
+      origin,
+      interval.sourceManualId,
+      JSON.stringify(interval.sourcePages),
+      JSON.stringify(interval.guidance),
+      JSON.stringify(interval.initialDistanceKm),
+      interval.severeUseNotes.join('\n') || null,
+    ];
+
+    if (existing) {
+      await database.runAsync(
+        `UPDATE service_intervals
+         SET canonical_task_id = ?, recommended_interval_km = ?, recommended_interval_months = ?,
+             user_interval_km = ?, user_override_active = ?, recommendation_origin = ?, source_manual_id = ?,
+             source_pages_json = ?, manual_guidance_json = ?, initial_milestones_json = ?,
+             severe_use_note = ?, interval_km = ?, type = ?, is_applicable = 1
+         WHERE id = ? AND vehicle_id = ?`,
+        [...metadata, effectiveInterval, interval.type, existing.id, vehicleId]
+      );
+      continue;
+    }
+
     await database.runAsync(
       `INSERT INTO service_intervals (
-         vehicle_id, name, interval_km, last_service_odometer_km, type, has_known_odometer_baseline
-       ) VALUES (?, ?, ?, 0, ?, 0)
-       ON CONFLICT(vehicle_id, name) DO UPDATE SET
-         interval_km = excluded.interval_km,
-         type = excluded.type`,
-      [vehicleId, interval.name, interval.intervalKm, interval.type]
+         vehicle_id, name, interval_km, last_service_odometer_km, type, has_known_odometer_baseline,
+         canonical_task_id, recommended_interval_km, recommended_interval_months, user_interval_km,
+         user_override_active, recommendation_origin, source_manual_id, source_pages_json, manual_guidance_json,
+         initial_milestones_json, severe_use_note, is_applicable
+       ) VALUES (?, ?, ?, 0, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [vehicleId, interval.name, effectiveInterval, interval.type, ...metadata]
     );
   }
 }
@@ -999,8 +1126,8 @@ export async function createVehicleProfile(
   if (!Number.isSafeInteger(dailyAverageKm) || dailyAverageKm < 0) {
     throw new Error('Daily average must be a non-negative whole number.');
   }
-  if (!resolveScooterSelection(scooterSelection)) {
-    throw new Error('Select a valid brand, model, and version.');
+  if (!isScooterSelectionComplete(scooterSelection)) {
+    throw new Error('Select a valid brand, model, version, and required exact variant.');
   }
   const database = await getDb();
   const trimmedName = name.trim() || `Vehicle ${(await getVehicleProfiles()).length + 1}`;
@@ -1008,8 +1135,8 @@ export async function createVehicleProfile(
     `INSERT INTO vehicle_profile (
        name, current_mileage, total_km_range, has_completed_setup, daily_average_km,
        last_odometer_update_timestamp, service_history_setup_completed,
-       scooter_brand_id, scooter_model_id, scooter_version_id
-     ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?)`,
+       scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
+     ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?)`,
     [
       trimmedName,
       currentMileage,
@@ -1018,6 +1145,7 @@ export async function createVehicleProfile(
       scooterSelection.brandId,
       scooterSelection.modelId,
       scooterSelection.versionId,
+      scooterSelection.variantId ?? null,
     ]
   );
   const vehicleId = result.lastInsertRowId;
@@ -1051,6 +1179,7 @@ export async function deleteVehicleProfile(vehicleId: number): Promise<void> {
       'inventory_items',
       'documents_vault',
       'pre_ride_checks',
+      'pre_ride_runs',
       'service_logs',
       'service_intervals',
     ]) {
@@ -1103,7 +1232,7 @@ export async function getMinimumOdometerReading(): Promise<number> {
 export async function saveVehicleProfile(
   profile: Partial<Omit<
     VehicleProfile,
-    'id' | 'created_at' | 'scooter_brand_id' | 'scooter_model_id' | 'scooter_version_id'
+    'id' | 'created_at' | 'scooter_brand_id' | 'scooter_model_id' | 'scooter_version_id' | 'scooter_variant_id'
   >>
 ): Promise<void> {
   const database = await getDb();
@@ -1147,8 +1276,8 @@ export async function saveVehicleScooterSelection(
   selection: ScooterSelection,
   vehicleId?: number
 ): Promise<void> {
-  if (!resolveScooterSelection(selection)) {
-    throw new Error('Select a valid brand, model, and version.');
+  if (!isScooterSelectionComplete(selection)) {
+    throw new Error('Select a valid brand, model, version, and required exact variant.');
   }
 
   const database = await getDb();
@@ -1156,9 +1285,9 @@ export async function saveVehicleScooterSelection(
   await withWriteTransaction(database, async (transaction) => {
     const result = await transaction.runAsync(
       `UPDATE vehicle_profile
-       SET scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?
+       SET scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?
        WHERE id = ?`,
-      [selection.brandId, selection.modelId, selection.versionId, targetVehicleId]
+      [selection.brandId, selection.modelId, selection.versionId, selection.variantId ?? null, targetVehicleId]
     );
     if (result.changes !== 1) throw new Error('Vehicle does not exist.');
     await applyScooterMaintenanceTemplate(transaction, targetVehicleId, selection);
@@ -1170,8 +1299,8 @@ export async function saveInitialVehicleSetup(input: {
   dailyAverageKm: number;
   selection: ScooterSelection;
 }): Promise<void> {
-  if (!resolveScooterSelection(input.selection)) {
-    throw new Error('Select a valid brand, model, and version.');
+  if (!isScooterSelectionComplete(input.selection)) {
+    throw new Error('Select a valid brand, model, version, and required exact variant.');
   }
   const dailyAverageError = validateWholeNumber(input.dailyAverageKm, { label: 'Daily average', min: 0 });
   if (dailyAverageError) throw new Error(dailyAverageError);
@@ -1187,7 +1316,7 @@ export async function saveInitialVehicleSetup(input: {
       `UPDATE vehicle_profile
        SET current_mileage = ?, daily_average_km = ?, total_km_range = 0,
            has_completed_setup = 1, last_odometer_update_timestamp = ?,
-           scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?
+           scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?
        WHERE id = ?`,
       [
         input.currentMileage,
@@ -1196,6 +1325,7 @@ export async function saveInitialVehicleSetup(input: {
         input.selection.brandId,
         input.selection.modelId,
         input.selection.versionId,
+        input.selection.variantId ?? null,
         vehicleId,
       ]
     );
@@ -1528,6 +1658,65 @@ export async function savePreRideState(state: Partial<Omit<PreRideState, 'id' | 
   });
 }
 
+export async function getLatestPreRideRun(): Promise<PreRideRun | null> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  return database.getFirstAsync<PreRideRun>(
+    'SELECT * FROM pre_ride_runs WHERE vehicle_id = ? ORDER BY completed_at DESC, id DESC LIMIT 1',
+    [vehicleId]
+  );
+}
+
+export async function recordPreRideRun(input: {
+  manualId: string;
+  variantId: string | null;
+  items: { recordId: string; subject: string; checked: boolean }[];
+  completedAt?: string;
+}): Promise<void> {
+  if (!input.manualId || input.items.length === 0) throw new Error('A selected manual checklist is required.');
+  const completedAt = input.completedAt ?? new Date().toISOString();
+  const checked = input.items.filter((item) => item.checked);
+  const database = await getDb();
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicleId = await getActiveVehicleIdForDb(transaction);
+    await transaction.runAsync(
+      `INSERT INTO pre_ride_runs (
+        vehicle_id, manual_id, variant_id, completed_at, items_json, completed_count, total_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        vehicleId,
+        input.manualId,
+        input.variantId,
+        completedAt,
+        JSON.stringify(input.items),
+        checked.length,
+        input.items.length,
+      ]
+    );
+
+    const isChecked = (pattern: RegExp) => input.items.some((item) => pattern.test(item.subject) && item.checked) ? 1 : 0;
+    await transaction.runAsync(
+      `INSERT INTO pre_ride_checks (
+        vehicle_id, brakes_checked, tires_checked, lights_checked, oil_checked, last_run_at
+       ) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(vehicle_id) DO UPDATE SET
+         brakes_checked = excluded.brakes_checked,
+         tires_checked = excluded.tires_checked,
+         lights_checked = excluded.lights_checked,
+         oil_checked = excluded.oil_checked,
+         last_run_at = excluded.last_run_at`,
+      [
+        vehicleId,
+        isChecked(/brake/i),
+        isChecked(/tire|tyre/i),
+        isChecked(/light|lamp|indicator/i),
+        isChecked(/oil/i),
+        completedAt,
+      ]
+    );
+  });
+}
+
 export async function getServiceLogs(options?: RecordListOptions): Promise<ServiceLog[]> {
   const database = await getDb();
   const vehicleId = await getActiveVehicleIdForDb(database);
@@ -1736,7 +1925,7 @@ export async function getServiceIntervals(): Promise<ServiceInterval[]> {
   const database = await getDb();
   const vehicleId = await getActiveVehicleIdForDb(database);
   return database.getAllAsync<ServiceInterval>(
-    'SELECT * FROM service_intervals WHERE vehicle_id = ? ORDER BY id ASC',
+    'SELECT * FROM service_intervals WHERE vehicle_id = ? AND is_applicable = 1 ORDER BY id ASC',
     [vehicleId]
   );
 }
@@ -1756,7 +1945,10 @@ export async function updateServiceInterval(
   const fields: string[] = [];
   const values: (string | number | null)[] = [];
 
-  if (updates.interval_km !== undefined) { fields.push('interval_km = ?'); values.push(updates.interval_km); }
+  if (updates.interval_km !== undefined) {
+    fields.push('interval_km = ?', 'user_interval_km = ?', 'user_override_active = 1', "recommendation_origin = 'user_override'");
+    values.push(updates.interval_km, updates.interval_km);
+  }
   if (fields.length === 0) return;
 
   values.push(id, vehicleId);
@@ -1778,6 +1970,7 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     inventoryItems,
     documents,
     preRideChecks,
+    preRideRuns,
   ] = await Promise.all([
     database.getAllAsync<VehicleProfile>('SELECT * FROM vehicle_profile ORDER BY id ASC'),
     database.getAllAsync<VehicleVitals>('SELECT * FROM vehicle_vitals ORDER BY id ASC'),
@@ -1787,6 +1980,7 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     database.getAllAsync<InventoryItem>('SELECT * FROM inventory_items ORDER BY id ASC'),
     database.getAllAsync<DocumentItem>('SELECT * FROM documents_vault ORDER BY id ASC'),
     database.getAllAsync<PreRideState>('SELECT * FROM pre_ride_checks ORDER BY id ASC'),
+    database.getAllAsync<PreRideRun>('SELECT * FROM pre_ride_runs ORDER BY id ASC'),
   ]);
 
   return {
@@ -1799,6 +1993,7 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     inventory_items: inventoryItems,
     documents_vault: documents,
     pre_ride_checks: preRideChecks,
+    pre_ride_runs: preRideRuns,
   };
 }
 
@@ -1814,6 +2009,7 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
       'inventory_items',
       'documents_vault',
       'pre_ride_checks',
+      'pre_ride_runs',
       'service_logs',
       'service_intervals',
       'vehicle_profile',
@@ -1826,8 +2022,8 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
         `INSERT INTO vehicle_profile (
           id, name, current_mileage, total_km_range, has_completed_setup, created_at,
           daily_average_km, last_odometer_update_timestamp, service_history_setup_completed, tank_capacity_liters,
-          scooter_brand_id, scooter_model_id, scooter_version_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           vehicle.id,
           vehicle.name,
@@ -1842,6 +2038,7 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           vehicle.scooter_brand_id,
           vehicle.scooter_model_id,
           vehicle.scooter_version_id,
+          vehicle.scooter_variant_id ?? null,
         ]
       );
     }
@@ -1869,8 +2066,11 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
       await database.runAsync(
         `INSERT INTO service_intervals (
            id, vehicle_id, name, interval_km, last_service_odometer_km,
-           has_known_odometer_baseline, type
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           has_known_odometer_baseline, type, canonical_task_id, recommended_interval_km,
+           recommended_interval_months, user_interval_km, user_override_active, recommendation_origin,
+           source_manual_id, source_pages_json, manual_guidance_json, initial_milestones_json,
+           severe_use_note, is_applicable, last_service_date
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           row.id,
           row.vehicle_id,
@@ -1879,6 +2079,19 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           row.last_service_odometer_km,
           row.has_known_odometer_baseline,
           row.type,
+          row.canonical_task_id ?? null,
+          row.recommended_interval_km ?? row.interval_km,
+          row.recommended_interval_months ?? null,
+          row.user_interval_km ?? null,
+          row.user_override_active ?? 0,
+          row.recommendation_origin ?? 'manual',
+          row.source_manual_id ?? null,
+          row.source_pages_json ?? null,
+          row.manual_guidance_json ?? null,
+          row.initial_milestones_json ?? null,
+          row.severe_use_note ?? null,
+          row.is_applicable ?? 1,
+          row.last_service_date ?? null,
         ]
       );
     }
@@ -1945,6 +2158,24 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           id, vehicle_id, brakes_checked, tires_checked, lights_checked, oil_checked, last_run_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [row.id, row.vehicle_id, row.brakes_checked, row.tires_checked, row.lights_checked, row.oil_checked, row.last_run_at]
+      );
+    }
+
+    for (const row of data.pre_ride_runs ?? []) {
+      await database.runAsync(
+        `INSERT INTO pre_ride_runs (
+          id, vehicle_id, manual_id, variant_id, completed_at, items_json, completed_count, total_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.id,
+          row.vehicle_id,
+          row.manual_id,
+          row.variant_id,
+          row.completed_at,
+          row.items_json,
+          row.completed_count,
+          row.total_count,
+        ]
       );
     }
 

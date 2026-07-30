@@ -71,6 +71,7 @@ describe('transactional maintenance mutations', () => {
         vehicle_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         last_service_odometer_km INTEGER NOT NULL DEFAULT 0,
+        last_service_date TEXT,
         has_known_odometer_baseline INTEGER NOT NULL DEFAULT 0
       );
       CREATE TABLE service_logs (

@@ -75,12 +75,25 @@ export async function insertServiceCompletionInTransaction(
        SELECT MAX(mileage) FROM service_logs
        WHERE vehicle_id = ? AND service_type = ? AND sets_odometer_baseline = 1
      ), 0),
+     last_service_date = (
+       SELECT MAX(date) FROM service_logs
+       WHERE vehicle_id = ? AND service_type = ?
+     ),
      has_known_odometer_baseline = CASE WHEN EXISTS (
        SELECT 1 FROM service_logs
        WHERE vehicle_id = ? AND service_type = ? AND sets_odometer_baseline = 1
      ) THEN 1 ELSE 0 END
      WHERE id = ? AND vehicle_id = ?`,
-    [vehicleId, serviceType, vehicleId, serviceType, log.serviceIntervalId, vehicleId]
+    [
+      vehicleId,
+      serviceType,
+      vehicleId,
+      serviceType,
+      vehicleId,
+      serviceType,
+      log.serviceIntervalId,
+      vehicleId,
+    ]
   );
 }
 
@@ -125,12 +138,25 @@ export async function deleteServiceLogInTransaction(
          SELECT MAX(mileage) FROM service_logs
          WHERE vehicle_id = ? AND service_type = ? AND sets_odometer_baseline = 1
        ), 0),
+       last_service_date = (
+         SELECT MAX(date) FROM service_logs
+         WHERE vehicle_id = ? AND service_type = ?
+       ),
        has_known_odometer_baseline = CASE WHEN EXISTS (
          SELECT 1 FROM service_logs
          WHERE vehicle_id = ? AND service_type = ? AND sets_odometer_baseline = 1
        ) THEN 1 ELSE 0 END
        WHERE vehicle_id = ? AND name = ?`,
-      [vehicleId, log.service_type, vehicleId, log.service_type, vehicleId, log.service_type]
+      [
+        vehicleId,
+        log.service_type,
+        vehicleId,
+        log.service_type,
+        vehicleId,
+        log.service_type,
+        vehicleId,
+        log.service_type,
+      ]
     );
   }
 

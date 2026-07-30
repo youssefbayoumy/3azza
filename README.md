@@ -11,8 +11,8 @@
 - There are no user accounts, cloud sync, remote APIs, or multi-device recovery.
 - The four-digit PIN is a local app lock. It is not an account password and does not encrypt the SQLite database, photos, or exports.
 - JSON backups and CSV exports are unencrypted. JSON backups include local records and document photos; CSV contains service history only. The app-lock PIN and app preferences are excluded.
-- Default maintenance intervals are editable planning templates, not manufacturer-certified specifications.
-- Each vehicle stores one catalog-backed brand, model, and version selected from the available owner manuals. Structured torque, tire-pressure, oil, and other workshop values remain unavailable until their exact values and applicability are imported with visible provenance.
+- Maintenance recommendations are generated from the exact selected validated owner manual, retain visible PDF-page provenance, and remain editable planning aids rather than workshop certification.
+- Each vehicle stores one catalog-backed brand, model, manual version, and—where needed—exact engine/model code. Variant-specific facts are grouped until that code is selected and are never borrowed from another model.
 
 ## Current capabilities
 
@@ -22,6 +22,8 @@
 - Transactional service completion and deletion: the linked interval baseline and service history commit or roll back together.
 - Service history, parts inventory, fuel records, manual vehicle readings, and local document photos.
 - A daily manual pre-ride checklist saved per vehicle.
+- Exact-manual specifications, fluids/tires, indicators, troubleshooting, break-in guidance, conflicts, missing-data states, and cited online-manual actions.
+- Model-derived maintenance with stable task IDs, distance/time rules, retained break-in milestones, user overrides, and the approved recurring 1,000 km engine-oil policy.
 - Local maintenance, document-expiry, and backup reminders.
 - Self-contained JSON backup/restore with document photos, plus CSV service-history export with explicit disclosure of exclusions.
 - Local app-lock PIN with attempt throttling and optional device biometrics when hardware and enrollment are available.

@@ -17,16 +17,18 @@ import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
 import OnlineManualAction from '../components/OnlineManualAction';
+import SourceProvenance from '../components/SourceProvenance';
+import {
+  formatKnowledgeValue,
+  getApplicableFluids,
+  getApplicableMaintenance,
+  getApplicableSpecifications,
+  getConflictsForContext,
+  getModelProfileForVehicle,
+  getSelectedVariant,
+} from '../modelData/modelKnowledge';
 
 const AMBER = '#FFB100';
-
-const SOURCE_CHECKLIST = [
-  'Find the owner or service manual for the exact make, model, and year.',
-  'Confirm the oil specification, capacity, filter, and drain procedure.',
-  'Confirm every fastener torque and whether the manual specifies wet or dry threads.',
-  'Use a qualified mechanic when an authoritative value or procedure is unavailable.',
-  'After the work is complete, record the odometer and oil used in Service Logs.',
-];
 
 export default function OilChangeDetailsScreen() {
   const navigation = useNavigation<MainStackNavigationProp>();
@@ -35,14 +37,16 @@ export default function OilChangeDetailsScreen() {
   const [latestOilLog, setLatestOilLog] = useState<ServiceLog | null>(null);
 
   const loadData = useCallback(async (isCurrent: () => boolean) => {
-    const [profileData, intervalsData, oilLog] = await Promise.all([
+    const [profileData, intervalsData] = await Promise.all([
       getVehicleProfile(),
       getServiceIntervals(),
-      getLatestLogForServiceType('Oil Change'),
     ]);
+    const oil = intervalsData.find((interval) => interval.canonical_task_id === 'engine-oil')
+      ?? intervalsData.find((interval) => /engine oil|oil change/i.test(interval.name));
+    const oilLog = oil ? await getLatestLogForServiceType(oil.name) : null;
     if (!isCurrent()) return;
     setProfile(profileData);
-    setOilInterval(intervalsData.find((interval) => interval.name === 'Oil Change') ?? null);
+    setOilInterval(oil ?? null);
     setLatestOilLog(oilLog);
   }, []);
 
@@ -63,6 +67,17 @@ export default function OilChangeDetailsScreen() {
   const nextDueKm = lastOilKm !== null && intervalKm !== null ? lastOilKm + intervalKm : null;
   const intervalProgress = oilInterval ? getIntervalProgress(oilInterval, odometer) : null;
   const remainingKm = intervalProgress?.remainingKm ?? null;
+  const modelProfile = getModelProfileForVehicle(profile);
+  const selectedVariant = getSelectedVariant(profile, modelProfile);
+  const manualOilTask = getApplicableMaintenance(profile).find((task) => task.canonicalId === 'engine-oil');
+  const oilSpecifications = getApplicableSpecifications(profile);
+  const oilFacts = [...oilSpecifications.shared, ...oilSpecifications.exactVariant]
+    .filter((item) => /oil|lubric|viscos/i.test(item.label));
+  const oilFluidRecords = getApplicableFluids(profile)
+    .filter((record) => /oil|lubric|viscos/i.test(`${record.subject} ${formatKnowledgeValue(record.value)}`));
+  const oilConflicts = getConflictsForContext(profile).filter((conflict) =>
+    /oil|lubric|viscos/i.test(`${conflict.subject} ${formatKnowledgeValue(conflict.value)}`)
+  );
   const status = intervalProgress?.status === 'overdue'
     ? 'OVERDUE'
     : intervalProgress?.status === 'due-soon'
@@ -91,6 +106,11 @@ export default function OilChangeDetailsScreen() {
             <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-1">Maintenance Type</Text>
             <Text className="font-headline text-4xl font-bold tracking-tight text-on-surface uppercase">Oil Change</Text>
             <Text className="font-body text-xs text-secondary/70 mt-2">{profile?.name ?? 'Active vehicle'}</Text>
+            {modelProfile ? (
+              <Text className="font-body text-xs text-on-surface-variant mt-1">
+                {modelProfile.brandName} {modelProfile.modelName} · {selectedVariant?.name ?? (modelProfile.requiresVariant ? 'variant not selected' : modelProfile.manualYears)}
+              </Text>
+            ) : null}
           </View>
           <View className="items-start">
             <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-1">Status</Text>
@@ -138,32 +158,87 @@ export default function OilChangeDetailsScreen() {
           </View>
         </View>
 
-        <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6 mb-8">
-          <Text className="font-headline text-lg font-bold text-secondary uppercase tracking-widest mb-2">Safety & Source Check</Text>
-          <Text className="font-body text-xs text-on-surface-variant leading-5 mb-5">
-            3azza does not provide a universal oil-change procedure. Follow the exact vehicle manual.
+        <View className="bg-primary/10 border border-primary/25 rounded-xl p-6 mb-5">
+          <Text className="font-label text-xs text-primary uppercase tracking-widest font-bold">3azza application policy</Text>
+          <Text className="font-headline text-2xl font-bold text-on-surface mt-2">Recurring every 1,000 km</Text>
+          <Text className="font-body text-xs text-on-surface-variant leading-5 mt-2">
+            This approved recommendation controls reminders. It does not remove an earlier break-in service or a shorter applicable elapsed-time or severe-use rule.
           </Text>
-          <View className="gap-4">
-            {SOURCE_CHECKLIST.map((item, index) => (
-              <View key={item} className="flex-row gap-3">
-                <View className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
-                  <Text className="font-label text-xs text-primary font-bold">{index + 1}</Text>
-                </View>
-                <Text className="flex-1 font-body text-sm text-on-surface-variant leading-5">{item}</Text>
+          {modelProfile && manualOilTask ? <SourceProvenance origin="3azza_policy" pages={manualOilTask.pages} profile={modelProfile} /> : null}
+        </View>
+
+        {manualOilTask && modelProfile ? (
+          <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6 mb-5">
+            <Text className="font-headline text-lg font-bold text-on-surface">Manual timing retained for audit</Text>
+            {manualOilTask.initialDistanceKm.length > 0 ? (
+              <Text className="font-body text-sm text-on-surface-variant leading-5 mt-2">
+                Initial milestones: {manualOilTask.initialDistanceKm.map((value) => `${value.toLocaleString()} km`).join(', ')}
+              </Text>
+            ) : null}
+            {manualOilTask.manualIntervalMonths ? (
+              <Text className="font-body text-sm text-on-surface-variant leading-5 mt-2">
+                Elapsed-time rule: every {manualOilTask.manualIntervalMonths} month{manualOilTask.manualIntervalMonths === 1 ? '' : 's'}, whichever comes first with distance.
+              </Text>
+            ) : null}
+            {manualOilTask.guidance.map((guidance) => (
+              <View key={guidance.recordId} className="mt-3">
+                <Text className="font-body text-xs text-on-surface-variant leading-5">{formatKnowledgeValue(guidance.value)}</Text>
+                <SourceProvenance compact pages={guidance.pages} profile={modelProfile} />
               </View>
             ))}
           </View>
+        ) : null}
+
+        {oilConflicts.length > 0 && modelProfile ? (
+          <View className="bg-error/10 border border-error/35 rounded-xl p-6 mb-5">
+            <Text className="font-headline text-lg font-bold text-error">Manual conflict</Text>
+            <Text className="font-body text-xs text-on-surface-variant leading-5 mt-1">No conflicted capacity, specification, torque, or procedure is selected automatically.</Text>
+            {oilConflicts.map((conflict) => (
+              <View key={conflict.recordId} className="mt-4">
+                <Text className="font-label text-xs font-bold text-on-surface uppercase">{conflict.subject.replaceAll('_', ' ')}</Text>
+                {conflict.alternatives.map((alternative, index) => (
+                  <View key={`${conflict.recordId}:${index}`} className="mt-2">
+                    <Text className="font-body text-sm text-on-surface-variant">{formatKnowledgeValue(alternative.value)}</Text>
+                    <SourceProvenance compact origin="conflict" pages={alternative.pages} profile={modelProfile} />
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6 mb-8">
+          <Text className="font-headline text-lg font-bold text-secondary uppercase tracking-widest">Exact-manual oil reference</Text>
+          <Text className="font-body text-xs text-on-surface-variant leading-5 mt-2">
+            Values appear only when present in this selected manual. Confirm workshop-critical details before service; 3azza does not infer missing capacities, viscosity, torque, filter, reset, or drain steps.
+          </Text>
           <OnlineManualAction selection={profile ? selectionFromProfile(profile) : null} />
         </View>
 
         <View className="gap-4">
-          <View className="bg-surface-container p-4 rounded-xl border-l-2 border-primary/40">
-            <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Oil Specification</Text>
-            <Text className="font-headline text-xl font-medium text-on-surface">Not set</Text>
-            <Text className="font-body text-xs text-on-surface-variant mt-1">Check the exact vehicle manual</Text>
-          </View>
+          {modelProfile && oilFacts.map((item) => (
+            <View key={item.id} className="bg-surface-container p-4 rounded-xl border-l-2 border-primary/40">
+              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">{item.label}</Text>
+              <Text className="font-headline text-lg font-medium text-on-surface">{formatKnowledgeValue(item.value)}</Text>
+              {item.variantLabel ? <Text className="font-body text-xs text-tertiary mt-1">Applies to: {item.variantLabel}</Text> : null}
+              <SourceProvenance compact pages={item.pages} profile={modelProfile} />
+            </View>
+          ))}
+          {modelProfile && oilFluidRecords.map((record) => (
+            <View key={record.recordId} className="bg-surface-container p-4 rounded-xl border-l-2 border-primary/40">
+              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">{record.subject.replaceAll('_', ' ')}</Text>
+              <Text className="font-body text-sm text-on-surface-variant leading-5">{formatKnowledgeValue(record.value)}</Text>
+              <SourceProvenance compact pages={record.pages} profile={modelProfile} />
+            </View>
+          ))}
+          {modelProfile && oilFacts.length === 0 && oilFluidRecords.length === 0 ? (
+            <View className="bg-surface-container p-4 rounded-xl border-l-2 border-secondary/40">
+              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Oil specification / capacity</Text>
+              <Text className="font-headline text-base font-medium text-on-surface">Not specified in this manual.</Text>
+            </View>
+          ) : null}
           <View className="bg-surface-container p-4 rounded-xl">
-            <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Editable Interval</Text>
+            <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Planner interval {oilInterval?.recommendation_origin === 'user_override' ? '· User override' : ''}</Text>
             <Text className="font-headline text-xl font-medium text-on-surface">{intervalKm !== null ? `${intervalKm.toLocaleString()} KM` : 'Not set'}</Text>
           </View>
         </View>

@@ -91,4 +91,36 @@ describe('maintenance reminder plan', () => {
     assert.ok(!before.some((item) => item.identifier === MAINTENANCE_REMINDER_IDS.service));
     assert.ok(after.some((item) => item.identifier === MAINTENANCE_REMINDER_IDS.service));
   });
+
+  it('adds attention when the manual time interval is due before the distance interval', () => {
+    const plan = buildMaintenanceReminderPlan(
+      { ...profile, current_mileage: 100 },
+      [interval({
+        interval_km: 10000,
+        last_service_odometer_km: 100,
+        recommended_interval_months: 6,
+        last_service_date: '2026-01-30',
+      })],
+      [],
+      now
+    );
+
+    assert.ok(plan.some((item) => item.identifier === MAINTENANCE_REMINDER_IDS.service));
+  });
+
+  it('does not add time attention without an honest service-date baseline', () => {
+    const plan = buildMaintenanceReminderPlan(
+      { ...profile, current_mileage: 100 },
+      [interval({
+        interval_km: 10000,
+        last_service_odometer_km: 100,
+        recommended_interval_months: 6,
+        last_service_date: null,
+      })],
+      [],
+      now
+    );
+
+    assert.ok(!plan.some((item) => item.identifier === MAINTENANCE_REMINDER_IDS.service));
+  });
 });

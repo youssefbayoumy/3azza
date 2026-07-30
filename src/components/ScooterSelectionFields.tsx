@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
-  resolveScooterSelection,
   scooterCatalog,
   type ScooterSelection,
 } from '../catalog/scooterCatalog';
+import { getModelProfileForSelection } from '../modelData/modelKnowledge';
 
-type SelectionKey = 'brandId' | 'modelId' | 'versionId';
+type SelectionKey = 'brandId' | 'modelId' | 'versionId' | 'variantId';
 
 type Props = {
   value: Partial<ScooterSelection>;
@@ -19,7 +19,9 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
   const [openField, setOpenField] = useState<SelectionKey | null>(null);
   const brand = scooterCatalog.manufacturers.find((item) => item.id === value.brandId);
   const model = brand?.models.find((item) => item.id === value.modelId);
-  const resolved = resolveScooterSelection(value);
+  const version = model?.versions.find((item) => item.id === value.versionId);
+  const modelProfile = getModelProfileForSelection(value);
+  const variant = modelProfile?.variants.find((item) => item.id === value.variantId);
 
   const fields = [
     {
@@ -43,15 +45,24 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
       label: 'Version / Variant',
       placeholder: model ? 'Select version' : 'Select a model first',
       disabled: !model,
-      selectedName: resolved?.version.name,
+      selectedName: version?.name,
       options: model?.versions ?? [],
     },
+    ...(modelProfile?.requiresVariant ? [{
+      key: 'variantId' as const,
+      label: 'Exact variant / engine code',
+      placeholder: 'Select the code printed on your scooter',
+      disabled: !version,
+      selectedName: variant?.name,
+      options: modelProfile.variants,
+    }] : []),
   ];
 
   const select = (key: SelectionKey, id: string) => {
     if (key === 'brandId') onChange({ brandId: id });
     if (key === 'modelId') onChange({ brandId: value.brandId, modelId: id });
-    if (key === 'versionId') onChange({ ...value, versionId: id });
+    if (key === 'versionId') onChange({ brandId: value.brandId, modelId: value.modelId, versionId: id });
+    if (key === 'variantId') onChange({ ...value, variantId: id });
     setOpenField(null);
   };
 

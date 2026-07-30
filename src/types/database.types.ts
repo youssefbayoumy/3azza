@@ -12,6 +12,7 @@ export interface VehicleProfile {
   scooter_brand_id: string | null;
   scooter_model_id: string | null;
   scooter_version_id: string | null;
+  scooter_variant_id?: string | null;
 }
 
 export interface VehicleVitals {
@@ -87,4 +88,28 @@ export interface ServiceInterval {
   last_service_odometer_km: number;
   has_known_odometer_baseline: number;
   type: string;
+  canonical_task_id?: string | null;
+  recommended_interval_km?: number | null;
+  recommended_interval_months?: number | null;
+  user_interval_km?: number | null;
+  user_override_active?: number;
+  recommendation_origin?: 'manual' | '3azza_policy' | 'user_override';
+  source_manual_id?: string | null;
+  source_pages_json?: string | null;
+  manual_guidance_json?: string | null;
+  initial_milestones_json?: string | null;
+  severe_use_note?: string | null;
+  is_applicable?: number;
+  last_service_date?: string | null;
+}
+
+export interface PreRideRun {
+  id: number;
+  vehicle_id: number;
+  manual_id: string;
+  variant_id: string | null;
+  completed_at: string;
+  items_json: string;
+  completed_count: number;
+  total_count: number;
 }

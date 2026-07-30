@@ -39,6 +39,7 @@ import ScooterSelectionFields from '../components/ScooterSelectionFields';
 import OnlineManualAction from '../components/OnlineManualAction';
 import {
   formatScooterSelection,
+  isScooterSelectionComplete,
   resolveScooterSelection,
   selectionFromProfile,
   type ScooterSelection,
@@ -217,9 +218,9 @@ export default function VehicleSettingsScreen() {
     const mileageResult = parseWholeNumberInput(vehicleMileage, { label: 'Starting odometer' });
     const dailyAverageResult = parseWholeNumberInput(vehicleDailyAverage, { label: 'Daily average' });
     const resolvedSelection = resolveScooterSelection(newVehicleSelection);
-    if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection) {
-      setShowNewVehicleSelectionErrors(!resolvedSelection);
-      Alert.alert('Complete vehicle details', 'Select a brand, model, and version, then enter a name, starting odometer, and daily average.');
+    if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection || !isScooterSelectionComplete(newVehicleSelection)) {
+      setShowNewVehicleSelectionErrors(!resolvedSelection || !isScooterSelectionComplete(newVehicleSelection));
+      Alert.alert('Complete vehicle details', 'Select a brand, model, manual version, and any required exact variant, then enter a name, starting odometer, and daily average.');
       return;
     }
     const mileage = mileageResult.value;
@@ -248,9 +249,9 @@ export default function VehicleSettingsScreen() {
 
   const saveScooterSelection = () => {
     const resolved = resolveScooterSelection(scooterSelection);
-    if (!resolved) {
+    if (!resolved || !isScooterSelectionComplete(scooterSelection)) {
       setShowScooterSelectionErrors(true);
-      Alert.alert('Select your scooter', 'Choose a brand, model, and version before saving.');
+      Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before saving.');
       return;
     }
 

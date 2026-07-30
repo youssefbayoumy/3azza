@@ -13,7 +13,7 @@ describe('fresh-install database schema', () => {
   it('creates the current multi-vehicle tables directly', () => {
     const database = createCurrentDatabase();
     try {
-      assert.equal(CURRENT_SCHEMA_VERSION, 12);
+      assert.equal(CURRENT_SCHEMA_VERSION, 13);
       const profileColumns = database.prepare('PRAGMA table_info(vehicle_profile)').all()
         .map((column) => (column as { name: string }).name);
       const expectedProfileColumns = [
@@ -30,6 +30,7 @@ describe('fresh-install database schema', () => {
         'scooter_brand_id',
         'scooter_model_id',
         'scooter_version_id',
+        'scooter_variant_id',
       ];
       assert.deepEqual(profileColumns, expectedProfileColumns);
 
@@ -47,6 +48,34 @@ describe('fresh-install database schema', () => {
       assert.throws(() => database.prepare(
         "INSERT INTO service_intervals (vehicle_id, name, interval_km, type) VALUES (?, 'Oil Change', 1000, 'replace')"
       ).run(2));
+
+      const intervalColumns = new Set(database.prepare('PRAGMA table_info(service_intervals)').all()
+        .map((column) => (column as { name: string }).name));
+      for (const name of [
+        'canonical_task_id',
+        'recommended_interval_km',
+        'recommended_interval_months',
+        'user_interval_km',
+        'user_override_active',
+        'recommendation_origin',
+        'source_manual_id',
+        'source_pages_json',
+        'is_applicable',
+      ]) assert.equal(intervalColumns.has(name), true, `${name} should exist`);
+
+      database.prepare(
+        `INSERT INTO pre_ride_runs (
+          vehicle_id, manual_id, variant_id, completed_at, items_json, completed_count, total_count
+        ) VALUES (1, 'manual-a', 'variant-a', '2026-07-30T08:00:00Z', '[]', 0, 3)`
+      ).run();
+      const run = database.prepare('SELECT manual_id, variant_id, total_count FROM pre_ride_runs').get() as {
+        manual_id: string;
+        variant_id: string;
+        total_count: number;
+      };
+      assert.equal(run.manual_id, 'manual-a');
+      assert.equal(run.variant_id, 'variant-a');
+      assert.equal(run.total_count, 3);
     } finally {
       database.close();
     }
@@ -95,6 +124,8 @@ describe('fresh-install database schema', () => {
         'idx_service_intervals_vehicle_name',
         'idx_vehicle_vitals_vehicle',
         'idx_pre_ride_checks_vehicle',
+        'idx_pre_ride_runs_vehicle_date',
+        'idx_service_intervals_vehicle_task',
       ]) {
         assert.equal(indexNames.has(name), true, `${name} should exist`);
       }
