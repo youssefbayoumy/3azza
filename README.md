@@ -12,7 +12,7 @@
 - The four-digit PIN is a local app lock. It is not an account password and does not encrypt the SQLite database, photos, or exports.
 - JSON backups and CSV exports are unencrypted. JSON backups include local records and document photos; CSV contains service history only. The app-lock PIN and app preferences are excluded.
 - Maintenance recommendations are generated from the exact selected validated owner manual, retain visible PDF-page provenance, and remain editable planning aids rather than workshop certification.
-- Each vehicle stores one catalog-backed brand, model, manual version, and—where needed—exact engine/model code. Variant-specific facts are grouped until that code is selected and are never borrowed from another model.
+- Each vehicle stores one catalog-backed brand, model, manual version, and—where needed—exact variant ID. A guided selector narrows candidates with manual-backed displacement, cooling, fuel-system, and exact-code facts; ambiguity or missing evidence is never guessed.
 
 ## Current capabilities
 
@@ -32,7 +32,7 @@
 
 1. Review the short offline/manual onboarding.
 2. Create a four-digit local app-lock PIN.
-3. Select the scooter brand, model, and manual version, then enter the current odometer and optional daily average.
+3. Select the scooter brand, model family, and manual years, answer only the useful manual-backed identification questions, confirm the exact candidate, then enter the current odometer and optional daily average.
 4. Optionally enter known service history. Unknown history remains `Not set`; it is not treated as overdue.
 5. Use Home, Maintenance, Documents, and Parts, with additional records available from Home.
 

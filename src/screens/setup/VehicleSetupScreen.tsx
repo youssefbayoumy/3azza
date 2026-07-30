@@ -8,7 +8,11 @@ import { syncMaintenanceNotifications } from '../../services/notifications';
 import AppFormScreen from '../../components/ui/AppFormScreen';
 import { parseWholeNumberInput } from '../../utils/recordValidation';
 import ScooterSelectionFields from '../../components/ScooterSelectionFields';
-import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile, type ScooterSelection } from '../../catalog/scooterCatalog';
+import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile } from '../../catalog/scooterCatalog';
+import {
+    createGuidedSelectionDraft,
+    type GuidedScooterSelectionDraft,
+} from '../../catalog/guidedScooterIdentification';
 
 type SetupFormData = {
     mileage: string;
@@ -19,7 +23,7 @@ export default function VehicleSetupScreen() {
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
-    const [selection, setSelection] = useState<Partial<ScooterSelection>>({});
+    const [selectionDraft, setSelectionDraft] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
     const [showSelectionErrors, setShowSelectionErrors] = useState(false);
 
     const { control, handleSubmit, reset, formState: { errors } } = useForm<SetupFormData>({
@@ -33,13 +37,13 @@ export default function VehicleSetupScreen() {
                 mileage: String(profile.current_mileage),
                 dailyAvg: String(profile.daily_average_km),
             });
-            setSelection(selectionFromProfile(profile) ?? {});
+            setSelectionDraft(createGuidedSelectionDraft(selectionFromProfile(profile) ?? {}));
         }).catch((error) => console.info('Existing vehicle setup could not be prefilled:', error));
     }, [reset]);
 
     const onSubmit = async (data: SetupFormData) => {
-        const resolvedSelection = resolveScooterSelection(selection);
-        if (!resolvedSelection || !isScooterSelectionComplete(selection)) {
+        const resolvedSelection = resolveScooterSelection(selectionDraft.selection);
+        if (!resolvedSelection || !isScooterSelectionComplete(selectionDraft.selection)) {
             setShowSelectionErrors(true);
             Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before continuing.');
             return;
@@ -89,9 +93,9 @@ export default function VehicleSetupScreen() {
                     </View>
                 </View>
                 <ScooterSelectionFields
-                    value={selection}
+                    value={selectionDraft}
                     onChange={(next) => {
-                        setSelection(next);
+                        setSelectionDraft(next);
                         setShowSelectionErrors(false);
                     }}
                     showErrors={showSelectionErrors}

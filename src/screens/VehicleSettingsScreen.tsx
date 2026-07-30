@@ -42,8 +42,11 @@ import {
   isScooterSelectionComplete,
   resolveScooterSelection,
   selectionFromProfile,
-  type ScooterSelection,
 } from '../catalog/scooterCatalog';
+import {
+  createGuidedSelectionDraft,
+  type GuidedScooterSelectionDraft,
+} from '../catalog/guidedScooterIdentification';
 
 function showNotificationFailure(result: Pick<NotificationSyncResult, 'blocked' | 'failed' | 'unsupported'>): void {
   const title = result.unsupported
@@ -85,10 +88,11 @@ export default function VehicleSettingsScreen() {
   const [vehicleName, setVehicleName] = useState('');
   const [vehicleMileage, setVehicleMileage] = useState('');
   const [vehicleDailyAverage, setVehicleDailyAverage] = useState('');
-  const [newVehicleSelection, setNewVehicleSelection] = useState<Partial<ScooterSelection>>({});
+  const [newVehicleSelection, setNewVehicleSelection] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
   const [showNewVehicleSelectionErrors, setShowNewVehicleSelectionErrors] = useState(false);
   const [scooterModalVisible, setScooterModalVisible] = useState(false);
-  const [scooterSelection, setScooterSelection] = useState<Partial<ScooterSelection>>({});
+  const [scooterSelection, setScooterSelection] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
+  const [scooterTargetVehicleId, setScooterTargetVehicleId] = useState<number | null>(null);
   const [showScooterSelectionErrors, setShowScooterSelectionErrors] = useState(false);
   const [savingScooter, setSavingScooter] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<VehicleProfile | null>(null);
@@ -217,9 +221,9 @@ export default function VehicleSettingsScreen() {
     const name = vehicleName.trim();
     const mileageResult = parseWholeNumberInput(vehicleMileage, { label: 'Starting odometer' });
     const dailyAverageResult = parseWholeNumberInput(vehicleDailyAverage, { label: 'Daily average' });
-    const resolvedSelection = resolveScooterSelection(newVehicleSelection);
-    if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection || !isScooterSelectionComplete(newVehicleSelection)) {
-      setShowNewVehicleSelectionErrors(!resolvedSelection || !isScooterSelectionComplete(newVehicleSelection));
+    const resolvedSelection = resolveScooterSelection(newVehicleSelection.selection);
+    if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection)) {
+      setShowNewVehicleSelectionErrors(!resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection));
       Alert.alert('Complete vehicle details', 'Select a brand, model, manual version, and any required exact variant, then enter a name, starting odometer, and daily average.');
       return;
     }
@@ -231,7 +235,7 @@ export default function VehicleSettingsScreen() {
       setVehicleName('');
       setVehicleMileage('');
       setVehicleDailyAverage('');
-      setNewVehicleSelection({});
+      setNewVehicleSelection(createGuidedSelectionDraft());
       setShowNewVehicleSelectionErrors(false);
       setVehicleModalVisible(false);
       await refreshDataAndNotifications();
@@ -242,14 +246,38 @@ export default function VehicleSettingsScreen() {
   };
 
   const openScooterModal = () => {
-    setScooterSelection(profile ? selectionFromProfile(profile) ?? {} : {});
+    setScooterSelection(createGuidedSelectionDraft(profile ? selectionFromProfile(profile) ?? {} : {}));
+    setScooterTargetVehicleId(profile?.id ?? null);
     setShowScooterSelectionErrors(false);
     setScooterModalVisible(true);
   };
 
+  const closeScooterModal = () => {
+    if (savingScooter) return;
+    setScooterModalVisible(false);
+    setScooterTargetVehicleId(null);
+    setScooterSelection(createGuidedSelectionDraft());
+    setShowScooterSelectionErrors(false);
+  };
+
+  const openVehicleModal = () => {
+    setVehicleName('');
+    setVehicleMileage('');
+    setVehicleDailyAverage('');
+    setNewVehicleSelection(createGuidedSelectionDraft());
+    setShowNewVehicleSelectionErrors(false);
+    setVehicleModalVisible(true);
+  };
+
+  const closeVehicleModal = () => {
+    setVehicleModalVisible(false);
+    setNewVehicleSelection(createGuidedSelectionDraft());
+    setShowNewVehicleSelectionErrors(false);
+  };
+
   const saveScooterSelection = () => {
-    const resolved = resolveScooterSelection(scooterSelection);
-    if (!resolved || !isScooterSelectionComplete(scooterSelection)) {
+    const resolved = resolveScooterSelection(scooterSelection.selection);
+    if (!resolved || !isScooterSelectionComplete(scooterSelection.selection) || scooterTargetVehicleId === null) {
       setShowScooterSelectionErrors(true);
       Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before saving.');
       return;
@@ -265,9 +293,11 @@ export default function VehicleSettingsScreen() {
           onPress: async () => {
             setSavingScooter(true);
             try {
-              await saveVehicleScooterSelection(resolved);
+              await saveVehicleScooterSelection(resolved, scooterTargetVehicleId);
               await refreshDataAndNotifications();
               setScooterModalVisible(false);
+              setScooterTargetVehicleId(null);
+              setScooterSelection(createGuidedSelectionDraft());
             } catch (error) {
               Alert.alert('Scooter not changed', error instanceof Error ? error.message : 'Try again.');
             } finally {
@@ -538,7 +568,7 @@ export default function VehicleSettingsScreen() {
               </View>
               <TouchableOpacity
                 className="px-3 py-2 bg-primary rounded-lg flex-row items-center gap-2"
-                onPress={() => setVehicleModalVisible(true)}
+                onPress={openVehicleModal}
               >
                 <MaterialIcons name="add" size={16} color="#081421" />
                 <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">Add</Text>
@@ -733,7 +763,7 @@ export default function VehicleSettingsScreen() {
         visible={vehicleModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setVehicleModalVisible(false)}
+        onRequestClose={closeVehicleModal}
       >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
@@ -760,7 +790,7 @@ export default function VehicleSettingsScreen() {
             <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder="Daily average (KM)" placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} />
             </ScrollView>
             <View className="flex-row justify-end gap-3">
-              <TouchableOpacity onPress={() => setVehicleModalVisible(false)} className="px-4 py-2 rounded-lg">
+              <TouchableOpacity onPress={closeVehicleModal} className="px-4 py-2 rounded-lg">
                 <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleCreateVehicle} className="px-6 py-2 bg-primary rounded-lg">
@@ -789,7 +819,7 @@ export default function VehicleSettingsScreen() {
         visible={scooterModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => !savingScooter && setScooterModalVisible(false)}
+        onRequestClose={closeScooterModal}
       >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
@@ -808,7 +838,7 @@ export default function VehicleSettingsScreen() {
               />
             </ScrollView>
             <View className="flex-row justify-end gap-3 mt-6">
-              <TouchableOpacity disabled={savingScooter} onPress={() => setScooterModalVisible(false)} className="px-4 py-3 rounded-lg">
+              <TouchableOpacity disabled={savingScooter} onPress={closeScooterModal} className="px-4 py-3 rounded-lg">
                 <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity disabled={savingScooter} onPress={saveScooterSelection} className={`px-6 py-3 bg-primary rounded-lg ${savingScooter ? 'opacity-60' : ''}`}>

@@ -43,6 +43,7 @@ import {
   selectionFromProfile,
   type ScooterSelection,
 } from '../catalog/scooterCatalog';
+import { updateVehicleScooterIdentityInTransaction } from './vehicleScooterTransactions';
 
 let db: SQLite.SQLiteDatabase | null = null;
 const ACTIVE_VEHICLE_KEY = 'active_vehicle_id';
@@ -1131,26 +1132,30 @@ export async function createVehicleProfile(
   }
   const database = await getDb();
   const trimmedName = name.trim() || `Vehicle ${(await getVehicleProfiles()).length + 1}`;
-  const result = await database.runAsync(
-    `INSERT INTO vehicle_profile (
-       name, current_mileage, total_km_range, has_completed_setup, daily_average_km,
-       last_odometer_update_timestamp, service_history_setup_completed,
-       scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
-     ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?)`,
-    [
-      trimmedName,
-      currentMileage,
-      dailyAverageKm,
-      new Date().toISOString(),
-      scooterSelection.brandId,
-      scooterSelection.modelId,
-      scooterSelection.versionId,
-      scooterSelection.variantId ?? null,
-    ]
-  );
-  const vehicleId = result.lastInsertRowId;
-  await seedDefaultIntervals(database, vehicleId, scooterSelection);
-  await setActiveVehicleIdForDb(database, vehicleId);
+  let vehicleId: number | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    const result = await transaction.runAsync(
+      `INSERT INTO vehicle_profile (
+         name, current_mileage, total_km_range, has_completed_setup, daily_average_km,
+         last_odometer_update_timestamp, service_history_setup_completed,
+         scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
+       ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?)`,
+      [
+        trimmedName,
+        currentMileage,
+        dailyAverageKm,
+        new Date().toISOString(),
+        scooterSelection.brandId,
+        scooterSelection.modelId,
+        scooterSelection.versionId,
+        scooterSelection.variantId ?? null,
+      ]
+    );
+    vehicleId = result.lastInsertRowId;
+    await seedDefaultIntervals(transaction, vehicleId, scooterSelection);
+    await setActiveVehicleIdForDb(transaction, vehicleId);
+  });
+  if (vehicleId === null) throw new Error('Failed to create vehicle');
 
   const vehicle = await database.getFirstAsync<VehicleProfile>('SELECT * FROM vehicle_profile WHERE id = ?', [vehicleId]);
   if (!vehicle) throw new Error('Failed to create vehicle');
@@ -1283,14 +1288,12 @@ export async function saveVehicleScooterSelection(
   const database = await getDb();
   const targetVehicleId = vehicleId ?? await getActiveVehicleIdForDb(database);
   await withWriteTransaction(database, async (transaction) => {
-    const result = await transaction.runAsync(
-      `UPDATE vehicle_profile
-       SET scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?
-       WHERE id = ?`,
-      [selection.brandId, selection.modelId, selection.versionId, selection.variantId ?? null, targetVehicleId]
+    await updateVehicleScooterIdentityInTransaction(
+      transaction,
+      targetVehicleId,
+      selection,
+      () => applyScooterMaintenanceTemplate(transaction, targetVehicleId, selection)
     );
-    if (result.changes !== 1) throw new Error('Vehicle does not exist.');
-    await applyScooterMaintenanceTemplate(transaction, targetVehicleId, selection);
   });
 }
 

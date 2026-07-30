@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import {
+  buildVariantIdentification,
+  validateVariantIdentificationArtifact,
+} from './variant-identification.mjs';
 
 const appRoot = process.cwd();
 const masterPath = path.resolve(
@@ -13,6 +17,7 @@ const masterPath = path.resolve(
 );
 const catalogPath = path.join(appRoot, 'src', 'generated', 'scooterCatalog.json');
 const outputPath = path.join(appRoot, 'src', 'generated', 'modelKnowledgeBase.json');
+const identificationOutputPath = path.join(appRoot, 'src', 'generated', 'variantIdentification.json');
 
 const INCLUDED_SECTIONS = new Set([
   'maintenance_schedule',
@@ -332,16 +337,25 @@ const output = {
 };
 
 const serialized = `${JSON.stringify(output)}\n`;
+const identification = buildVariantIdentification(profiles);
+validateVariantIdentificationArtifact(identification, profiles);
+const identificationSerialized = `${JSON.stringify(identification, null, 2)}\n`;
 if (process.argv.includes('--check')) {
-  const existing = await readFile(outputPath, 'utf8').catch(() => '');
-  if (existing !== serialized) {
-    console.error('Model knowledge base is stale. Run: npm run model-data:generate');
+  const [existing, existingIdentification] = await Promise.all([
+    readFile(outputPath, 'utf8').catch(() => ''),
+    readFile(identificationOutputPath, 'utf8').catch(() => ''),
+  ]);
+  if (existing !== serialized || existingIdentification !== identificationSerialized) {
+    console.error('Model knowledge base or variant identification data is stale. Run: npm run model-data:generate');
     process.exitCode = 1;
   } else {
-    const digest = createHash('sha256').update(serialized).digest('hex').slice(0, 12);
-    console.log(`Model knowledge base is current (${digest}, ${profiles.length} manuals).`);
+    const digest = createHash('sha256').update(serialized + identificationSerialized).digest('hex').slice(0, 12);
+    console.log(`Model knowledge and identification data are current (${digest}, ${profiles.length} manuals).`);
   }
 } else {
-  await writeFile(outputPath, serialized, 'utf8');
-  console.log(`Generated ${path.relative(appRoot, outputPath)} with ${profiles.length} validated model profiles.`);
+  await Promise.all([
+    writeFile(outputPath, serialized, 'utf8'),
+    writeFile(identificationOutputPath, identificationSerialized, 'utf8'),
+  ]);
+  console.log(`Generated model knowledge plus ${identification.profiles.length} manual/variant identification profiles.`);
 }

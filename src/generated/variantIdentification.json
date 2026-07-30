@@ -1,0 +1,1646 @@
+{
+  "schemaVersion": 1,
+  "source": "Generated normalization of validated manual specification records",
+  "profiles": [
+    {
+      "manualId": "cruisym_alpha_2021_2025_en_owners",
+      "catalogVersionId": "sym:cruisym-alpha:2021-2025",
+      "variantId": "cruisym_alpha_2021_2025_en_owners:cruisym-alpha-125-lv12w2-eu",
+      "variantName": "CRUiSYM alpha 125 (LV12W2-EU)",
+      "modelCode": {
+        "value": "CRUiSYM alpha 125 (LV12W2-EU)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:39",
+          "cruisym_alpha_2021_2025_en_owners:specifications:40",
+          "cruisym_alpha_2021_2025_en_owners:specifications:41",
+          "cruisym_alpha_2021_2025_en_owners:specifications:42",
+          "cruisym_alpha_2021_2025_en_owners:specifications:43",
+          "cruisym_alpha_2021_2025_en_owners:specifications:44",
+          "cruisym_alpha_2021_2025_en_owners:specifications:45",
+          "cruisym_alpha_2021_2025_en_owners:specifications:46",
+          "cruisym_alpha_2021_2025_en_owners:specifications:47",
+          "cruisym_alpha_2021_2025_en_owners:specifications:48",
+          "cruisym_alpha_2021_2025_en_owners:specifications:49",
+          "cruisym_alpha_2021_2025_en_owners:specifications:50",
+          "cruisym_alpha_2021_2025_en_owners:specifications:51",
+          "cruisym_alpha_2021_2025_en_owners:specifications:52",
+          "cruisym_alpha_2021_2025_en_owners:specifications:53",
+          "cruisym_alpha_2021_2025_en_owners:specifications:54",
+          "cruisym_alpha_2021_2025_en_owners:specifications:55",
+          "cruisym_alpha_2021_2025_en_owners:specifications:56",
+          "cruisym_alpha_2021_2025_en_owners:specifications:57",
+          "cruisym_alpha_2021_2025_en_owners:specifications:58",
+          "cruisym_alpha_2021_2025_en_owners:specifications:59",
+          "cruisym_alpha_2021_2025_en_owners:specifications:60",
+          "cruisym_alpha_2021_2025_en_owners:specifications:61",
+          "cruisym_alpha_2021_2025_en_owners:specifications:62",
+          "cruisym_alpha_2021_2025_en_owners:specifications:63",
+          "cruisym_alpha_2021_2025_en_owners:specifications:64",
+          "cruisym_alpha_2021_2025_en_owners:specifications:65",
+          "cruisym_alpha_2021_2025_en_owners:specifications:66",
+          "cruisym_alpha_2021_2025_en_owners:specifications:67",
+          "cruisym_alpha_2021_2025_en_owners:specifications:68",
+          "cruisym_alpha_2021_2025_en_owners:specifications:69",
+          "cruisym_alpha_2021_2025_en_owners:specifications:70",
+          "cruisym_alpha_2021_2025_en_owners:specifications:71",
+          "cruisym_alpha_2021_2025_en_owners:specifications:72",
+          "cruisym_alpha_2021_2025_en_owners:specifications:73",
+          "cruisym_alpha_2021_2025_en_owners:specifications:74",
+          "cruisym_alpha_2021_2025_en_owners:specifications:75",
+          "cruisym_alpha_2021_2025_en_owners:specifications:76",
+          "cruisym_alpha_2021_2025_en_owners:specifications:77",
+          "cruisym_alpha_2021_2025_en_owners:specifications:78",
+          "cruisym_alpha_2021_2025_en_owners:specifications:79",
+          "cruisym_alpha_2021_2025_en_owners:specifications:80",
+          "cruisym_alpha_2021_2025_en_owners:specifications:81",
+          "cruisym_alpha_2021_2025_en_owners:specifications:82",
+          "cruisym_alpha_2021_2025_en_owners:specifications:83",
+          "cruisym_alpha_2021_2025_en_owners:specifications:84",
+          "cruisym_alpha_2021_2025_en_owners:specifications:85",
+          "cruisym_alpha_2021_2025_en_owners:specifications:86",
+          "cruisym_alpha_2021_2025_en_owners:specifications:87",
+          "cruisym_alpha_2021_2025_en_owners:specifications:88",
+          "cruisym_alpha_2021_2025_en_owners:specifications:89",
+          "cruisym_alpha_2021_2025_en_owners:specifications:90",
+          "cruisym_alpha_2021_2025_en_owners:specifications:91",
+          "cruisym_alpha_2021_2025_en_owners:specifications:92"
+        ],
+        "pages": [
+          12,
+          16,
+          17,
+          18,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          32,
+          36,
+          37
+        ]
+      },
+      "displacementCc": {
+        "value": 124.9,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:54"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:52"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:60"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "cruisym_alpha_2021_2025_en_owners",
+      "catalogVersionId": "sym:cruisym-alpha:2021-2025",
+      "variantId": "cruisym_alpha_2021_2025_en_owners:cruisym-alpha-300-lv30w2-eu",
+      "variantName": "CRUiSYM alpha 300 (LV30W2-EU)",
+      "modelCode": {
+        "value": "CRUiSYM alpha 300 (LV30W2-EU)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:39",
+          "cruisym_alpha_2021_2025_en_owners:specifications:40",
+          "cruisym_alpha_2021_2025_en_owners:specifications:41",
+          "cruisym_alpha_2021_2025_en_owners:specifications:42",
+          "cruisym_alpha_2021_2025_en_owners:specifications:43",
+          "cruisym_alpha_2021_2025_en_owners:specifications:44",
+          "cruisym_alpha_2021_2025_en_owners:specifications:45",
+          "cruisym_alpha_2021_2025_en_owners:specifications:46",
+          "cruisym_alpha_2021_2025_en_owners:specifications:47",
+          "cruisym_alpha_2021_2025_en_owners:specifications:48",
+          "cruisym_alpha_2021_2025_en_owners:specifications:49",
+          "cruisym_alpha_2021_2025_en_owners:specifications:50",
+          "cruisym_alpha_2021_2025_en_owners:specifications:51",
+          "cruisym_alpha_2021_2025_en_owners:specifications:52",
+          "cruisym_alpha_2021_2025_en_owners:specifications:53",
+          "cruisym_alpha_2021_2025_en_owners:specifications:54",
+          "cruisym_alpha_2021_2025_en_owners:specifications:55",
+          "cruisym_alpha_2021_2025_en_owners:specifications:56",
+          "cruisym_alpha_2021_2025_en_owners:specifications:57",
+          "cruisym_alpha_2021_2025_en_owners:specifications:58",
+          "cruisym_alpha_2021_2025_en_owners:specifications:59",
+          "cruisym_alpha_2021_2025_en_owners:specifications:60",
+          "cruisym_alpha_2021_2025_en_owners:specifications:61",
+          "cruisym_alpha_2021_2025_en_owners:specifications:62",
+          "cruisym_alpha_2021_2025_en_owners:specifications:63",
+          "cruisym_alpha_2021_2025_en_owners:specifications:64",
+          "cruisym_alpha_2021_2025_en_owners:specifications:65",
+          "cruisym_alpha_2021_2025_en_owners:specifications:66",
+          "cruisym_alpha_2021_2025_en_owners:specifications:67",
+          "cruisym_alpha_2021_2025_en_owners:specifications:68",
+          "cruisym_alpha_2021_2025_en_owners:specifications:69",
+          "cruisym_alpha_2021_2025_en_owners:specifications:70",
+          "cruisym_alpha_2021_2025_en_owners:specifications:71",
+          "cruisym_alpha_2021_2025_en_owners:specifications:72",
+          "cruisym_alpha_2021_2025_en_owners:specifications:73",
+          "cruisym_alpha_2021_2025_en_owners:specifications:74",
+          "cruisym_alpha_2021_2025_en_owners:specifications:75",
+          "cruisym_alpha_2021_2025_en_owners:specifications:76",
+          "cruisym_alpha_2021_2025_en_owners:specifications:77",
+          "cruisym_alpha_2021_2025_en_owners:specifications:78",
+          "cruisym_alpha_2021_2025_en_owners:specifications:79",
+          "cruisym_alpha_2021_2025_en_owners:specifications:80",
+          "cruisym_alpha_2021_2025_en_owners:specifications:81",
+          "cruisym_alpha_2021_2025_en_owners:specifications:82",
+          "cruisym_alpha_2021_2025_en_owners:specifications:83",
+          "cruisym_alpha_2021_2025_en_owners:specifications:84",
+          "cruisym_alpha_2021_2025_en_owners:specifications:85",
+          "cruisym_alpha_2021_2025_en_owners:specifications:86",
+          "cruisym_alpha_2021_2025_en_owners:specifications:87",
+          "cruisym_alpha_2021_2025_en_owners:specifications:88",
+          "cruisym_alpha_2021_2025_en_owners:specifications:89",
+          "cruisym_alpha_2021_2025_en_owners:specifications:90",
+          "cruisym_alpha_2021_2025_en_owners:specifications:91",
+          "cruisym_alpha_2021_2025_en_owners:specifications:92"
+        ],
+        "pages": [
+          12,
+          16,
+          17,
+          18,
+          25,
+          26,
+          27,
+          28,
+          29,
+          31,
+          32,
+          36,
+          37
+        ]
+      },
+      "displacementCc": {
+        "value": 278.3,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:54"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:52"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "cruisym_alpha_2021_2025_en_owners:specifications:60"
+        ],
+        "pages": [
+          36
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_4_2021_present_en_owners",
+      "catalogVersionId": "sym:fiddle-4:2021-present",
+      "variantId": "fiddle_4_2021_present_en_owners:xg12w1-eu",
+      "variantName": "XG12W1-EU",
+      "modelCode": {
+        "value": "XG12W1-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:17"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:17"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_4_2021_present_en_owners",
+      "catalogVersionId": "sym:fiddle-4:2021-present",
+      "variantId": "fiddle_4_2021_present_en_owners:xg12ww-eu",
+      "variantName": "XG12WW-EU",
+      "modelCode": {
+        "value": "XG12WW-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:18"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:18"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_4_2021_present_en_owners",
+      "catalogVersionId": "sym:fiddle-4:2021-present",
+      "variantId": "fiddle_4_2021_present_en_owners:xg05w-eu-it",
+      "variantName": "XG05W-EU/IT",
+      "modelCode": {
+        "value": "XG05W-EU/IT",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:19"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_4_2021_present_en_owners",
+      "catalogVersionId": "sym:fiddle-4:2021-present",
+      "variantId": "fiddle_4_2021_present_en_owners:xg05w1-nl",
+      "variantName": "XG05W1-NL",
+      "modelCode": {
+        "value": "XG05W1-NL",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:19"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_4_2021_present_en_owners",
+      "catalogVersionId": "sym:fiddle-4:2021-present",
+      "variantId": "fiddle_4_2021_present_en_owners:xg05w2-it",
+      "variantName": "XG05W2-IT",
+      "modelCode": {
+        "value": "XG05W2-IT",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_4_2021_present_en_owners:specifications:19"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_iii_2014_2023_en_owners",
+      "catalogVersionId": "sym:fiddle-iii:2014-2023",
+      "variantId": "fiddle_iii_2014_2023_en_owners:xa05w-fiddle-iii-50-c-c",
+      "variantName": "XA05W (Fiddle III 50 c.c.)",
+      "modelCode": {
+        "value": "XA05W (Fiddle III 50 c.c.)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:21"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "displacementCc": {
+        "value": 49.5,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:21"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:21"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_iii_2014_2023_en_owners",
+      "catalogVersionId": "sym:fiddle-iii:2014-2023",
+      "variantId": "fiddle_iii_2014_2023_en_owners:xa12w-fiddle-iii-125-c-c",
+      "variantName": "XA12W (Fiddle III 125 c.c.)",
+      "modelCode": {
+        "value": "XA12W (Fiddle III 125 c.c.)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:22"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "displacementCc": {
+        "value": 124.6,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:22"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:22"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_iii_2014_2023_en_owners",
+      "catalogVersionId": "sym:fiddle-iii:2014-2023",
+      "variantId": "fiddle_iii_2014_2023_en_owners:xa15w-fiddle-iii-150-c-c",
+      "variantName": "XA15W (Fiddle III 150 c.c.)",
+      "modelCode": {
+        "value": "XA15W (Fiddle III 150 c.c.)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:23"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "displacementCc": {
+        "value": 149,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:23"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:23"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "fiddle_iii_2014_2023_en_owners",
+      "catalogVersionId": "sym:fiddle-iii:2014-2023",
+      "variantId": "fiddle_iii_2014_2023_en_owners:xa20w-fiddle-iii-200i",
+      "variantName": "XA20W (Fiddle III 200i)",
+      "modelCode": {
+        "value": "XA20W (Fiddle III 200i)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:24"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "displacementCc": {
+        "value": 169,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:24"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "fiddle_iii_2014_2023_en_owners:specifications:24"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-ai-abs:2017-2024",
+      "variantId": "jet_14_ai_abs_2017_2024_en_owners:xc12w1-eu",
+      "variantName": "XC12W1-EU",
+      "modelCode": {
+        "value": "XC12W1-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:15",
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          28,
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": 124.65,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-ai-abs:2017-2024",
+      "variantId": "jet_14_ai_abs_2017_2024_en_owners:xc12ww-eu",
+      "variantName": "XC12WW-EU",
+      "modelCode": {
+        "value": "XC12WW-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:16",
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          29,
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": 124.65,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-ai-abs:2017-2024",
+      "variantId": "jet_14_ai_abs_2017_2024_en_owners:xc20w1-za",
+      "variantName": "XC20W1-ZA",
+      "modelCode": {
+        "value": "XC20W1-ZA",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17",
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          30,
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": 168.9,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-ai-abs:2017-2024",
+      "variantId": "jet_14_ai_abs_2017_2024_en_owners:xc20w-zac",
+      "variantName": "XC20W-ZAC",
+      "modelCode": {
+        "value": "XC20W-ZAC",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17",
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          30,
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": 168.9,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-ai-abs:2017-2024",
+      "variantId": "jet_14_ai_abs_2017_2024_en_owners:xc05w1-eu",
+      "variantName": "XC05W1-EU",
+      "modelCode": {
+        "value": "XC05W1-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_ai_abs_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_dd_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-dd:2017-2024",
+      "variantId": "jet_14_dd_2017_2024_en_owners:xc12w1-eu",
+      "variantName": "XC12W1-EU",
+      "modelCode": {
+        "value": "XC12W1-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "displacementCc": {
+        "value": 124.65,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_dd_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-dd:2017-2024",
+      "variantId": "jet_14_dd_2017_2024_en_owners:xc12ww-eu",
+      "variantName": "XC12WW-EU",
+      "modelCode": {
+        "value": "XC12WW-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "displacementCc": {
+        "value": 124.65,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_dd_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-dd:2017-2024",
+      "variantId": "jet_14_dd_2017_2024_en_owners:xc20w1-za-xc20w-zac-xc20w1-eu",
+      "variantName": "XC20W1-ZA/XC20W-ZAC/XC20W1-EU",
+      "modelCode": {
+        "value": "XC20W1-ZA/XC20W-ZAC/XC20W1-EU",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "displacementCc": {
+        "value": 168.9,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "jet_14_dd_2017_2024_en_owners",
+      "catalogVersionId": "sym:jet-14-dd:2017-2024",
+      "variantId": "jet_14_dd_2017_2024_en_owners:xc05w1-eu-xc05w1-nl",
+      "variantName": "XC05W1-EU/XC05W1-NL",
+      "modelCode": {
+        "value": "XC05W1-EU/XC05W1-NL",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          31
+        ]
+      },
+      "displacementCc": {
+        "value": 49.46,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          31
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "jet_14_dd_2017_2024_en_owners:specifications:18"
+        ],
+        "pages": [
+          31
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "joymax_z_plus_2021_present_en_owners",
+      "catalogVersionId": "sym:joymax-z:2021-present",
+      "variantId": "joymax_z_plus_2021_present_en_owners:joymax-z-125",
+      "variantName": "Joymax Z+125",
+      "modelCode": {
+        "value": "Joymax Z+125",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:16",
+          "joymax_z_plus_2021_present_en_owners:specifications:17",
+          "joymax_z_plus_2021_present_en_owners:specifications:19",
+          "joymax_z_plus_2021_present_en_owners:specifications:20",
+          "joymax_z_plus_2021_present_en_owners:specifications:21",
+          "joymax_z_plus_2021_present_en_owners:specifications:23",
+          "joymax_z_plus_2021_present_en_owners:specifications:25",
+          "joymax_z_plus_2021_present_en_owners:specifications:26",
+          "joymax_z_plus_2021_present_en_owners:specifications:27",
+          "joymax_z_plus_2021_present_en_owners:specifications:28",
+          "joymax_z_plus_2021_present_en_owners:specifications:29",
+          "joymax_z_plus_2021_present_en_owners:specifications:30",
+          "joymax_z_plus_2021_present_en_owners:specifications:32",
+          "joymax_z_plus_2021_present_en_owners:specifications:33",
+          "joymax_z_plus_2021_present_en_owners:specifications:35",
+          "joymax_z_plus_2021_present_en_owners:specifications:44"
+        ],
+        "pages": [
+          31,
+          35,
+          36
+        ]
+      },
+      "displacementCc": {
+        "value": 124.9,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:26"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:24"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:31"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "joymax_z_plus_2021_present_en_owners",
+      "catalogVersionId": "sym:joymax-z:2021-present",
+      "variantId": "joymax_z_plus_2021_present_en_owners:joymax-z-250",
+      "variantName": "Joymax Z 250",
+      "modelCode": {
+        "value": "Joymax Z 250",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:16",
+          "joymax_z_plus_2021_present_en_owners:specifications:17",
+          "joymax_z_plus_2021_present_en_owners:specifications:19",
+          "joymax_z_plus_2021_present_en_owners:specifications:20",
+          "joymax_z_plus_2021_present_en_owners:specifications:21",
+          "joymax_z_plus_2021_present_en_owners:specifications:23",
+          "joymax_z_plus_2021_present_en_owners:specifications:25",
+          "joymax_z_plus_2021_present_en_owners:specifications:26",
+          "joymax_z_plus_2021_present_en_owners:specifications:27",
+          "joymax_z_plus_2021_present_en_owners:specifications:28",
+          "joymax_z_plus_2021_present_en_owners:specifications:29",
+          "joymax_z_plus_2021_present_en_owners:specifications:30",
+          "joymax_z_plus_2021_present_en_owners:specifications:32",
+          "joymax_z_plus_2021_present_en_owners:specifications:33",
+          "joymax_z_plus_2021_present_en_owners:specifications:35",
+          "joymax_z_plus_2021_present_en_owners:specifications:44"
+        ],
+        "pages": [
+          31,
+          35,
+          36
+        ]
+      },
+      "displacementCc": {
+        "value": 249.4,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:26"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:24"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:31"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "joymax_z_plus_2021_present_en_owners",
+      "catalogVersionId": "sym:joymax-z:2021-present",
+      "variantId": "joymax_z_plus_2021_present_en_owners:joymax-z-300",
+      "variantName": "Joymax Z 300",
+      "modelCode": {
+        "value": "Joymax Z 300",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:16",
+          "joymax_z_plus_2021_present_en_owners:specifications:17",
+          "joymax_z_plus_2021_present_en_owners:specifications:19",
+          "joymax_z_plus_2021_present_en_owners:specifications:20",
+          "joymax_z_plus_2021_present_en_owners:specifications:21",
+          "joymax_z_plus_2021_present_en_owners:specifications:23",
+          "joymax_z_plus_2021_present_en_owners:specifications:25",
+          "joymax_z_plus_2021_present_en_owners:specifications:26",
+          "joymax_z_plus_2021_present_en_owners:specifications:27",
+          "joymax_z_plus_2021_present_en_owners:specifications:28",
+          "joymax_z_plus_2021_present_en_owners:specifications:29",
+          "joymax_z_plus_2021_present_en_owners:specifications:30",
+          "joymax_z_plus_2021_present_en_owners:specifications:32",
+          "joymax_z_plus_2021_present_en_owners:specifications:33",
+          "joymax_z_plus_2021_present_en_owners:specifications:35",
+          "joymax_z_plus_2021_present_en_owners:specifications:44"
+        ],
+        "pages": [
+          31,
+          35,
+          36
+        ]
+      },
+      "displacementCc": {
+        "value": 278.3,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:26"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:24"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "joymax_z_plus_2021_present_en_owners:specifications:31"
+        ],
+        "pages": [
+          35
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "maxsym_500tl_2020_2021_en_owners",
+      "catalogVersionId": "sym:maxsym-500tl:2020-2021",
+      "variantId": null,
+      "variantName": null,
+      "modelCode": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "displacementCc": {
+        "value": 508,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "maxsym_500tl_2020_2021_en_owners:specifications:63"
+        ],
+        "pages": [
+          57
+        ]
+      },
+      "coolingSystem": {
+        "value": "liquid",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "maxsym_500tl_2020_2021_en_owners:specifications:61"
+        ],
+        "pages": [
+          57
+        ]
+      },
+      "fuelSystem": {
+        "value": "fuel_injection",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "maxsym_500tl_2020_2021_en_owners:specifications:69"
+        ],
+        "pages": [
+          57
+        ]
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "new_symphony_st_2021_present_en_owners",
+      "catalogVersionId": "sym:new-symphony-st:2021-present",
+      "variantId": "new_symphony_st_2021_present_en_owners:xl05w1-eu-it-and-xl05w1-nl",
+      "variantName": "XL05W1-EU/IT and XL05W1-NL",
+      "modelCode": {
+        "value": "XL05W1-EU/IT and XL05W1-NL",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "new_symphony_st_2021_present_en_owners:specifications:14"
+        ],
+        "pages": [
+          27
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "new_symphony_st_2021_present_en_owners",
+      "catalogVersionId": "sym:new-symphony-st:2021-present",
+      "variantId": "new_symphony_st_2021_present_en_owners:xl12w1-eu-xl12w1-it",
+      "variantName": "XL12W1-EU/XL12W1-IT",
+      "modelCode": {
+        "value": "XL12W1-EU/XL12W1-IT",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "new_symphony_st_2021_present_en_owners:specifications:15"
+        ],
+        "pages": [
+          28
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "new_symphony_st_2021_present_en_owners",
+      "catalogVersionId": "sym:new-symphony-st:2021-present",
+      "variantId": "new_symphony_st_2021_present_en_owners:xl20w1-eu-xl20w1-it",
+      "variantName": "XL20W1-EU/XL20W1-IT",
+      "modelCode": {
+        "value": "XL20W1-EU/XL20W1-IT",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "new_symphony_st_2021_present_en_owners:specifications:16"
+        ],
+        "pages": [
+          29
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "new_symphony_st_2021_present_en_owners",
+      "catalogVersionId": "sym:new-symphony-st:2021-present",
+      "variantId": "new_symphony_st_2021_present_en_owners:xl12ww-eu-xl12ww-it",
+      "variantName": "XL12WW-EU/XL12WW-IT",
+      "modelCode": {
+        "value": "XL12WW-EU/XL12WW-IT",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "new_symphony_st_2021_present_en_owners:specifications:17"
+        ],
+        "pages": [
+          30
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "coolingSystem": {
+        "value": null,
+        "status": "conflict",
+        "sourceRecordIds": [
+          "new_symphony_st_2021_present_en_owners:conflicts:125"
+        ],
+        "pages": [
+          7,
+          24,
+          25,
+          30
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_classic_st_2015_2020_en_owners",
+      "catalogVersionId": "sym:symphony-classic-st:2015-2020",
+      "variantId": "symphony_classic_st_2015_2020_en_owners:xb05w-symphony-st-50",
+      "variantName": "XB05W (SYMPHONY ST 50)",
+      "modelCode": {
+        "value": "XB05W (SYMPHONY ST 50)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:19"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "displacementCc": {
+        "value": 49,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:19"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:19"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_classic_st_2015_2020_en_owners",
+      "catalogVersionId": "sym:symphony-classic-st:2015-2020",
+      "variantId": "symphony_classic_st_2015_2020_en_owners:xb12w1-eu-symphony-st-125",
+      "variantName": "XB12W1-EU (SYMPHONY ST 125)",
+      "modelCode": {
+        "value": "XB12W1-EU (SYMPHONY ST 125)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:20"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "displacementCc": {
+        "value": 124.6,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:20"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:20"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_classic_st_2015_2020_en_owners",
+      "catalogVersionId": "sym:symphony-classic-st:2015-2020",
+      "variantId": "symphony_classic_st_2015_2020_en_owners:xb20w1-eu-symphony-st-200i",
+      "variantName": "XB20W1-EU (SYMPHONY ST 200i)",
+      "modelCode": {
+        "value": "XB20W1-EU (SYMPHONY ST 200i)",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:21"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "displacementCc": {
+        "value": 169,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:21"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_classic_st_2015_2020_en_owners:specifications:21"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_new_sr_150_2010_present_en_owners",
+      "catalogVersionId": "sym:symphony-new-sr-150:2010-present",
+      "variantId": "symphony_new_sr_150_2010_present_en_owners:symphony-sr-125-az12w1-t-az12w1-8",
+      "variantName": "SYMPHONY SR 125 / AZ12W1-T / AZ12W1-8",
+      "modelCode": {
+        "value": "SYMPHONY SR 125 / AZ12W1-T / AZ12W1-8",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:19",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:20",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:21",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:22",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:23",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:24",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:25",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:26",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:27",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:28",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:29",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:53"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "displacementCc": {
+        "value": 124.6,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:23"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:22"
+        ],
+        "pages": [
+          24
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_new_sr_150_2010_present_en_owners",
+      "catalogVersionId": "sym:symphony-new-sr-150:2010-present",
+      "variantId": "symphony_new_sr_150_2010_present_en_owners:symphony-sr-150-az15w1-t",
+      "variantName": "SYMPHONY SR 150 / AZ15W1-T",
+      "modelCode": {
+        "value": "SYMPHONY SR 150 / AZ15W1-T",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:30",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:31",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:32",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:33",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:34",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:35",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:36",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:37",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:38",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:39",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:40",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:54"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "displacementCc": {
+        "value": null,
+        "status": "conflict",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:conflicts:152",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:34"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:33"
+        ],
+        "pages": [
+          25
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    },
+    {
+      "manualId": "symphony_new_sr_150_2010_present_en_owners",
+      "catalogVersionId": "sym:symphony-new-sr-150:2010-present",
+      "variantId": "symphony_new_sr_150_2010_present_en_owners:symphony-sr-150-az15w2-6",
+      "variantName": "SYMPHONY SR 150 / AZ15W2-6",
+      "modelCode": {
+        "value": "SYMPHONY SR 150 / AZ15W2-6",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:41",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:42",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:43",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:44",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:45",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:46",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:47",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:48",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:49",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:50",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:51",
+          "symphony_new_sr_150_2010_present_en_owners:specifications:55"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "displacementCc": {
+        "value": 149,
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:45"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "coolingSystem": {
+        "value": "air",
+        "status": "confirmed",
+        "sourceRecordIds": [
+          "symphony_new_sr_150_2010_present_en_owners:specifications:44"
+        ],
+        "pages": [
+          26
+        ]
+      },
+      "fuelSystem": {
+        "value": null,
+        "status": "missing",
+        "sourceRecordIds": [],
+        "pages": []
+      },
+      "additionalDistinguishers": []
+    }
+  ]
+}

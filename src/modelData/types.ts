@@ -25,6 +25,43 @@ export type ModelVariant = {
   name: string;
 };
 
+export type IdentificationStatus = 'confirmed' | 'conflict' | 'missing';
+export type CoolingSystem = 'air' | 'liquid';
+export type FuelSystem = 'carburetor' | 'fuel_injection';
+
+export type IdentificationValue<T> = {
+  value: T | null;
+  status: IdentificationStatus;
+  sourceRecordIds: string[];
+  pages: number[];
+};
+
+export type AdditionalIdentificationDistinguisher = {
+  key: string;
+  label: string;
+  value: string;
+  sourceRecordIds: string[];
+  pages: number[];
+};
+
+export type VariantIdentificationProfile = {
+  manualId: string;
+  catalogVersionId: string;
+  variantId: string | null;
+  variantName: string | null;
+  modelCode: IdentificationValue<string>;
+  displacementCc: IdentificationValue<number>;
+  coolingSystem: IdentificationValue<CoolingSystem>;
+  fuelSystem: IdentificationValue<FuelSystem>;
+  additionalDistinguishers: AdditionalIdentificationDistinguisher[];
+};
+
+export type VariantIdentificationData = {
+  schemaVersion: number;
+  source: string;
+  profiles: VariantIdentificationProfile[];
+};
+
 export type KnowledgeRecord = {
   recordId: string;
   section: KnowledgeSection;
