@@ -1,3 +1,5 @@
+> Historical handoff: this file describes the 2026-07-19 product-quality phase and is no longer the current implementation state. For the next model-identification update, use [`docs/MODEL_SELECTION_HANDOFF_2026-07-30.md`](./docs/MODEL_SELECTION_HANDOFF_2026-07-30.md), which supersedes this file for branch, build, catalog, and testing information.
+
 # Codex handoff: 3azza
 
 Snapshot: 2026-07-19. Workspace: `C:\Users\youss\Desktop\Vibe coding\3azza2`; application repository: `C:\Users\youss\Desktop\Vibe coding\3azza2\app`.
