@@ -1,10 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
-
-const { width } = Dimensions.get('window');
+import AppScreen from '../../components/ui/AppScreen';
 
 interface Slide {
   icon: React.ReactNode;
@@ -16,23 +15,23 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     icon: <MaterialCommunityIcons name="engine" size={64} color="#a9c7ff" />,
-    title: 'Track Your Ride',
+    title: 'Your Maintenance, Offline',
     subtitle:
-      'Monitor every vital — oil pressure, coolant temp, gearbox health — all in one clean dashboard.',
+      'Manually record odometer readings, service, and checks. No account, internet, or scooter connection required.',
     accent: '#a9c7ff',
   },
   {
     icon: <MaterialCommunityIcons name="gas-station" size={64} color="#c6c6c7" />,
-    title: 'Log Every Fill-Up',
+    title: 'Record Every Fill-Up',
     subtitle:
-      'Record fuel costs and consumption. Watch patterns emerge and save money over time.',
+      'Keep a local history of fuel amounts, costs, and odometer readings for each vehicle.',
     accent: '#c6c6c7',
   },
   {
     icon: <MaterialIcons name="inventory-2" size={64} color="#a9c7ff" />,
-    title: 'Stay Ahead of Wear',
+    title: 'Plan Your Next Service',
     subtitle:
-      'Keep an inventory of parts, filters, and fluids. Always know what\'s due next.',
+      'Start with editable reminders, then set each maintenance interval from your vehicle manual.',
     accent: '#a9c7ff',
   },
 ];
@@ -41,6 +40,8 @@ export default function OnboardingScreen() {
   const pagerRef = useRef<PagerView>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
+  const { height: viewportHeight } = useWindowDimensions();
+  const compactHeight = viewportHeight < 700;
 
   const isLastSlide = currentPage === SLIDES.length - 1;
 
@@ -57,7 +58,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <AppScreen edges={['top', 'bottom', 'left', 'right']} style={styles.container}>
       {/* Skip Button */}
       {!isLastSlide && (
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
@@ -73,20 +74,43 @@ export default function OnboardingScreen() {
         onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
       >
         {SLIDES.map((slide, index) => (
-          <View key={index} style={styles.slide}>
+          <View
+            key={index}
+            style={[
+              styles.slide,
+              { paddingHorizontal: compactHeight ? 24 : 40 },
+            ]}
+          >
             {/* Glow circle behind icon */}
-            <View style={[styles.iconGlow, { shadowColor: slide.accent }]}>
+            <View
+              style={[
+                styles.iconGlow,
+                {
+                  marginBottom: compactHeight ? 24 : 40,
+                  padding: compactHeight ? 20 : 28,
+                  shadowColor: slide.accent,
+                },
+              ]}
+            >
               <View style={styles.iconContainer}>{slide.icon}</View>
             </View>
 
-            <Text style={styles.title}>{slide.title}</Text>
+            <Text style={[styles.title, { fontSize: compactHeight ? 26 : 32 }]}>{slide.title}</Text>
             <Text style={styles.subtitle}>{slide.subtitle}</Text>
           </View>
         ))}
       </PagerView>
 
       {/* Bottom section: dots + button */}
-      <View style={styles.bottomSection}>
+      <View
+        style={[
+          styles.bottomSection,
+          {
+            gap: compactHeight ? 16 : 32,
+            paddingBottom: compactHeight ? 20 : 32,
+          },
+        ]}
+      >
         {/* Page dots */}
         <View style={styles.dotsRow}>
           {SLIDES.map((_, i) => (
@@ -110,7 +134,7 @@ export default function OnboardingScreen() {
           />
         </TouchableOpacity>
       </View>
-    </View>
+    </AppScreen>
   );
 }
 
@@ -121,7 +145,7 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     position: 'absolute',
-    top: 56,
+    top: 8,
     right: 24,
     zIndex: 10,
     paddingVertical: 8,
@@ -141,12 +165,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
   },
   iconGlow: {
-    marginBottom: 40,
     borderRadius: 999,
-    padding: 28,
     backgroundColor: 'rgba(169, 199, 255, 0.06)',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
@@ -177,13 +198,10 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#c4c6cc',
     textAlign: 'center',
-    maxWidth: 300,
   },
   bottomSection: {
     paddingHorizontal: 24,
-    paddingBottom: 56,
     alignItems: 'center',
-    gap: 32,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -211,7 +229,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 40,
     width: '100%',
-    maxWidth: 340,
   },
   ctaText: {
     fontFamily: 'PlusJakartaSans_700Bold',

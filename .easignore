@@ -1,0 +1,35 @@
+# Dependencies and local tooling
+node_modules/
+.expo/
+.git/
+.github/
+
+# Generated output
+dist/
+web-build/
+expo-env.d.ts
+/ios/
+/android/
+.kotlin/
+*.tsbuildinfo
+
+# Local QA evidence and build logs
+/.qa-ux03/
+/build_out.txt
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Local credentials and environment
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+.env*.local
+
+# OS metadata
+.DS_Store

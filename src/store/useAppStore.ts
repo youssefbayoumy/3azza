@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
+import { mergeWithLockedSession } from '../utils/appLock';
 
 // ── Secure Storage Adapter for Zustand ──
 const secureStorage: StateStorage = {
@@ -31,6 +32,15 @@ interface AppState {
   // Vehicle Setup
   hasCompletedVehicleSetup: boolean;
   completeVehicleSetup: () => void;
+  setVehicleSetupComplete: (complete: boolean) => void;
+
+  // Preferences
+  garageMode: boolean;
+  maintenanceReminders: boolean;
+  backupReminder: boolean;
+  setGarageMode: (enabled: boolean) => void;
+  setMaintenanceReminders: (enabled: boolean) => void;
+  setBackupReminder: (enabled: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -46,10 +56,24 @@ export const useAppStore = create<AppState>()(
 
       hasCompletedVehicleSetup: false,
       completeVehicleSetup: () => set({ hasCompletedVehicleSetup: true }),
+      setVehicleSetupComplete: (complete) => set({ hasCompletedVehicleSetup: complete }),
+
+      garageMode: true,
+      maintenanceReminders: false,
+      backupReminder: false,
+      setGarageMode: (enabled) => set({ garageMode: enabled }),
+      setMaintenanceReminders: (enabled) => set({ maintenanceReminders: enabled }),
+      setBackupReminder: (enabled) => set({ backupReminder: enabled }),
     }),
     {
       name: '3azza-secure-store',
       storage: createJSONStorage(() => secureStorage),
+      partialize: (state) => ({
+        ...state,
+        isAuthenticated: false,
+      }),
+      merge: (persistedState, currentState) =>
+        mergeWithLockedSession(persistedState, currentState),
     }
   )
 );

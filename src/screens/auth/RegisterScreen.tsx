@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
 import { useAppStore } from '../../store/useAppStore';
+import { createPin } from '../../services/auth';
+import { isValidPin, normalizePinInput } from '../../utils/appLock';
+import AppFormScreen from '../../components/ui/AppFormScreen';
 
 export default function RegisterScreen() {
-    const navigation = useNavigation();
     const login = useAppStore((s) => s.login);
 
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const handleRegister = async () => {
-        if (!pin || pin.length < 4) {
-            Alert.alert('Invalid PIN', 'PIN must be 4 digits.');
+        if (!isValidPin(pin)) {
+            Alert.alert('Invalid PIN', 'PIN must contain exactly 4 digits.');
             return;
         }
         if (pin !== confirmPin) {
@@ -21,22 +22,26 @@ export default function RegisterScreen() {
             return;
         }
 
+        setSaving(true);
         try {
-            await SecureStore.setItemAsync('user_pin', pin);
-            Alert.alert('Success', 'Security PIN set. System initialized.', [
+            await createPin(pin);
+            Alert.alert('App lock ready', 'Your app-lock PIN was created.', [
                 { text: 'Continue', onPress: () => login() }
             ]);
         } catch (err) {
-            console.error('Register error:', err);
-            Alert.alert('Error', 'Failed to save PIN.');
+            console.error('Create PIN error:', err);
+            Alert.alert('PIN not created', err instanceof Error ? err.message : 'Failed to save the app-lock PIN.');
+        } finally {
+            setSaving(false);
         }
     };
 
     return (
-        <View className="flex-1 bg-background justify-center px-6">
+        <AppFormScreen>
             <View className="mb-12 items-center">
-                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Initialize System</Text>
-                <Text className="font-body text-on-surface-variant/80 text-center">Set a 4-digit security PIN to encrypt and protect your local vehicle data.</Text>
+                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Create App Lock</Text>
+                <Text className="font-body text-on-surface-variant/80 text-center">Create a 4-digit PIN to lock access to 3azza on this device.</Text>
+                <Text className="font-body text-xs text-on-surface-variant/70 text-center mt-3">The PIN does not encrypt the database, document photos, backups, or CSV exports.</Text>
             </View>
 
             <View className="flex-col gap-6">
@@ -50,7 +55,8 @@ export default function RegisterScreen() {
                         secureTextEntry
                         maxLength={4}
                         value={pin}
-                        onChangeText={setPin}
+                        onChangeText={(value) => setPin(normalizePinInput(value))}
+                        accessibilityLabel="Create 4-digit app-lock PIN"
                     />
                 </View>
 
@@ -64,25 +70,21 @@ export default function RegisterScreen() {
                         secureTextEntry
                         maxLength={4}
                         value={confirmPin}
-                        onChangeText={setConfirmPin}
+                        onChangeText={(value) => setConfirmPin(normalizePinInput(value))}
+                        accessibilityLabel="Confirm 4-digit app-lock PIN"
                     />
                 </View>
 
                 <TouchableOpacity
-                    className="bg-primary rounded-xl py-4 items-center mt-2"
+                    className={`bg-primary rounded-xl py-4 items-center mt-2 ${saving ? 'opacity-60' : ''}`}
                     onPress={handleRegister}
+                    disabled={saving}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
                 >
-                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Set PIN & Continue</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    className="py-4 items-center"
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text className="font-label text-sm text-primary underline">Already initialized? Login here</Text>
+                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Create PIN</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </AppFormScreen>
     );
 }

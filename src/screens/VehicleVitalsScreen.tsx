@@ -1,10 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { getVehicleVitals, saveVehicleVitals } from '../services/database';
-import type { VehicleVitals } from '../types/database.types';
+import type { MainStackNavigationProp } from '../navigation/types';
+import { parseVehicleVitalInput } from '../utils/recordValidation';
+import AppIconButton from '../components/ui/AppIconButton';
+import AppTopBar from '../components/ui/AppTopBar';
+import AppScreen from '../components/ui/AppScreen';
+import ScreenLoadState from '../components/ui/ScreenLoadState';
+import useFocusedLoader from '../hooks/useFocusedLoader';
 
 type VitalsFormData = {
     oil_life_pct: string;
@@ -14,98 +20,124 @@ type VitalsFormData = {
     brake_pad_pct: string;
 };
 
+const EMPTY_VITALS_FORM: VitalsFormData = {
+    oil_life_pct: '',
+    tire_pressure_psi: '',
+    battery_health_pct: '',
+    coolant_temp_c: '',
+    brake_pad_pct: '',
+};
+
 export default function VehicleVitalsScreen() {
-    const [loading, setLoading] = useState(true);
+    const navigation = useNavigation<MainStackNavigationProp>();
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+    const [persistedFormData, setPersistedFormData] = useState<VitalsFormData>(EMPTY_VITALS_FORM);
 
     const { control, handleSubmit, reset } = useForm<VitalsFormData>({
-        defaultValues: {
-            oil_life_pct: '0',
-            tire_pressure_psi: '0',
-            battery_health_pct: '0',
-            coolant_temp_c: '0',
-            brake_pad_pct: '0',
-        }
+        defaultValues: EMPTY_VITALS_FORM,
     });
 
-    const loadVitals = useCallback(async () => {
-        setLoading(true);
+    const loadVitals = useCallback(async (isCurrent: () => boolean) => {
         const data = await getVehicleVitals();
+        if (!isCurrent()) return;
         if (data) {
-            reset({
+            const formData = {
                 oil_life_pct: String(data.oil_life_pct),
                 tire_pressure_psi: String(data.tire_pressure_psi),
                 battery_health_pct: String(data.battery_health_pct),
                 coolant_temp_c: String(data.coolant_temp_c),
                 brake_pad_pct: String(data.brake_pad_pct),
-            });
+            };
+            reset(formData);
+            setPersistedFormData(formData);
             setLastUpdated(new Date(data.updated_at).toLocaleString());
+        } else {
+            reset(EMPTY_VITALS_FORM);
+            setPersistedFormData(EMPTY_VITALS_FORM);
+            setLastUpdated(null);
         }
-        setLoading(false);
     }, [reset]);
 
-    useFocusEffect(
-        useCallback(() => {
-            loadVitals();
-        }, [loadVitals])
+    const { error: loadError, loading, reload } = useFocusedLoader(
+        loadVitals,
+        'Manual vehicle readings could not be loaded. Your saved readings were not changed.',
+        'Failed to load vehicle readings:'
     );
 
     const onSubmit = async (data: VitalsFormData) => {
         setSaving(true);
         try {
-            await saveVehicleVitals({
-                oil_life_pct: parseInt(data.oil_life_pct, 10) || 0,
-                tire_pressure_psi: parseInt(data.tire_pressure_psi, 10) || 0,
-                battery_health_pct: parseInt(data.battery_health_pct, 10) || 0,
-                coolant_temp_c: parseInt(data.coolant_temp_c, 10) || 0,
-                brake_pad_pct: parseInt(data.brake_pad_pct, 10) || 0,
+            const parsedEntries = Object.entries(data).map(([field, value]) => {
+                const result = parseVehicleVitalInput(field as keyof VitalsFormData, value);
+                if (!result.ok) throw new Error(result.message);
+                return [field, result.value] as const;
             });
-            await loadVitals();
+            const parsedVitals = Object.fromEntries(parsedEntries) as Record<keyof VitalsFormData, number>;
+
+            await saveVehicleVitals(parsedVitals);
+            await reload();
             setIsEditing(false);
         } catch (err) {
-            console.error('Save error:', err);
-            Alert.alert('Error', 'Failed to save vehicle vitals.');
+            Alert.alert('Could Not Save', err instanceof Error ? err.message : 'Failed to save vehicle readings.');
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) {
-        return (
-            <View className="flex-1 bg-background items-center justify-center">
-                <ActivityIndicator size="large" color="#a9c7ff" />
-            </View>
-        );
+    const beginEditing = () => {
+        reset(persistedFormData);
+        setIsEditing(true);
+    };
+
+    const cancelEditing = () => {
+        reset(persistedFormData);
+        setIsEditing(false);
+    };
+
+    if (loading || loadError) {
+        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE VITALS" />;
     }
 
-    const InputRow = ({ label, name, icon, unit, max }: { label: string; name: keyof VitalsFormData; icon: React.ReactNode; unit: string; max?: number }) => (
-        <View className="flex-row items-center justify-between mb-6 bg-surface-container-low p-4 rounded-xl border border-secondary/10">
+    const InputRow = ({ label, name, icon, unit }: { label: string; name: keyof VitalsFormData; icon: React.ReactNode; unit: string }) => (
+        <View className="mb-6 bg-surface-container-low p-4 rounded-xl border border-secondary/10 gap-3">
             <View className="flex-row items-center gap-4">
                 <View className="w-10 h-10 bg-surface-container-highest rounded-full items-center justify-center border border-white/5">
                     {icon}
                 </View>
-                <Text className="font-headline text-base text-on-surface">{label}</Text>
+                <Text className="font-headline text-base text-on-surface flex-1">{label}</Text>
             </View>
-            <View className="flex-row items-center">
+            <View>
                 {isEditing ? (
                     <Controller
                         control={control}
                         name={name}
                         rules={{
-                            required: true,
-                            pattern: /^[0-9]+$/,
-                            validate: (val) => max ? parseInt(val, 10) <= max : true
+                            validate: (value) => {
+                                const result = parseVehicleVitalInput(name, value);
+                                return result.ok || result.message;
+                            },
                         }}
                         render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                            <TextInput
-                                className={`w-16 bg-surface-container-highest rounded px-2 py-1 text-center font-headline text-lg text-primary ${error ? 'border border-error' : ''}`}
-                                keyboardType="number-pad"
-                                onBlur={onBlur}
-                                onChangeText={onChange}
-                                value={value}
-                            />
+                            <View>
+                                <View className="flex-row items-center gap-2">
+                                    <TextInput
+                                        accessibilityLabel={label}
+                                        className={`flex-1 min-w-0 bg-surface-container-highest rounded-lg px-3 py-2 text-right font-headline text-lg text-primary ${error ? 'border border-error' : ''}`}
+                                        keyboardType="number-pad"
+                                        onBlur={onBlur}
+                                        onChangeText={onChange}
+                                        value={value}
+                                        placeholder="—"
+                                        placeholderTextColor="#8e9196"
+                                    />
+                                    <Text className="font-label text-xs uppercase text-on-surface-variant/60 flex-shrink-0">{unit}</Text>
+                                </View>
+                                {error ? (
+                                    <Text className="text-error font-body text-xs mt-1 text-right">{error.message}</Text>
+                                ) : null}
+                            </View>
                         )}
                     />
                 ) : (
@@ -113,32 +145,38 @@ export default function VehicleVitalsScreen() {
                         control={control}
                         name={name}
                         render={({ field: { value } }) => (
-                            <Text className="font-headline text-xl font-bold text-primary">{value}</Text>
+                            <View className="flex-row items-baseline justify-end gap-2">
+                                <Text className="font-headline text-xl font-bold text-primary">{value || 'Not set'}</Text>
+                                <Text className="font-label text-xs uppercase text-on-surface-variant/60">{lastUpdated ? unit : ''}</Text>
+                            </View>
                         )}
                     />
                 )}
-                <Text className="font-label text-xs uppercase text-on-surface-variant/60 ml-2 w-8">{unit}</Text>
             </View>
         </View>
     );
 
     return (
-        <View className="flex-1 bg-background pt-12">
-            {/* TopAppBar */}
-            <View className="flex-row justify-between items-center px-6 h-16 w-full border-b border-outline-variant/20">
-                <Text className="font-headline text-xl font-bold tracking-tighter text-slate-100 uppercase">System Vitals</Text>
-                <TouchableOpacity onPress={() => setIsEditing(!isEditing)} className="flex-row items-center gap-2 bg-surface-container-highest px-4 py-2 rounded-full border border-outline-variant/30">
+        <AppScreen edges={['top', 'bottom', 'left', 'right']}>
+            <AppTopBar
+                leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" className="-ml-2" onPress={() => navigation.goBack()} />}
+                trailing={<TouchableOpacity onPress={isEditing ? cancelEditing : beginEditing} className="flex-row items-center gap-2 bg-surface-container-highest px-4 py-2 rounded-full border border-outline-variant/30" accessibilityLabel={isEditing ? 'Cancel editing manual readings' : 'Edit manual readings'} accessibilityRole="button">
                     <MaterialIcons name={isEditing ? 'close' : 'edit'} size={18} color={isEditing ? '#ffb4ab' : '#a9c7ff'} />
                     <Text className={`font-label text-xs font-bold uppercase tracking-widest ${isEditing ? 'text-error' : 'text-primary'}`}>
                         {isEditing ? 'Cancel' : 'Edit'}
                     </Text>
-                </TouchableOpacity>
-            </View>
+                </TouchableOpacity>}
+            >
+                <Text className="font-headline text-xl font-bold tracking-tighter text-slate-100 uppercase" numberOfLines={1}>Manual Readings</Text>
+            </AppTopBar>
 
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 100 }} className="flex-grow">
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 }} className="flex-grow">
+                <Text className="font-body text-sm text-on-surface-variant text-center mb-5 bg-primary/10 border border-primary/20 px-4 py-3 rounded-xl">
+                    Enter readings from your dashboard or inspection. 3azza does not connect to your vehicle.
+                </Text>
                 {lastUpdated && !isEditing && (
-                    <Text className="font-label text-[10px] text-on-surface-variant/50 uppercase tracking-widest text-center mb-8">
-                        Last Synced: {lastUpdated}
+                    <Text className="font-label text-xs text-on-surface-variant/50 uppercase tracking-widest text-center mb-8">
+                        Last Updated: {lastUpdated}
                     </Text>
                 )}
                 {isEditing && (
@@ -147,15 +185,18 @@ export default function VehicleVitalsScreen() {
                     </Text>
                 )}
 
-                <InputRow label="Oil Life" name="oil_life_pct" icon={<MaterialCommunityIcons name="oil" size={20} color="#a9c7ff" />} unit="%" max={100} />
+                <InputRow label="Oil Life" name="oil_life_pct" icon={<MaterialCommunityIcons name="oil" size={20} color="#a9c7ff" />} unit="%" />
                 <InputRow label="Tire Pressure" name="tire_pressure_psi" icon={<MaterialCommunityIcons name="tire" size={20} color="#a9c7ff" />} unit="PSI" />
-                <InputRow label="Battery Health" name="battery_health_pct" icon={<MaterialCommunityIcons name="car-battery" size={20} color="#a9c7ff" />} unit="%" max={100} />
+                <InputRow label="Battery Health" name="battery_health_pct" icon={<MaterialCommunityIcons name="car-battery" size={20} color="#a9c7ff" />} unit="%" />
                 <InputRow label="Coolant Temp" name="coolant_temp_c" icon={<MaterialIcons name="thermostat" size={20} color="#a9c7ff" />} unit="°C" />
-                <InputRow label="Brake Pads" name="brake_pad_pct" icon={<MaterialCommunityIcons name="car-brake-alert" size={20} color="#a9c7ff" />} unit="%" max={100} />
+                <InputRow label="Brake Pads" name="brake_pad_pct" icon={<MaterialCommunityIcons name="car-brake-alert" size={20} color="#a9c7ff" />} unit="%" />
 
                 {isEditing && (
                     <TouchableOpacity
                         className="bg-primary rounded-xl py-4 items-center mt-6 shadow-lg"
+                        accessibilityLabel="Save manual readings"
+                        accessibilityRole="button"
+                        accessibilityState={{ busy: saving, disabled: saving }}
                         onPress={handleSubmit(onSubmit)}
                         disabled={saving}
                         activeOpacity={0.85}
@@ -163,11 +204,11 @@ export default function VehicleVitalsScreen() {
                         {saving ? (
                             <ActivityIndicator color="#081421" />
                         ) : (
-                            <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Telemetry</Text>
+                            <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Readings</Text>
                         )}
                     </TouchableOpacity>
                 )}
             </ScrollView>
-        </View>
+        </AppScreen>
     );
 }

@@ -4,25 +4,35 @@
     "slug": "3azza",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/icon-v2.png",
+    "backgroundColor": "#081421",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/android-icon-foreground.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#081421"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "backgroundColor": "#081421"
     },
     "android": {
+      "backgroundColor": "#081421",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#081421",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.youssefbayoumy.x3azza"
+      "versionCode": 4,
+      "package": "com.youssefbayoumy.x3azza",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "androidStatusBar": {
+      "barStyle": "light-content"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,7 +40,34 @@
     "plugins": [
       "expo-font",
       "expo-sqlite",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow 3azza to unlock the app with your device biometrics."
+        }
+      ],
+      "expo-sharing",
+      "expo-system-ui",
+      [
+        "expo-navigation-bar",
+        {
+          "barStyle": "light",
+          "enforceContrast": false
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "expo-navigation-bar": {
+        "barStyle": "light",
+        "enforceContrast": false
+      },
+      "eas": {
+        "projectId": "a845f95b-c48a-454e-b10a-d01ea5b76a45"
+      }
+    },
+    "owner": "youssefbayoumy"
   }
 }

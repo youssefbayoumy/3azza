@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { useAppStore } from '../../store/useAppStore';
-import { saveVehicleProfile } from '../../services/database';
+import { getVehicleProfile, saveInitialVehicleSetup } from '../../services/database';
+import { syncMaintenanceNotifications } from '../../services/notifications';
+import AppFormScreen from '../../components/ui/AppFormScreen';
+import { parseWholeNumberInput } from '../../utils/recordValidation';
+import ScooterSelectionFields from '../../components/ScooterSelectionFields';
+import { resolveScooterSelection, selectionFromProfile, type ScooterSelection } from '../../catalog/scooterCatalog';
 
 type SetupFormData = {
     mileage: string;
@@ -11,26 +16,49 @@ type SetupFormData = {
 };
 
 export default function VehicleSetupScreen() {
+    const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
+    const [selection, setSelection] = useState<Partial<ScooterSelection>>({});
+    const [showSelectionErrors, setShowSelectionErrors] = useState(false);
 
-    const { control, handleSubmit, formState: { errors } } = useForm<SetupFormData>({
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<SetupFormData>({
         defaultValues: { mileage: '', dailyAvg: '' }
     });
 
+    useEffect(() => {
+        getVehicleProfile().then((profile) => {
+            if (!profile) return;
+            reset({
+                mileage: String(profile.current_mileage),
+                dailyAvg: String(profile.daily_average_km),
+            });
+            setSelection(selectionFromProfile(profile) ?? {});
+        }).catch((error) => console.info('Existing vehicle setup could not be prefilled:', error));
+    }, [reset]);
+
     const onSubmit = async (data: SetupFormData) => {
-        const mileage = parseInt(data.mileage, 10);
-        const dailyAvg = parseInt(data.dailyAvg, 10);
+        const resolvedSelection = resolveScooterSelection(selection);
+        if (!resolvedSelection) {
+            setShowSelectionErrors(true);
+            Alert.alert('Select your scooter', 'Choose a brand, model, and version before continuing.');
+            return;
+        }
+        const mileageResult = parseWholeNumberInput(data.mileage, { label: 'Current odometer' });
+        const dailyAverageResult = parseWholeNumberInput(data.dailyAvg, { label: 'Daily average' });
+        if (!mileageResult.ok || !dailyAverageResult.ok) {
+            Alert.alert('Invalid vehicle details', 'Enter the odometer and daily average as non-negative whole numbers.');
+            return;
+        }
         
         setSaving(true);
         try {
-            await saveVehicleProfile({
-                current_mileage: mileage,
-                total_km_range: 0,
-                has_completed_setup: 1,
-                daily_average_km: isNaN(dailyAvg) ? 0 : dailyAvg,
-                last_odometer_update_timestamp: new Date().toISOString()
+            await saveInitialVehicleSetup({
+                currentMileage: mileageResult.value,
+                dailyAverageKm: dailyAverageResult.value,
+                selection: resolvedSelection,
             });
+            await syncMaintenanceNotifications(maintenanceReminders);
             completeVehicleSetup();
         } catch (err) {
             console.error('Setup error:', err);
@@ -41,15 +69,33 @@ export default function VehicleSetupScreen() {
     };
 
     return (
-        <View className="flex-1 bg-background justify-center px-6">
+        <AppFormScreen>
             <View className="items-center mb-10">
                 <View className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mb-6">
                     <MaterialCommunityIcons name="car-cog" size={40} color="#a9c7ff" />
                 </View>
-                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Vehicle Calibration</Text>
+                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Set Up Your Vehicle</Text>
                 <Text className="font-body text-on-surface-variant/80 text-center px-4">
-                    Enter your current odometer reading and daily commute to initialize the predictive tracking system.
+                    Select the exact scooter manual first, then enter its current odometer and typical daily distance.
                 </Text>
+            </View>
+
+            <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-5 mb-8">
+                <View className="flex-row items-center gap-3 mb-5">
+                    <MaterialCommunityIcons name="book-open-page-variant" size={22} color="#a9c7ff" />
+                    <View className="flex-1">
+                        <Text className="font-headline text-lg font-bold text-on-surface">Choose Your Scooter</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1">Models and versions come from the installed manual catalog.</Text>
+                    </View>
+                </View>
+                <ScooterSelectionFields
+                    value={selection}
+                    onChange={(next) => {
+                        setSelection(next);
+                        setShowSelectionErrors(false);
+                    }}
+                    showErrors={showSelectionErrors}
+                />
             </View>
 
             <View className="flex-col gap-2 mb-8">
@@ -65,6 +111,7 @@ export default function VehicleSetupScreen() {
                     name="mileage"
                     render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
+                            accessibilityLabel="Current odometer in kilometres"
                             className={`bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-headline text-2xl tracking-wider border ${errors.mileage ? 'border-error' : 'border-outline-variant/30'}`}
                             placeholder="e.g. 45000"
                             placeholderTextColor="#64748b"
@@ -93,6 +140,7 @@ export default function VehicleSetupScreen() {
                     name="dailyAvg"
                     render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
+                            accessibilityLabel="Daily driving average in kilometres"
                             className={`bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-headline text-2xl tracking-wider border ${errors.dailyAvg ? 'border-error' : 'border-outline-variant/30'}`}
                             placeholder="e.g. 30"
                             placeholderTextColor="#64748b"
@@ -110,6 +158,9 @@ export default function VehicleSetupScreen() {
 
             <TouchableOpacity
                 className="bg-primary rounded-xl py-4 items-center"
+                accessibilityLabel="Save vehicle setup"
+                accessibilityRole="button"
+                accessibilityState={{ busy: saving, disabled: saving }}
                 onPress={handleSubmit(onSubmit)}
                 disabled={saving}
                 activeOpacity={0.85}
@@ -117,9 +168,9 @@ export default function VehicleSetupScreen() {
                 {saving ? (
                     <ActivityIndicator color="#081421" />
                 ) : (
-                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Initialize</Text>
+                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Vehicle</Text>
                 )}
             </TouchableOpacity>
-        </View>
+        </AppFormScreen>
     );
 }

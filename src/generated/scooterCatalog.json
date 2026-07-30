@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "source": "Generated from repository manufacturer manual directories",
+  "manufacturers": [
+    {
+      "id": "sym",
+      "name": "SYM",
+      "models": [
+        {
+          "id": "sym:cruisym-alpha",
+          "name": "CRUISYM ALPHA",
+          "versions": [
+            {
+              "id": "sym:cruisym-alpha:2021-2025",
+              "name": "2021-2025",
+              "manualId": "cruisym_alpha_2021_2025_en_owners",
+              "manualFileName": "SYM_CRUISYM_ALPHA_2021-2025_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/CRUISYM ALPHA/SYM_CRUISYM_ALPHA_2021-2025_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/12-1-CRUiSYM-/download/CRUiSYME5.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:fiddle-4",
+          "name": "Fiddle 4",
+          "versions": [
+            {
+              "id": "sym:fiddle-4:2021-present",
+              "name": "2021-Present",
+              "manualId": "fiddle_4_2021_present_en_owners",
+              "manualFileName": "SYM_Fiddle_4_2021-Present_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/Fiddle 4/SYM_Fiddle_4_2021-Present_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.dropbox.com/s/5dumrxbjqarl87e/Fiddle%204%20Owners%20Manual.pdf?raw=1"
+            }
+          ]
+        },
+        {
+          "id": "sym:fiddle-iii",
+          "name": "Fiddle III",
+          "versions": [
+            {
+              "id": "sym:fiddle-iii:2014-2023",
+              "name": "2014-2023",
+              "manualId": "fiddle_iii_2014_2023_en_owners",
+              "manualFileName": "SYM_Fiddle_III_2014-2023_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/Fiddle III/SYM_Fiddle_III_2014-2023_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/06-FIDDLE-III/download/FIDDLEIII.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:jet-14-ai-abs",
+          "name": "JET 14 AI ABS",
+          "versions": [
+            {
+              "id": "sym:jet-14-ai-abs:2017-2024",
+              "name": "2017-2024",
+              "manualId": "jet_14_ai_abs_2017_2024_en_owners",
+              "manualFileName": "SYM_JET_14_AI_ABS_2017-2024_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/JET 14 AI ABS/SYM_JET_14_AI_ABS_2017-2024_EN_Owners_Manual.pdf",
+              "onlineManualUrl": null
+            }
+          ]
+        },
+        {
+          "id": "sym:jet-14-dd",
+          "name": "JET 14 DD",
+          "versions": [
+            {
+              "id": "sym:jet-14-dd:2017-2024",
+              "name": "2017-2024",
+              "manualId": "jet_14_dd_2017_2024_en_owners",
+              "manualFileName": "SYM_JET_14_DD_2017-2024_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/JET 14 DD/SYM_JET_14_DD_2017-2024_EN_Owners_Manual.pdf",
+              "onlineManualUrl": null
+            }
+          ]
+        },
+        {
+          "id": "sym:joymax-z",
+          "name": "Joymax Z+",
+          "versions": [
+            {
+              "id": "sym:joymax-z:2021-present",
+              "name": "2021-Present",
+              "manualId": "joymax_z_plus_2021_present_en_owners",
+              "manualFileName": "SYM_Joymax_Z_Plus_2021-Present_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/Joymax Z+/SYM_Joymax_Z_Plus_2021-Present_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/11-JOYMAX-Z/JOYMAXZe5MANUAL.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:maxsym-500tl",
+          "name": "MAXSYM 500TL",
+          "versions": [
+            {
+              "id": "sym:maxsym-500tl:2020-2021",
+              "name": "2020-2021",
+              "manualId": "maxsym_500tl_2020_2021_en_owners",
+              "manualFileName": "SYM_MAXSYM_500TL_2020-2021_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/MAXSYM 500TL/SYM_MAXSYM_500TL_2020-2021_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/18-MAXSYMJ-TL-E5/Manual/MAXSYMTL508Manual.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:new-symphony-st",
+          "name": "New Symphony ST",
+          "versions": [
+            {
+              "id": "sym:new-symphony-st:2021-present",
+              "name": "2021-Present",
+              "manualId": "new_symphony_st_2021_present_en_owners",
+              "manualFileName": "SYM_New_Symphony_ST_2021-Present_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/New Symphony ST/SYM_New_Symphony_ST_2021-Present_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/03-1-SYMPHONY-ST-E5/download/SYMPHONYSTE5MANUAL.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:symphony-classic-st",
+          "name": "Symphony Classic ST",
+          "versions": [
+            {
+              "id": "sym:symphony-classic-st:2015-2020",
+              "name": "2015-2020",
+              "manualId": "symphony_classic_st_2015_2020_en_owners",
+              "manualFileName": "SYM_Symphony_Classic_ST_2015-2020_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/Symphony Classic ST/SYM_Symphony_Classic_ST_2015-2020_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/03-SYMPHONY-ST/download/Symphony-ST.pdf"
+            }
+          ]
+        },
+        {
+          "id": "sym:symphony-new-sr-150",
+          "name": "Symphony NEW SR 150",
+          "versions": [
+            {
+              "id": "sym:symphony-new-sr-150:2010-present",
+              "name": "2010-Present",
+              "manualId": "symphony_new_sr_150_2010_present_en_owners",
+              "manualFileName": "SYM_Symphony_NEW_SR_150_2010-Present_EN_Owners_Manual.pdf",
+              "manualRelativePath": "SYM Manuals/Symphony NEW SR 150/SYM_Symphony_NEW_SR_150_2010-Present_EN_Owners_Manual.pdf",
+              "onlineManualUrl": "https://www.sym-global.com/storage/system/products/SCOOTER/14-SYMPHONY-SR/download/SYMPHONY-SR-125-150-Series.pdf"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

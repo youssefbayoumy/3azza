@@ -1,28 +1,34 @@
 import React from 'react';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DashboardScreen from '../screens/DashboardScreen';
 
 import InventoryScreen from '../screens/InventoryScreen';
 import MaintenanceScheduleScreen from '../screens/MaintenanceScheduleScreen';
 import DocumentsVaultScreen from '../screens/DocumentsVaultScreen';
-import PreRideCheckScreen from '../screens/PreRideCheckScreen';
-import ServiceLogsScreen from '../screens/ServiceLogsScreen';
+import type { TabParamList } from './types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
 
-function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-    // Filter out hidden tabs
-    const visibleRoutes = state.routes.filter(route => route.name !== 'PreRideCheck' && route.name !== 'ServiceLogs');
+function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+    const visibleRoutes = state.routes;
+    const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
+    const tabWidth = width / Math.max(visibleRoutes.length, 1);
+    const labelFontSize = tabWidth < 84 ? 8 : tabWidth < 96 ? 9 : 10;
+    const labelLetterSpacing = tabWidth < 96 ? 0.4 : 0.8;
 
     return (
         <View style={styles.tabBarContainer}>
             <BlurView intensity={80} tint="dark" style={styles.blurView}>
-                <View className="flex-row justify-around items-center px-2 pt-4 pb-8 border-t border-white/10 bg-[#081421]/80">
+                <View
+                    className="flex-row items-center border-t border-white/10 bg-[#081421]/80"
+                    style={{ paddingTop: 10, paddingBottom: Math.max(insets.bottom, 10) }}
+                >
                     {visibleRoutes.map((route, index) => {
-                        const { options } = descriptors[route.key];
                         // Get true index for focused state by finding this route in original state
                         const isFocused = state.index === state.routes.findIndex(r => r.key === route.key);
 
@@ -30,6 +36,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                             route.name === 'Inventory' ? 'inventory-2' :
                                 route.name === 'Vitals' ? 'monitor-heart' :
                                     route.name === 'Vault' ? 'folder-special' : 'settings';
+                        const label = route.name === 'Dashboard' ? 'Home' :
+                            route.name === 'Inventory' ? 'Parts' :
+                                route.name === 'Vitals' ? 'Maintenance' :
+                                    route.name === 'Vault' ? 'Documents' : route.name;
 
                         const onPress = () => {
                             const event = navigation.emit({
@@ -39,7 +49,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                             });
 
                             if (!isFocused && !event.defaultPrevented) {
-                                navigation.navigate(route.name);
+                                navigation.navigate(route.name as keyof TabParamList);
                             }
                         };
 
@@ -47,17 +57,17 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                         <TouchableOpacity
                             key={route.key}
                             accessibilityRole="button"
+                            accessibilityLabel={`${label} tab`}
                             accessibilityState={isFocused ? { selected: true } : {}}
                             onPress={onPress}
                             activeOpacity={0.7}
-                            // Remove className from here
-                            style={{ flex: 1 }} 
+                            style={styles.tabButton}
                         >
-                            {/* Move the styling to this View */}
                             <View 
-                            className={`flex-col items-center justify-center p-2 mx-1 rounded-full ${
+                            className={`flex-col items-center justify-center rounded-2xl ${
                                 isFocused ? 'bg-primary/10' : ''
                             }`}
+                            style={styles.tabButtonContent}
                             >
                             <MaterialIcons
                                 name={iconName as any}
@@ -65,11 +75,20 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                                 color={isFocused ? '#a9c7ff' : '#64748b'}
                             />
                             <Text
-                                className={`font-label text-[9px] uppercase font-bold mt-1 tracking-wider ${
+                                className={`font-label uppercase font-bold mt-1 ${
                                 isFocused ? 'text-primary' : 'text-slate-500'
                                 }`}
+                                maxFontSizeMultiplier={1.15}
+                                numberOfLines={1}
+                                style={{
+                                    fontSize: labelFontSize,
+                                    letterSpacing: labelLetterSpacing,
+                                    lineHeight: labelFontSize + 3,
+                                    textAlign: 'center',
+                                    width: '100%',
+                                }}
                             >
-                                {route.name}
+                                {label}
                             </Text>
                             </View>
                         </TouchableOpacity>
@@ -91,22 +110,27 @@ export default function TabNavigator() {
             <Tab.Screen name="Vitals" component={MaintenanceScheduleScreen} />
             <Tab.Screen name="Vault" component={DocumentsVaultScreen} />
             <Tab.Screen name="Inventory" component={InventoryScreen} />
-            <Tab.Screen name="PreRideCheck" component={PreRideCheckScreen} options={{ tabBarButton: () => null }} />
-            <Tab.Screen name="ServiceLogs" component={ServiceLogsScreen} options={{ tabBarButton: () => null }} />
         </Tab.Navigator>
     );
 }
 
 const styles = StyleSheet.create({
     tabBarContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        flexShrink: 0,
     },
     blurView: {
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         overflow: 'hidden',
-    }
+    },
+    tabButton: {
+        flex: 1,
+        minWidth: 0,
+    },
+    tabButtonContent: {
+        marginHorizontal: 2,
+        minWidth: 0,
+        paddingHorizontal: 2,
+        paddingVertical: 8,
+    },
 });
