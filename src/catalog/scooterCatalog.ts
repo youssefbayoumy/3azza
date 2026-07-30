@@ -81,6 +81,7 @@ export function resolveScooterSelection(
     brandId: brand.id,
     modelId: model.id,
     versionId: version.id,
+    variantId: variant?.id ?? null,
     brand,
     model,
     version,
