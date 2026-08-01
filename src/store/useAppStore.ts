@@ -28,6 +28,8 @@ interface AppState {
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
+  appLockEnabled: boolean;
+  setAppLockEnabled: (enabled: boolean) => void;
 
   // Vehicle Setup
   hasCompletedVehicleSetup: boolean;
@@ -53,6 +55,8 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       login: () => set({ isAuthenticated: true }),
       logout: () => set({ isAuthenticated: false }),
+      appLockEnabled: true,
+      setAppLockEnabled: (enabled) => set({ appLockEnabled: enabled }),
 
       hasCompletedVehicleSetup: false,
       completeVehicleSetup: () => set({ hasCompletedVehicleSetup: true }),

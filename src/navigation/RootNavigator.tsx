@@ -70,6 +70,7 @@ function AppLockGate() {
 export default function RootNavigator() {
     const hasCompletedOnboarding = useAppStore((s) => s.hasCompletedOnboarding);
     const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+    const appLockEnabled = useAppStore((s) => s.appLockEnabled);
     const hasCompletedVehicleSetup = useAppStore((s) => s.hasCompletedVehicleSetup);
     const logout = useAppStore((s) => s.logout);
     const appState = useRef(AppState.currentState);
@@ -88,8 +89,8 @@ export default function RootNavigator() {
         <View style={styles.root}>
             <View
                 style={styles.root}
-                accessibilityElementsHidden={hasCompletedOnboarding && !isAuthenticated}
-                importantForAccessibility={hasCompletedOnboarding && !isAuthenticated ? 'no-hide-descendants' : 'auto'}
+                accessibilityElementsHidden={hasCompletedOnboarding && appLockEnabled && !isAuthenticated}
+                importantForAccessibility={hasCompletedOnboarding && appLockEnabled && !isAuthenticated ? 'no-hide-descendants' : 'auto'}
             >
                 <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#081421' }, animation: 'fade' }}>
                     {!hasCompletedOnboarding ? (
@@ -101,7 +102,7 @@ export default function RootNavigator() {
                     )}
                 </Stack.Navigator>
             </View>
-            {hasCompletedOnboarding && !isAuthenticated ? (
+            {hasCompletedOnboarding && appLockEnabled && !isAuthenticated ? (
                 <Modal
                     visible
                     animationType="none"

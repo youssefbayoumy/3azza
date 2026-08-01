@@ -10,7 +10,7 @@ import {
 } from './appLock';
 
 describe('app-lock utilities', () => {
-  it('routes a new install to PIN creation and an existing lock to unlock', () => {
+  it('routes an enabled new app lock to PIN creation and an existing lock to unlock', () => {
     assert.equal(getAppLockEntryMode(false), 'create-pin');
     assert.equal(getAppLockEntryMode(true), 'unlock');
   });

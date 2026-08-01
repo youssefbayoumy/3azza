@@ -7,6 +7,7 @@ import AppFormScreen from '../../components/ui/AppFormScreen';
 
 export default function RegisterScreen() {
     const login = useAppStore((s) => s.login);
+    const setAppLockEnabled = useAppStore((s) => s.setAppLockEnabled);
 
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -36,11 +37,16 @@ export default function RegisterScreen() {
         }
     };
 
+    const handleSkip = () => {
+        setAppLockEnabled(false);
+        login();
+    };
+
     return (
         <AppFormScreen>
             <View className="mb-12 items-center">
                 <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Create App Lock</Text>
-                <Text className="font-body text-on-surface-variant/80 text-center">Create a 4-digit PIN to lock access to 3azza on this device.</Text>
+                <Text className="font-body text-on-surface-variant/80 text-center">Optionally create a 4-digit PIN to lock access to 3azza on this device.</Text>
                 <Text className="font-body text-xs text-on-surface-variant/70 text-center mt-3">The PIN does not encrypt the database, document photos, backups, or CSV exports.</Text>
             </View>
 
@@ -84,6 +90,15 @@ export default function RegisterScreen() {
                 >
                     <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Create PIN</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    className="py-3 items-center"
+                    onPress={handleSkip}
+                    disabled={saving}
+                    accessibilityRole="button"
+                >
+                    <Text className="font-label text-sm font-bold text-primary uppercase tracking-wider">Skip for Now</Text>
+                </TouchableOpacity>
+                <Text className="font-body text-xs text-on-surface-variant/70 text-center -mt-3">You can enable an app PIN later in Settings.</Text>
             </View>
         </AppFormScreen>
     );

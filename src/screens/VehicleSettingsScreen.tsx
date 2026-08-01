@@ -26,7 +26,7 @@ import ProtectedModal from '../components/ProtectedModal';
 import type { MainStackNavigationProp } from '../navigation/types';
 import type { VehicleProfile, VehicleVitals } from '../types/database.types';
 import { getExportCompletionMessage } from '../utils/exportFormat';
-import { changePin } from '../services/auth';
+import { changePin, disablePin } from '../services/auth';
 import { isValidPin, normalizePinInput } from '../utils/appLock';
 import { validateTankCapacityLiters } from '../utils/fuel';
 import AppIconButton from '../components/ui/AppIconButton';
@@ -79,6 +79,8 @@ export default function VehicleSettingsScreen() {
   const setBackupReminder = useAppStore((s) => s.setBackupReminder);
   const setVehicleSetupComplete = useAppStore((s) => s.setVehicleSetupComplete);
   const logout = useAppStore((s) => s.logout);
+  const appLockEnabled = useAppStore((s) => s.appLockEnabled);
+  const setAppLockEnabled = useAppStore((s) => s.setAppLockEnabled);
 
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [vehicles, setVehicles] = useState<VehicleProfile[]>([]);
@@ -101,6 +103,9 @@ export default function VehicleSettingsScreen() {
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [changingPin, setChangingPin] = useState(false);
+  const [disablePinModalVisible, setDisablePinModalVisible] = useState(false);
+  const [disablePinInput, setDisablePinInput] = useState('');
+  const [disablingPin, setDisablingPin] = useState(false);
   const [fuelCapacityModalVisible, setFuelCapacityModalVisible] = useState(false);
   const [tankCapacityInput, setTankCapacityInput] = useState('');
   const [savingTankCapacity, setSavingTankCapacity] = useState(false);
@@ -364,6 +369,35 @@ export default function VehicleSettingsScreen() {
       Alert.alert('PIN not changed', error instanceof Error ? error.message : 'Try again.');
     } finally {
       setChangingPin(false);
+    }
+  };
+
+  const closeDisablePinModal = () => {
+    if (disablingPin) return;
+    setDisablePinModalVisible(false);
+    setDisablePinInput('');
+  };
+
+  const handleDisablePin = async () => {
+    if (!isValidPin(disablePinInput)) {
+      Alert.alert('Invalid PIN', 'Enter your current 4-digit PIN.');
+      return;
+    }
+
+    setDisablingPin(true);
+    try {
+      if (!(await disablePin(disablePinInput))) {
+        Alert.alert('PIN not disabled', 'The current PIN is incorrect.');
+        return;
+      }
+      setDisablePinModalVisible(false);
+      setDisablePinInput('');
+      setAppLockEnabled(false);
+      Alert.alert('App PIN disabled', '3azza will no longer require a PIN to open. You can enable one again in Settings.');
+    } catch (error) {
+      Alert.alert('PIN not disabled', error instanceof Error ? error.message : 'Try again.');
+    } finally {
+      setDisablingPin(false);
     }
   };
 
@@ -746,15 +780,35 @@ export default function VehicleSettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            className="py-4 border border-primary/30 rounded-lg items-center justify-center mb-3"
-            onPress={() => setPinModalVisible(true)}
-          >
-            <Text className="font-headline font-bold text-primary uppercase tracking-widest">Change App PIN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="py-4 border border-error/30 rounded-lg items-center justify-center" onPress={logout}>
-            <Text className="font-headline font-bold text-error uppercase tracking-widest">Lock App</Text>
-          </TouchableOpacity>
+          {appLockEnabled ? (
+            <>
+              <TouchableOpacity
+                className="py-4 border border-primary/30 rounded-lg items-center justify-center mb-3"
+                onPress={() => setPinModalVisible(true)}
+              >
+                <Text className="font-headline font-bold text-primary uppercase tracking-widest">Change App PIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity className="py-4 border border-error/30 rounded-lg items-center justify-center" onPress={logout}>
+                <Text className="font-headline font-bold text-error uppercase tracking-widest">Lock App</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="py-4 border border-error/30 rounded-lg items-center justify-center mt-3"
+                onPress={() => setDisablePinModalVisible(true)}
+              >
+                <Text className="font-headline font-bold text-error uppercase tracking-widest">Disable App PIN</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              className="py-4 border border-primary/30 rounded-lg items-center justify-center"
+              onPress={() => {
+                setAppLockEnabled(true);
+                logout();
+              }}
+            >
+              <Text className="font-headline font-bold text-primary uppercase tracking-widest">Enable App PIN</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -887,6 +941,39 @@ export default function VehicleSettingsScreen() {
                   <ActivityIndicator color="#081421" />
                 ) : (
                   <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Change PIN</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ProtectedModal>
+
+      <ProtectedModal accessibilityLabel="Disable app PIN dialog" visible={disablePinModalVisible} transparent animationType="fade" onRequestClose={closeDisablePinModal}>
+        <View className="flex-1 bg-black/70 items-center justify-center px-6">
+          <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Disable App PIN</Text>
+            <Text className="font-body text-sm text-secondary/80 mb-6">Enter your current PIN to remove the app lock. Anyone with this device will then be able to open 3azza.</Text>
+            <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/70 tracking-widest mb-2">Current PIN</Text>
+            <TextInput
+              className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={4}
+              value={disablePinInput}
+              onChangeText={(value) => setDisablePinInput(normalizePinInput(value))}
+              accessibilityLabel="Current PIN to disable app lock"
+            />
+            <View className="flex-row justify-end gap-3 mt-6">
+              <TouchableOpacity onPress={closeDisablePinModal} disabled={disablingPin} className="px-4 py-3 rounded-lg">
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDisablePin}
+                disabled={disablingPin}
+                className={`px-6 py-3 bg-error rounded-lg ${disablingPin ? 'opacity-60' : ''}`}
+              >
+                {disablingPin ? <ActivityIndicator color="#081421" /> : (
+                  <Text className="font-label font-bold text-[#081421] uppercase tracking-wider">Disable PIN</Text>
                 )}
               </TouchableOpacity>
             </View>

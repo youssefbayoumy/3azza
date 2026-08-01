@@ -25,6 +25,10 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+release-build.*.log
+
+# local QA captures
+.qa-*/
 
 # macOS
 .DS_Store

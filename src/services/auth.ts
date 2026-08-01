@@ -109,6 +109,19 @@ export async function changePin(currentPin: string, newPin: string): Promise<boo
   return true;
 }
 
+export async function disablePin(currentPin: string): Promise<boolean> {
+  if (!isValidPin(currentPin) || !(await verifyPin(currentPin))) {
+    return false;
+  }
+
+  await Promise.all([
+    SecureStore.deleteItemAsync(PIN_RECORD_KEY),
+    SecureStore.deleteItemAsync(LEGACY_PIN_KEY),
+    resetPinFailures(),
+  ]);
+  return true;
+}
+
 export async function getPinLockout(): Promise<{
   isLocked: boolean;
   failedAttempts: number;
