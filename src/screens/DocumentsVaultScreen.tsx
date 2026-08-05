@@ -209,12 +209,12 @@ export default function DocumentsVaultScreen() {
                     </View>
                     <View className="bg-surface-container-high/40 p-4 rounded-xl border border-outline-variant/10 flex-row items-stretch">
                         <View className="flex-1 items-center justify-center px-2">
-                            <Text className="font-label text-xs text-secondary/60 uppercase">STORAGE</Text>
+                            <Text className="font-label text-xs text-muted uppercase">STORAGE</Text>
                             <Text className="font-headline text-lg font-bold text-primary text-center">On device</Text>
                         </View>
                         <View className="w-px self-stretch bg-outline-variant/20" />
                         <View className="flex-1 items-center justify-center px-2">
-                            <Text className="font-label text-xs text-secondary/60 uppercase">FILES</Text>
+                            <Text className="font-label text-xs text-muted uppercase">FILES</Text>
                             <Text className="font-headline text-lg font-bold text-on-surface">{documentCount}</Text>
                         </View>
                     </View>
@@ -274,7 +274,7 @@ export default function DocumentsVaultScreen() {
                                         {doc.title}
                                     </Text>
                                     <View className="mt-2 flex-row items-center gap-1">
-                                        <Text className="font-label text-xs text-secondary/50 uppercase">Expires:</Text>
+                                        <Text className="font-label text-xs text-muted uppercase">Expires:</Text>
                                         <Text className={`font-label text-xs font-bold ${expired ? 'text-error' : expiring ? 'text-[#FFB100]' : 'text-secondary'}`}>
                                             {formatDateLabel(doc.expiry_date)}
                                         </Text>
@@ -312,7 +312,7 @@ export default function DocumentsVaultScreen() {
                             <MaterialIcons name="lock-open" size={18} color="#a9c7ff" />
                         </View>
                         <View>
-                            <Text className="font-label text-xs text-secondary/50 uppercase">Status</Text>
+                            <Text className="font-label text-xs text-muted uppercase">Status</Text>
                             <Text className="font-headline text-sm font-bold uppercase text-on-surface">Not encrypted</Text>
                         </View>
                     </View>
@@ -350,7 +350,7 @@ export default function DocumentsVaultScreen() {
 
                         <View className="flex-col gap-5 mb-8">
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Document Title</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-2">Document Title</Text>
                                 <TextInput
                                     accessibilityLabel="Document title"
                                     className="bg-surface-container-high rounded-xl px-4 py-3 text-on-surface font-body border border-outline-variant/20"
@@ -362,7 +362,7 @@ export default function DocumentsVaultScreen() {
                             </View>
                             
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Expiry Date (Optional)</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-2">Expiry Date (Optional)</Text>
                                 <View className="flex-row gap-3">
                                     <TouchableOpacity
                                         className="flex-1 bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between"
@@ -397,7 +397,7 @@ export default function DocumentsVaultScreen() {
                             </View>
 
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Document Image</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-2">Document Image</Text>
                                 {imageUri ? (
                                     <View className="flex-row items-center gap-4">
                                         <Image source={{ uri: imageUri }} className="w-24 h-24 rounded-lg border border-outline-variant/30" />

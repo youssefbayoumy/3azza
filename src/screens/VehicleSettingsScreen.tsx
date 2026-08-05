@@ -620,7 +620,7 @@ export default function VehicleSettingsScreen() {
                     <TouchableOpacity onPress={() => handleSwitchVehicle(vehicle.id)} className="flex-row items-center justify-between">
                       <View className="flex-1 pr-3">
                         <Text className={`font-headline text-base font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>{vehicle.name}</Text>
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mt-1">
+                        <Text className="font-label text-xs uppercase tracking-widest text-muted mt-1">
                           {vehicle.current_mileage.toLocaleString()} KM - {vehicle.daily_average_km || 0} KM/day
                         </Text>
                         <Text className="font-body text-xs text-on-surface-variant mt-1" numberOfLines={1}>

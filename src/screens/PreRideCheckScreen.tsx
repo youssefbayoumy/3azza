@@ -35,6 +35,7 @@ export default function PreRideCheckScreen() {
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [showSourceInfo, setShowSourceInfo] = useState(false);
 
   const loadState = useCallback(async (isCurrent: () => boolean) => {
     const [vehicle, latestRun] = await Promise.all([getVehicleProfile(), getLatestPreRideRun()]);
@@ -133,9 +134,24 @@ export default function PreRideCheckScreen() {
         ) : (
           <>
             <View className="bg-surface-container-lowest border border-primary/20 rounded-xl p-4 mt-4 mb-5">
-              <Text className="font-label text-xs font-bold text-primary uppercase tracking-wider">Checklist source</Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="font-label text-xs font-bold text-primary uppercase tracking-wider">Checklist source</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={showSourceInfo ? 'Hide checklist source details' : 'Why this checklist is locked to your scooter'}
+                  accessibilityState={{ expanded: showSourceInfo }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => setShowSourceInfo((current) => !current)}
+                >
+                  <MaterialIcons name={showSourceInfo ? 'expand-less' : 'info-outline'} size={18} color="#a9c7ff" />
+                </TouchableOpacity>
+              </View>
               <Text className="font-headline text-base font-bold text-on-surface mt-1">{modelProfile.modelName} · {selectedVariant?.name ?? modelProfile.manualYears}</Text>
-              <Text className="font-body text-xs text-on-surface-variant mt-1">Saved runs retain this manual and variant identity, so a later model switch cannot reinterpret them.</Text>
+              {showSourceInfo ? (
+                <Text className="font-body text-xs text-muted mt-2 leading-5">
+                  This checklist comes from your scooter’s own manual. Each saved check stays tied to it, so switching models later won’t change past records.
+                </Text>
+              ) : null}
             </View>
 
             <View className="relative mx-auto mb-8 items-center justify-center" style={{ height: gaugeSize, width: gaugeSize }}>
@@ -150,7 +166,7 @@ export default function PreRideCheckScreen() {
                 <Circle cx="50" cy="50" r="45" fill="none" stroke="url(#gaugeGradient)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={strokeDashoffset} />
               </Svg>
               <View className="items-center z-10">
-                <Text className="font-label text-xs uppercase tracking-widest text-secondary/60">Checks completed</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-muted">Checks completed</Text>
                 <Text className="font-headline text-5xl font-bold tracking-tighter text-secondary mt-1">{readiness}%</Text>
                 <Text className="font-label text-xs uppercase font-bold text-primary mt-2">{completedChecks} of {items.length}</Text>
               </View>

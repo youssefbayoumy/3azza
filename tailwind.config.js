@@ -26,6 +26,11 @@ module.exports = {
                 "outline": "#8e9196",
                 "outline-variant": "#44474c",
                 "secondary": "#c6c6c6",
+                // Shared muted/tertiary text token. Passes WCAG AA (6.7:1) for
+                // small body text on the navy surfaces (#081421 / dark containers).
+                // Prefer this over low-opacity secondary/on-surface-variant for
+                // dim captions, codes, and field labels.
+                "muted": "#969ca6",
                 "secondary-fixed": "#e3e2e2",
                 "on-secondary-container": "#b8b8b8",
                 "on-surface-variant": "#c4c6cc",

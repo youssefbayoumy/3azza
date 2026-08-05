@@ -191,12 +191,12 @@ export default function ServiceLogsScreen() {
                     <ActiveVehicleChip />
                     <View className="flex-row items-end justify-between">
                         <View>
-                            <Text className="font-label text-xs tracking-[0.2em] text-secondary/60 uppercase">Maintenance Logs</Text>
+                            <Text className="font-label text-xs tracking-[0.2em] text-muted uppercase">Maintenance Logs</Text>
                             <Text className="font-headline text-4xl font-bold text-on-surface tracking-tight mt-1 uppercase">History</Text>
                         </View>
                         <View className="items-end">
                             <Text className="font-headline text-2xl font-bold text-primary tracking-tighter italic shadow-[0_0_12px_rgba(169,199,255,0.4)]">{lastServiceMileage} KM</Text>
-                            <Text className="font-label text-xs uppercase text-secondary/50 tracking-widest">Last Service</Text>
+                            <Text className="font-label text-xs uppercase text-muted tracking-widest">Last Service</Text>
                         </View>
                     </View>
                     <View className="h-[1px] w-full bg-secondary/20 mt-4" />
@@ -220,7 +220,7 @@ export default function ServiceLogsScreen() {
 
                     {logs.length === 0 ? (
                         <View className="pl-16 pt-10">
-                            <Text className="text-secondary/60 italic font-body">No service logs found. Use Add service log to record the first one.</Text>
+                            <Text className="text-muted italic font-body">No service logs found. Use Add service log to record the first one.</Text>
                         </View>
                     ) : (
                         <View className="space-y-8">
@@ -264,10 +264,10 @@ export default function ServiceLogsScreen() {
                                                         </View>
                                                     </View>
                                                 </View>
-                                                <Text className="font-label text-xs font-medium text-secondary/50 tracking-widest uppercase">{log.date}</Text>
+                                                <Text className="font-label text-xs font-medium text-muted tracking-widest uppercase">{log.date}</Text>
                                                 <Text className="mt-2 text-xs text-on-surface-variant font-body">{log.title}</Text>
                                                 {log.notes ? (
-                                                    <Text className="mt-1 text-xs text-secondary/60 italic leading-relaxed">{log.notes}</Text>
+                                                    <Text className="mt-1 text-xs text-muted italic leading-relaxed">{log.notes}</Text>
                                                 ) : null}
                                                 {log.cost !== null ? (
                                                     <Text className="mt-1 text-xs text-primary font-label">{log.cost.toLocaleString()} EGP</Text>
@@ -371,7 +371,7 @@ export default function ServiceLogsScreen() {
                                     </View>
 
                                     {/* Section: Other */}
-                                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-secondary/50 mb-1.5">
+                                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-muted mb-1.5">
                                         ↳ Other
                                     </Text>
                                     <View className="flex-row flex-wrap gap-2">

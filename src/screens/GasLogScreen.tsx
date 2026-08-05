@@ -201,7 +201,7 @@ export default function GasLogScreen() {
                             : 'Log two full-tank fills to calculate consumption. Partial fills are included only between those endpoints.'}
                     </Text>
                     <View className="mt-4 px-4 py-3 rounded-xl bg-surface-container-low border border-primary/15 items-center">
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary/50">Estimated full-tank range</Text>
+                        <Text className="font-label text-xs uppercase tracking-widest text-muted">Estimated full-tank range</Text>
                         <Text className="font-headline text-xl font-bold text-on-surface mt-1">
                             {estimatedRangeKm === null ? 'Not available' : `~${Math.round(estimatedRangeKm).toLocaleString()} KM`}
                         </Text>
@@ -210,7 +210,7 @@ export default function GasLogScreen() {
                                 <Text className="font-label text-xs uppercase font-bold tracking-widest text-primary">Set tank capacity in vehicle settings</Text>
                             </TouchableOpacity>
                         ) : (
-                            <Text className="font-body text-xs text-secondary/60 mt-1">Using your saved {profile.tank_capacity_liters.toLocaleString()} L capacity.</Text>
+                            <Text className="font-body text-xs text-muted mt-1">Using your saved {profile.tank_capacity_liters.toLocaleString()} L capacity.</Text>
                         )}
                     </View>
                     <View className="mt-4 flex-row justify-center items-center gap-4">
@@ -306,7 +306,7 @@ export default function GasLogScreen() {
                             <AppTextField label="Cost *" placeholder="e.g. 350" keyboardType="decimal-pad" value={formCost} onChangeText={setFormCost} />
                             <AppTextField label="Odometer (KM) *" placeholder="e.g. 10250" keyboardType="number-pad" value={formOdometer} onChangeText={setFormOdometer} />
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Fill date *</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-2">Fill date *</Text>
                                 <TouchableOpacity
                                     onPress={() => setShowDatePicker(true)}
                                     className="bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between"
@@ -322,7 +322,7 @@ export default function GasLogScreen() {
                             </View>
                             <View className="bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between">
                                 <View className="flex-1 pr-4">
-                                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">Filled to full?</Text>
+                                    <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest">Filled to full?</Text>
                                     <Text className="font-body text-xs text-on-surface-variant mt-1">Enable only when the tank was filled completely.</Text>
                                 </View>
                                 <Switch

@@ -103,7 +103,7 @@ export default function VehicleSetupScreen() {
             </View>
 
             <View className="flex-col gap-2 mb-8">
-                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">Current Odometer (KM)</Text>
+                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest pl-1">Current Odometer (KM)</Text>
                 
                 <Controller
                     control={control}
@@ -132,7 +132,7 @@ export default function VehicleSetupScreen() {
             </View>
 
             <View className="flex-col gap-2 mb-8">
-                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">Daily Drive Average (KM)</Text>
+                <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest pl-1">Daily Drive Average (KM)</Text>
                 
                 <Controller
                     control={control}

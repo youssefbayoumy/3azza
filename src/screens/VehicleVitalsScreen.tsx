@@ -132,7 +132,7 @@ export default function VehicleVitalsScreen() {
                                         placeholder="—"
                                         placeholderTextColor="#8e9196"
                                     />
-                                    <Text className="font-label text-xs uppercase text-on-surface-variant/60 flex-shrink-0">{unit}</Text>
+                                    <Text className="font-label text-xs uppercase text-muted flex-shrink-0">{unit}</Text>
                                 </View>
                                 {error ? (
                                     <Text className="text-error font-body text-xs mt-1 text-right">{error.message}</Text>
@@ -147,7 +147,7 @@ export default function VehicleVitalsScreen() {
                         render={({ field: { value } }) => (
                             <View className="flex-row items-baseline justify-end gap-2">
                                 <Text className="font-headline text-xl font-bold text-primary">{value || 'Not set'}</Text>
-                                <Text className="font-label text-xs uppercase text-on-surface-variant/60">{lastUpdated ? unit : ''}</Text>
+                                <Text className="font-label text-xs uppercase text-muted">{lastUpdated ? unit : ''}</Text>
                             </View>
                         )}
                     />
@@ -175,7 +175,7 @@ export default function VehicleVitalsScreen() {
                     Enter readings from your dashboard or inspection. 3azza does not connect to your vehicle.
                 </Text>
                 {lastUpdated && !isEditing && (
-                    <Text className="font-label text-xs text-on-surface-variant/50 uppercase tracking-widest text-center mb-8">
+                    <Text className="font-label text-xs text-muted uppercase tracking-widest text-center mb-8">
                         Last Updated: {lastUpdated}
                     </Text>
                 )}

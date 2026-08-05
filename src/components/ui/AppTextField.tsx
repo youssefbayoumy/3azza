@@ -16,7 +16,7 @@ export default function AppTextField({
 }: AppTextFieldProps) {
   return (
     <View className={containerClassName}>
-      <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">
+      <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-2">
         {label}
       </Text>
       <TextInput
