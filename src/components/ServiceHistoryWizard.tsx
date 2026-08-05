@@ -18,6 +18,7 @@ import {
 import type { ServiceInterval } from '../types/database.types';
 import { isPastOrTodayIsoDate, toIsoDate } from '../utils/dates';
 import { parseWholeNumberInput } from '../utils/recordValidation';
+import { getCanonicalTaskLabel } from '../modelData/maintenanceLabels';
 
 type WizardChoice = 'just_done' | 'a_while_ago' | 'dont_know' | null;
 
@@ -35,7 +36,20 @@ interface Props {
     onFinish: () => void;
 }
 
-const INTERVAL_ICONS: Record<string, { lib: 'MaterialIcons' | 'MaterialCommunityIcons'; name: string }> = {
+type IconInfo = { lib: 'MaterialIcons' | 'MaterialCommunityIcons'; name: string };
+
+// Keyed by canonical task id so icons stay correct regardless of the raw manual
+// subject stored on the interval.
+const CANONICAL_INTERVAL_ICONS: Record<string, IconInfo> = {
+    'engine-oil': { lib: 'MaterialCommunityIcons', name: 'oil' },
+    'transmission-oil': { lib: 'MaterialCommunityIcons', name: 'cog' },
+    'air-filter': { lib: 'MaterialCommunityIcons', name: 'air-filter' },
+    'brake-pads': { lib: 'MaterialCommunityIcons', name: 'car-brake-alert' },
+    'drive-belt': { lib: 'MaterialCommunityIcons', name: 'engine' },
+};
+
+// Legacy fallback for unreconciled rows still carrying a seed name.
+const LEGACY_INTERVAL_ICONS: Record<string, IconInfo> = {
     'Oil Change': { lib: 'MaterialCommunityIcons', name: 'oil' },
     'Gearbox Oil Change': { lib: 'MaterialCommunityIcons', name: 'cog' },
     'Air Filter': { lib: 'MaterialCommunityIcons', name: 'air-filter' },
@@ -45,8 +59,8 @@ const INTERVAL_ICONS: Record<string, { lib: 'MaterialIcons' | 'MaterialCommunity
     'Carburetor': { lib: 'MaterialCommunityIcons', name: 'tools' },
 };
 
-function getIcon(name: string, color: string, size = 22) {
-    const info = INTERVAL_ICONS[name];
+function getIcon(canonicalId: string | null | undefined, name: string, color: string, size = 22) {
+    const info = (canonicalId ? CANONICAL_INTERVAL_ICONS[canonicalId] : undefined) ?? LEGACY_INTERVAL_ICONS[name];
     if (!info) return <MaterialIcons name="build-circle" size={size} color={color} />;
     if (info.lib === 'MaterialCommunityIcons') {
         return <MaterialCommunityIcons name={info.name as any} size={size} color={color} />;
@@ -217,10 +231,10 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                 <View className="mx-6 mb-6 bg-[#0c1d2e] border border-white/5 rounded-2xl p-5">
                     <View className="flex-row items-center gap-3 mb-6">
                         <View className="w-12 h-12 rounded-xl bg-primary/10 items-center justify-center">
-                            {getIcon(interval.name, '#a9c7ff')}
+                            {getIcon(interval.canonical_task_id, interval.name, '#a9c7ff')}
                         </View>
                         <View className="flex-1">
-                            <Text className="text-xl font-bold text-white">{interval.name}</Text>
+                            <Text className="text-xl font-bold text-white">{getCanonicalTaskLabel(interval.canonical_task_id, interval.name)}</Text>
                             <Text className="text-xs uppercase text-white/40">
                                 Current template: {interval.interval_km ? `${interval.interval_km.toLocaleString()} KM` : 'As needed'}
                             </Text>

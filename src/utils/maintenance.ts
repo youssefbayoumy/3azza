@@ -14,10 +14,12 @@ export type IntervalStatus = 'unknown' | 'manual' | 'overdue' | 'due-soon' | 'op
 
 export type NamedIntervalLike = IntervalLike & {
   name: string;
+  canonical_task_id?: string | null;
 };
 
 export type NextServiceProgress = {
   name: string;
+  canonicalTaskId: string | null;
   progressPct: number;
   remainingKm: number;
   status: Exclude<IntervalStatus, 'unknown' | 'manual'>;
@@ -110,6 +112,7 @@ export function getNextServiceProgress(
 
     return [{
       name: interval.name,
+      canonicalTaskId: interval.canonical_task_id ?? null,
       progressPct: progress.progressPct,
       remainingKm: progress.remainingKm,
       status: progress.status,

@@ -17,6 +17,7 @@ import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { getApplicableBreakInGuidance, getModelProfileForVehicle, getSelectedVariant } from '../modelData/modelKnowledge';
+import { getCanonicalTaskLabel } from '../modelData/maintenanceLabels';
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavigationProp>();
@@ -173,11 +174,14 @@ export default function DashboardScreen() {
         : nextService?.status === 'due-soon'
             ? '#f59e0b'
             : '#a9c7ff';
+    const nextServiceLabel = nextService
+        ? getCanonicalTaskLabel(nextService.canonicalTaskId, nextService.name)
+        : null;
     const gaugeServiceLabel = !nextService
         ? 'ADD SERVICE HISTORY TO CALIBRATE'
         : nextService.remainingKm <= 0
-            ? `${Math.abs(nextService.remainingKm).toLocaleString()} KM OVER · ${nextService.name}`
-            : `${nextService.remainingKm.toLocaleString()} KM TO ${nextService.name}`;
+            ? `${Math.abs(nextService.remainingKm).toLocaleString()} KM OVER · ${nextServiceLabel}`
+            : `${nextService.remainingKm.toLocaleString()} KM TO ${nextServiceLabel}`;
     const warningsCount = countServiceWarnings(intervals, mileage);
     const modelProfile = getModelProfileForVehicle(profile);
     const selectedVariant = getSelectedVariant(profile, modelProfile);
@@ -358,7 +362,7 @@ export default function DashboardScreen() {
                                     accessibilityRole="button"
                                     accessibilityLabel={`${interval.name}: not logged yet. Log a service record.`}
                                 >
-                                    <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
+                                    <Text className="font-body text-sm text-on-surface flex-1">{getCanonicalTaskLabel(interval.canonical_task_id, interval.name)}</Text>
                                     <View className="flex-row items-center gap-1 flex-shrink-0">
                                         <Text className="font-label text-xs font-bold text-on-surface-variant">Not logged yet</Text>
                                         <MaterialIcons name="add" size={14} color="#a9c7ff" />
@@ -366,7 +370,7 @@ export default function DashboardScreen() {
                                 </TouchableOpacity>
                             ) : (
                                 <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
-                                    <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
+                                    <Text className="font-body text-sm text-on-surface flex-1">{getCanonicalTaskLabel(interval.canonical_task_id, interval.name)}</Text>
                                     <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
                                         {progress.remainingKm <= 0
                                             ? `${Math.abs(progress.remainingKm).toLocaleString()} km over`
