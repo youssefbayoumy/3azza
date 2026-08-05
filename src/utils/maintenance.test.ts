@@ -73,6 +73,7 @@ describe('maintenance utilities', () => {
       [
         {
           name: 'Oil Change',
+          canonical_task_id: 'engine-oil',
           interval_km: 1000,
           last_service_odometer_km: 17000,
           has_known_odometer_baseline: 1,
@@ -89,6 +90,7 @@ describe('maintenance utilities', () => {
 
     assert.deepEqual(nextService, {
       name: 'Oil Change',
+      canonicalTaskId: 'engine-oil',
       progressPct: 97.6,
       remainingKm: 24,
       status: 'due-soon',

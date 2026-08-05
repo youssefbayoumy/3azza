@@ -21,6 +21,7 @@ import useFocusedLoader from '../hooks/useFocusedLoader';
 import { formatScooterSelection, selectionFromProfile } from '../catalog/scooterCatalog';
 import SourceProvenance from '../components/SourceProvenance';
 import { getModelProfileForVehicle } from '../modelData/modelKnowledge';
+import { getCanonicalTaskLabel } from '../modelData/maintenanceLabels';
 import { getMaintenanceDueResult } from '../utils/maintenanceDue';
 
 export default function MaintenanceScheduleScreen() {
@@ -88,7 +89,7 @@ export default function MaintenanceScheduleScreen() {
 
         Alert.alert(
             'Log Service',
-            `Mark "${item.name}" as completed at ${predictedOdometer.toLocaleString()} KM?`,
+            `Mark "${getCanonicalTaskLabel(item.canonical_task_id, item.name)}" as completed at ${predictedOdometer.toLocaleString()} KM?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -277,6 +278,7 @@ export default function MaintenanceScheduleScreen() {
 
                 <View className="space-y-4 mb-20">
                     {intervals.map((item) => {
+                        const label = getCanonicalTaskLabel(item.canonical_task_id, item.name);
                         const latestLog = latestLogs[item.name];
                         const statusInfo = getStatusInfo(item, predictedOdometer, latestLog);
                         const pages = item.source_pages_json ? JSON.parse(item.source_pages_json) as number[] : [];
@@ -294,14 +296,14 @@ export default function MaintenanceScheduleScreen() {
                                             <MaterialIcons name={statusInfo.icon as any} size={20} className={statusInfo.color} />
                                         </View>
                                         <View className="flex-1 min-w-0">
-                                            <Text className="font-headline text-lg font-bold text-on-surface">{item.name}</Text>
+                                            <Text className="font-headline text-lg font-bold text-on-surface">{label}</Text>
                                             <Text className="font-label text-xs uppercase text-secondary/60 tracking-widest">
                                                 {item.interval_km ? `Every ${item.interval_km.toLocaleString()} KM` : 'Manual / no fixed distance'}
                                                 {item.recommended_interval_months ? ` · or ${item.recommended_interval_months} month${item.recommended_interval_months === 1 ? '' : 's'}` : ''}
                                             </Text>
                                         </View>
                                     </View>
-                                    <TouchableOpacity onPress={() => openEditModal(item)} className="p-2 flex-shrink-0" accessibilityLabel={`Edit ${item.name} interval`} accessibilityRole="button">
+                                    <TouchableOpacity onPress={() => openEditModal(item)} className="p-2 flex-shrink-0" accessibilityLabel={`Edit ${label} interval`} accessibilityRole="button">
                                         <MaterialIcons name="edit" size={18} color="#8e9196" />
                                     </TouchableOpacity>
                                 </View>
@@ -317,10 +319,6 @@ export default function MaintenanceScheduleScreen() {
                                         </Text>
                                     </View>
                                 )}
-
-                                <Text className={`font-body text-xs leading-5 mb-3 ${statusInfo.status === 'OVERDUE' ? 'text-error' : 'text-on-surface-variant'}`}>
-                                    {statusInfo.dueReason}
-                                </Text>
 
                                 {initialMilestones.length > 0 ? (
                                     <View className="bg-tertiary/10 border border-tertiary/25 rounded-lg p-3 mb-3">
@@ -349,7 +347,7 @@ export default function MaintenanceScheduleScreen() {
                                         <View
                                             className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden"
                                             accessible
-                                            accessibilityLabel={`${item.name} service interval progress`}
+                                            accessibilityLabel={`${label} service interval progress`}
                                             accessibilityRole="progressbar"
                                             accessibilityValue={{ min: 0, max: 100, now: Math.round(statusInfo.progress) }}
                                         >
@@ -402,7 +400,7 @@ export default function MaintenanceScheduleScreen() {
                     <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
                         <Text className="font-headline text-xl font-bold text-on-surface mb-2">Edit Interval</Text>
                         <Text className="font-body text-sm text-secondary/80 mb-6">
-                            Set the planning interval for {editingInterval?.name} from your vehicle manual. Leave empty for manual tracking.
+                            Set the planning interval for {editingInterval ? getCanonicalTaskLabel(editingInterval.canonical_task_id, editingInterval.name) : ''} from your vehicle manual. Leave empty for manual tracking.
                         </Text>
                         <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Interval (KM)</Text>
                         <TextInput
