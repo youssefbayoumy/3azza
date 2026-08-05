@@ -349,16 +349,31 @@ export default function DashboardScreen() {
                     <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-6">
                         <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-3">Next model services</Text>
                         {nextItems.map(({ interval, progress }) => (
-                            <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
-                                <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
-                                <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
-                                    {progress.remainingKm === null
-                                        ? 'Not set'
-                                        : progress.remainingKm <= 0
+                            progress.status === 'unknown' || progress.remainingKm === null ? (
+                                <TouchableOpacity
+                                    key={interval.id}
+                                    className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10"
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('Vitals')}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${interval.name}: not logged yet. Log a service record.`}
+                                >
+                                    <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
+                                    <View className="flex-row items-center gap-1 flex-shrink-0">
+                                        <Text className="font-label text-xs font-bold text-on-surface-variant">Not logged yet</Text>
+                                        <MaterialIcons name="add" size={14} color="#a9c7ff" />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
+                                    <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
+                                    <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
+                                        {progress.remainingKm <= 0
                                             ? `${Math.abs(progress.remainingKm).toLocaleString()} km over`
                                             : `${progress.remainingKm.toLocaleString()} km`}
-                                </Text>
-                            </View>
+                                    </Text>
+                                </View>
+                            )
                         ))}
                     </View>
                 ) : null}
