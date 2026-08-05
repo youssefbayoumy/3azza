@@ -86,7 +86,8 @@ export default function OilChangeDetailsScreen() {
         ? 'TRACKED'
         : intervalProgress?.status === 'manual'
           ? 'MANUAL'
-          : 'NOT SET';
+          : 'Not logged yet';
+  const isUnlogged = status === 'Not logged yet';
 
   return (
     <AppScreen edges={['top', 'bottom', 'left', 'right']}>
@@ -114,8 +115,8 @@ export default function OilChangeDetailsScreen() {
           </View>
           <View className="items-start">
             <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-1">Status</Text>
-            <View className={`px-3 py-1 border rounded-full ${status === 'OVERDUE' ? 'bg-error/10 border-error/40' : 'bg-primary-container border-primary/20'}`}>
-              <Text className={`font-label text-xs font-bold ${status === 'OVERDUE' ? 'text-error' : 'text-primary'}`}>{status}</Text>
+            <View className={`px-3 py-1 border rounded-full ${status === 'OVERDUE' ? 'bg-error/10 border-error/40' : isUnlogged ? 'bg-surface-container border-outline-variant/30' : 'bg-primary-container border-primary/20'}`}>
+              <Text className={`font-label text-xs font-bold ${status === 'OVERDUE' ? 'text-error' : isUnlogged ? 'text-on-surface-variant' : 'text-primary'}`}>{status}</Text>
             </View>
           </View>
         </View>
