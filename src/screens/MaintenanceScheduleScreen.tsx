@@ -514,6 +514,10 @@ export default function MaintenanceScheduleScreen() {
     && task.status !== 'historical_unverified'
     && task.status !== 'not_applicable'
   );
+  const trackableGroups = COMPONENT_GROUPS.filter((group) =>
+    groupTasks(group, trackedTasks).length === 0
+    && groupTasks(group, untrackedTasks).length > 0
+  );
   const dueNow = deduplicateByGroup(trackedTasks.filter(isDueNow));
   const comingUp = deduplicateByGroup(trackedTasks.filter(isComingUp));
   const activeInitialTasks = trackedTasks.filter((task) =>
@@ -671,12 +675,12 @@ export default function MaintenanceScheduleScreen() {
             {renderSection('wear', 'Wear and condition')}
             {renderSection('checks', 'General checks')}
 
-            {untrackedTasks.length > 0 ? (
+            {trackableGroups.length > 0 ? (
               <View className="mt-7">
                 <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-1">Track more services</Text>
                 <Text className="font-body text-xs text-on-surface-variant mb-3">Add only what you maintain — the rest stays out of your plan. Logging a record adds its service automatically.</Text>
                 <View className="gap-2">
-                  {COMPONENT_GROUPS.filter((group) => groupTasks(group, untrackedTasks).length > 0).map((group) => (
+                  {trackableGroups.map((group) => (
                     <View key={group.id} className="min-h-16 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 flex-row items-center gap-3">
                       <View className="w-10 h-10 rounded-lg bg-surface-container-high items-center justify-center">
                         <MaterialIcons name={group.icon} size={20} color="#8e9196" />
