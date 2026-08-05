@@ -176,7 +176,7 @@ export default function InsightsScreen() {
           </View>
 
           <View className="gap-4" style={{ flexDirection: stackSummaryCards ? 'column' : 'row' }}>
-            <TouchableOpacity onPress={() => navigation.navigate('Tabs', { screen: 'Vitals' })} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
+            <TouchableOpacity onPress={() => navigation.navigate('Tabs', { screen: 'Maintenance' })} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="build" size={24} color={insights.serviceWarningCount > 0 ? '#ffb4ab' : '#a9c7ff'} />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.serviceWarningCount}</Text>
               <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Service Attention</Text>

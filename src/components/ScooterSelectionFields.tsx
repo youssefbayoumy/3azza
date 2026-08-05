@@ -13,10 +13,10 @@ import {
 } from '../catalog/guidedScooterIdentification';
 import {
   formatIdentificationFeatureValue,
-  identificationFeatureStatusLabel,
   type IdentificationFeatureKey,
 } from '../modelData/variantIdentification';
 import type { VariantIdentificationProfile } from '../modelData/types';
+import { getSelectableMaintenanceProfiles } from '../maintenance/profiles';
 
 type CatalogSelectionKey = 'brandId' | 'modelId' | 'versionId';
 
@@ -49,11 +49,11 @@ function CandidateSummary({ candidate }: { candidate: VariantIdentificationProfi
         {candidate.variantName ?? 'No separate exact variant required'}
       </Text>
       {confirmed.length > 0 ? (
-        <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{confirmed.join(' · ')}</Text>
+        <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{confirmed.join(' - ')}</Text>
       ) : null}
       {unavailable > 0 ? (
         <Text className="font-body text-xs text-on-surface-variant/70 mt-1">
-          {unavailable} identifying feature{unavailable === 1 ? '' : 's'} missing or conflicted in this manual.
+          {unavailable} identifying detail{unavailable === 1 ? ' is' : 's are'} not available for this candidate.
         </Text>
       ) : null}
     </View>
@@ -81,7 +81,7 @@ function ConfirmationCard({
         <Text accessibilityRole="header" className="font-headline text-base font-bold text-primary">Confirm exact scooter</Text>
       </View>
       <Text className="font-headline text-lg font-bold text-on-surface">{brandName} {modelName}</Text>
-      <Text className="font-body text-sm text-on-surface-variant mt-1">Manual years: {years}</Text>
+      <Text className="font-body text-sm text-on-surface-variant mt-1">Model years / version: {years}</Text>
       <Text className="font-body text-sm text-on-surface mt-2">
         Exact variant / code: {candidate.variantName ?? 'No separate variant required'}
       </Text>
@@ -90,11 +90,10 @@ function ConfirmationCard({
           const feature = candidate[key];
           const value = feature.status === 'confirmed' && feature.value !== null
             ? formatIdentificationFeatureValue(key, feature.value)
-            : identificationFeatureStatusLabel(feature.status);
-          const pages = feature.pages.length > 0 ? ` · PDF ${feature.pages.length === 1 ? 'p.' : 'pp.'} ${feature.pages.join(', ')}` : '';
+            : 'Not available';
           return (
             <Text key={key} className="font-body text-xs text-on-surface-variant leading-5">
-              {FEATURE_LABELS[key]}: {value}{pages}
+              {FEATURE_LABELS[key]}: {value}
             </Text>
           );
         })}
@@ -116,6 +115,17 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
   const question = getNextIdentificationQuestion(value);
   const confirmable = isGuidedSelectionConfirmable(value);
   const confirmedCandidate = candidates.length === 1 ? candidates[0] : null;
+  const selectableProfiles = getSelectableMaintenanceProfiles();
+  const selectableVersionIds = new Set(selectableProfiles.map((item) => item.catalogSelection.versionId));
+  const availableBrands = scooterCatalog.manufacturers.filter((item) =>
+    item.models.some((candidateModel) => candidateModel.versions.some((candidateVersion) =>
+      selectableVersionIds.has(candidateVersion.id)
+    ))
+  );
+  const availableModels = (brand?.models ?? []).filter((item) =>
+    item.versions.some((candidateVersion) => selectableVersionIds.has(candidateVersion.id))
+  );
+  const availableVersions = (model?.versions ?? []).filter((item) => selectableVersionIds.has(item.id));
 
   const fields = [
     {
@@ -124,7 +134,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
       placeholder: 'Select brand',
       disabled: false,
       selectedName: brand?.name,
-      options: scooterCatalog.manufacturers,
+      options: availableBrands,
     },
     {
       key: 'modelId' as const,
@@ -132,7 +142,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
       placeholder: brand ? 'Select model family' : 'Select a brand first',
       disabled: !brand,
       selectedName: model?.name,
-      options: brand?.models ?? [],
+      options: availableModels,
     },
     {
       key: 'versionId' as const,
@@ -140,7 +150,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
       placeholder: model ? 'Select manual years' : 'Select a model first',
       disabled: !model,
       selectedName: version?.name,
-      options: model?.versions ?? [],
+      options: availableVersions,
     },
   ];
 
@@ -212,8 +222,8 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
             </Text>
             <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">
               {candidates.length === 0
-                ? 'These answers contradict the manual-backed profiles. Change an earlier answer; nothing saved has been changed.'
-                : 'Only candidates not contradicted by confirmed manual data remain. Missing or conflicted facts are never used to guess.'}
+                ? 'These answers do not match a supported scooter. Change an earlier answer; nothing saved has been changed.'
+                : 'Only supported scooters matching your answers remain. Missing details are never used to guess.'}
             </Text>
             {candidates.length > 0 ? (
               <View className="mt-3 rounded-lg overflow-hidden border border-outline-variant/15">
@@ -258,7 +268,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
             <View accessibilityLiveRegion="polite" className="rounded-xl border border-outline-variant/30 bg-surface-container-high p-4">
               <Text accessibilityRole="header" className="font-headline text-base font-bold text-on-surface">More information is needed</Text>
               <Text className="font-body text-sm text-on-surface-variant mt-2 leading-5">
-                The remaining manual-backed candidates are still ambiguous. Review earlier answers or find the exact model / engine code before saving; 3azza will not choose one for you.
+                The remaining supported candidates are still ambiguous. Review earlier answers or find the exact model / engine code before saving; 3azza will not choose one for you.
               </Text>
             </View>
           ) : null}

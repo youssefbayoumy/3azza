@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  getMaintenanceTemplate,
   isScooterSelectionComplete,
   resolveScooterSelection,
   scooterCatalog,
 } from './scooterCatalog';
 import { modelKnowledgeBase } from '../modelData/modelKnowledge';
+import { NEW_SYMPHONY_ST_200_PROFILE } from '../maintenance/profiles';
 
 describe('generated scooter catalog', () => {
   it('discovers models and versions from the manual directories', () => {
@@ -34,9 +34,14 @@ describe('generated scooter catalog', () => {
   });
 
   it('preserves the exact variant identity after resolving a required-variant selection', () => {
-    const profile = modelKnowledgeBase.profiles.find((item) => item.requiresVariant && item.variants.length > 0);
+    const profile = modelKnowledgeBase.profiles.find((item) =>
+      item.catalogVersionId === NEW_SYMPHONY_ST_200_PROFILE.catalogSelection.versionId
+    );
     assert.ok(profile);
-    const variant = profile.variants[0];
+    const variant = profile.variants.find((item) =>
+      item.id === NEW_SYMPHONY_ST_200_PROFILE.catalogSelection.variantId
+    );
+    assert.ok(variant);
     const input = {
       brandId: profile.brandId,
       modelId: profile.modelId,
@@ -52,7 +57,7 @@ describe('generated scooter catalog', () => {
     assert.equal(isScooterSelectionComplete(resolved), true);
   });
 
-  it('normalizes a variant-free selection without inventing a variant identity', () => {
+  it('keeps an otherwise valid but unvalidated variant-free selection unavailable', () => {
     const profile = modelKnowledgeBase.profiles.find((item) => !item.requiresVariant);
     assert.ok(profile);
 
@@ -65,19 +70,14 @@ describe('generated scooter catalog', () => {
     assert.ok(resolved);
     assert.equal(resolved.variantId, null);
     assert.equal(resolved.variant, null);
-    assert.equal(isScooterSelectionComplete(resolved), true);
+    assert.equal(isScooterSelectionComplete(resolved), false);
   });
 
-  it('keeps engine oil as a 1,000 km replacement task', () => {
-    const selection = {
+  it('requires the exact validated variant rather than accepting the model family alone', () => {
+    assert.equal(isScooterSelectionComplete({
       brandId: 'sym',
       modelId: 'sym:new-symphony-st',
       versionId: 'sym:new-symphony-st:2021-present',
-    };
-    const oil = getMaintenanceTemplate(selection).find((item) => item.canonicalId === 'engine-oil');
-    assert.equal(oil?.intervalKm, 1000);
-    assert.equal(oil?.type, 'replace');
-    assert.equal(oil?.origin, '3azza_policy');
-    assert.ok(oil?.initialDistanceKm.includes(300));
+    }), false);
   });
 });

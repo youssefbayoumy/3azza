@@ -4,6 +4,12 @@ import type {
   DocumentItem,
   GasLog,
   InventoryItem,
+  MaintenanceHistoryLevel,
+  MaintenanceHistoryState,
+  MaintenancePreference,
+  MaintenanceRecordConfidence,
+  MaintenanceRecordSource,
+  OdometerEvent,
   PreRideRun,
   PreRideState,
   ServiceInterval,
@@ -29,7 +35,6 @@ import {
 import { validateDatabaseBackupData } from '../utils/backupFormat';
 import { assertSupportedDatabaseVersion } from '../utils/databaseVersion';
 import { resetPreRideStateForNewLocalDay } from '../utils/preRide';
-import { reconcileMaintenancePlan } from '../utils/modelMaintenance';
 import { validateFuelLogFields, validateTankCapacityLiters } from '../utils/fuel';
 import {
   GAS_LOG_METRICS_QUERY,
@@ -38,12 +43,45 @@ import {
 } from '../utils/recordList';
 import { CURRENT_SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './databaseSchema';
 import {
-  getMaintenanceTemplate,
   isScooterSelectionComplete,
   selectionFromProfile,
   type ScooterSelection,
 } from '../catalog/scooterCatalog';
 import { updateVehicleScooterIdentityInTransaction } from './vehicleScooterTransactions';
+import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import type { InspectionResult, MaintenanceAction, MaintenanceEvent } from '../maintenance/types';
+import {
+  deleteMaintenanceRecordInTransaction,
+  findDuplicateMaintenanceRecordsInTransaction,
+  insertMaintenanceRecordInTransaction,
+  MaintenanceDuplicateError,
+  updateMaintenanceRecordInTransaction,
+  validatePreparedMaintenanceRecord,
+  type MaintenanceRecordMutationResult,
+  type PreparedMaintenanceRecordAction,
+  type PreparedMaintenanceRecordInput,
+} from './maintenanceRecordTransactions';
+import {
+  buildServiceLogListQuery,
+  MAINTENANCE_INSIGHTS_QUERY,
+} from './maintenanceRecordQueries';
+import {
+  restoreMaintenancePreferenceInTransaction,
+  setMaintenancePreferenceInTransaction,
+  type SetMaintenancePreferenceInput,
+} from './maintenancePreferenceTransactions';
+import { applyMaintenanceStorageMigration } from './maintenanceStorageMigration';
+import { applyOdometerCorrectionMigration } from './odometerCorrectionMigration';
+import {
+  correctOdometerReadingInTransaction,
+  getOdometerCorrectionFloorInTransaction,
+  type CorrectOdometerReadingInput,
+} from './odometerCorrectionTransactions';
+import {
+  setMaintenanceHistoryLevelInTransaction,
+  setMaintenanceHistoryStateInTransaction,
+  type SetMaintenanceHistoryStateInput,
+} from './maintenanceHistoryTransactions';
 
 let db: SQLite.SQLiteDatabase | null = null;
 const ACTIVE_VEHICLE_KEY = 'active_vehicle_id';
@@ -59,6 +97,16 @@ export type DatabaseBackupData = {
   documents_vault: DocumentItem[];
   pre_ride_checks: PreRideState[];
   pre_ride_runs?: PreRideRun[];
+  maintenance_preferences?: MaintenancePreference[];
+  maintenance_history_states?: MaintenanceHistoryState[];
+  odometer_events?: OdometerEvent[];
+};
+
+export { MaintenanceDuplicateError };
+export type {
+  CorrectOdometerReadingInput,
+  SetMaintenanceHistoryStateInput,
+  SetMaintenancePreferenceInput,
 };
 
 async function getDb(): Promise<SQLite.SQLiteDatabase> {
@@ -720,6 +768,44 @@ async function addModelKnowledgePersistence(database: SQLite.SQLiteDatabase): Pr
   }
 }
 
+async function addMaintenanceDomainV2(database: SQLite.SQLiteDatabase): Promise<void> {
+  const columns: [string, string][] = [
+    ['maintenance_rule_id', 'TEXT'],
+    ['maintenance_component_id', 'TEXT'],
+    ['maintenance_action', 'TEXT'],
+    ['maintenance_profile_id', 'TEXT'],
+    ['maintenance_profile_version', 'TEXT'],
+    ['inspection_result', 'TEXT'],
+    ['maintenance_migration_status', "TEXT NOT NULL DEFAULT 'legacy_unmapped'"],
+  ];
+  const existing = new Set(await tableColumns(database, 'service_logs'));
+  for (const [name, definition] of columns) {
+    if (!existing.has(name)) {
+      await database.execAsync(`ALTER TABLE service_logs ADD COLUMN ${name} ${definition};`);
+    }
+  }
+
+  // Promote only already action-specific rows. Old component-name rows cannot
+  // be mapped to exact rules without guessing, so they remain visible history
+  // but never become scheduler baselines.
+  await database.execAsync(`
+    UPDATE service_logs
+    SET maintenance_migration_status = CASE
+      WHEN maintenance_migration_status IN ('exact', 'confirmed')
+        AND maintenance_rule_id IS NOT NULL
+        AND maintenance_component_id IS NOT NULL
+        AND maintenance_action IS NOT NULL
+        AND maintenance_profile_id IS NOT NULL
+        AND maintenance_profile_version IS NOT NULL
+      THEN 'confirmed'
+      ELSE 'legacy_unmapped'
+    END;
+    UPDATE service_intervals SET is_applicable = 0;
+    CREATE INDEX IF NOT EXISTS idx_service_logs_vehicle_maintenance_rule
+      ON service_logs(vehicle_id, maintenance_profile_id, maintenance_rule_id, date DESC);
+  `);
+}
+
 async function withWriteTransaction(
   database: SQLite.SQLiteDatabase,
   task: (transaction: SQLite.SQLiteDatabase) => Promise<void>
@@ -838,6 +924,32 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
     await setSchemaVersion(database, version);
   }
 
+  if (version < 14) {
+    await addMaintenanceDomainV2(database);
+    version = 14;
+    await setSchemaVersion(database, version);
+  }
+
+  if (version < 15) {
+    await applyMaintenanceStorageMigration(database);
+    version = 15;
+    await setSchemaVersion(database, version);
+  } else {
+    // The migration is idempotent and also heals partially initialized v15
+    // development databases without reclassifying current records.
+    await applyMaintenanceStorageMigration(database);
+  }
+
+  if (version < 16) {
+    await applyOdometerCorrectionMigration(database);
+    version = 16;
+    await setSchemaVersion(database, version);
+  } else {
+    // Reinstalling the guard is idempotent and clears any stale development-only
+    // authorization row before ordinary profile updates can run.
+    await applyOdometerCorrectionMigration(database);
+  }
+
   if (version < CURRENT_SCHEMA_VERSION) {
     await setSchemaVersion(database, CURRENT_SCHEMA_VERSION);
   }
@@ -846,80 +958,21 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
 async function seedDefaultIntervals(
   database: SQLite.SQLiteDatabase,
   vehicleId: number,
-  selection: ScooterSelection
+  _selection: ScooterSelection
 ): Promise<void> {
-  if (!(await columnExists(database, 'service_intervals', 'is_applicable'))) {
-    for (const interval of getMaintenanceTemplate(selection)) {
-      await database.runAsync(
-        `INSERT OR IGNORE INTO service_intervals (
-          vehicle_id, name, interval_km, last_service_odometer_km, type, has_known_odometer_baseline
-        ) VALUES (?, ?, ?, 0, ?, 0)`,
-        [vehicleId, interval.name, interval.intervalKm, interval.type]
-      );
-    }
-    return;
+  if (await columnExists(database, 'service_intervals', 'is_applicable')) {
+    await database.runAsync('UPDATE service_intervals SET is_applicable = 0 WHERE vehicle_id = ?', [vehicleId]);
   }
-  await applyScooterMaintenanceTemplate(database, vehicleId, selection);
 }
 
 async function applyScooterMaintenanceTemplate(
   database: SQLite.SQLiteDatabase,
   vehicleId: number,
-  selection: ScooterSelection
+  _selection: ScooterSelection
 ): Promise<void> {
-  const existingIntervals = await database.getAllAsync<ServiceInterval>(
-    'SELECT * FROM service_intervals WHERE vehicle_id = ?',
-    [vehicleId]
-  );
+  // The v2 scheduler derives tasks directly from immutable, action-specific
+  // profile rules. Keep legacy intervals only as preserved history.
   await database.runAsync('UPDATE service_intervals SET is_applicable = 0 WHERE vehicle_id = ?', [vehicleId]);
-  const template = getMaintenanceTemplate(selection);
-  const reconciliation = reconcileMaintenancePlan(existingIntervals, template);
-
-  for (const interval of template) {
-    const plannedMatch = reconciliation.matched.find((item) => item.template.canonicalId === interval.canonicalId);
-    const existing = plannedMatch
-      ? existingIntervals.find((candidate) => candidate.id === plannedMatch.existingId)
-      : undefined;
-    const userInterval = plannedMatch?.userIntervalKm ?? null;
-    const effectiveInterval = plannedMatch?.effectiveIntervalKm ?? interval.intervalKm;
-    const origin = plannedMatch?.origin ?? interval.origin;
-    const metadata = [
-      interval.canonicalId,
-      interval.intervalKm,
-      interval.intervalMonths,
-      userInterval,
-      plannedMatch?.hasUserOverride ? 1 : 0,
-      origin,
-      interval.sourceManualId,
-      JSON.stringify(interval.sourcePages),
-      JSON.stringify(interval.guidance),
-      JSON.stringify(interval.initialDistanceKm),
-      interval.severeUseNotes.join('\n') || null,
-    ];
-
-    if (existing) {
-      await database.runAsync(
-        `UPDATE service_intervals
-         SET canonical_task_id = ?, recommended_interval_km = ?, recommended_interval_months = ?,
-             user_interval_km = ?, user_override_active = ?, recommendation_origin = ?, source_manual_id = ?,
-             source_pages_json = ?, manual_guidance_json = ?, initial_milestones_json = ?,
-             severe_use_note = ?, interval_km = ?, type = ?, is_applicable = 1
-         WHERE id = ? AND vehicle_id = ?`,
-        [...metadata, effectiveInterval, interval.type, existing.id, vehicleId]
-      );
-      continue;
-    }
-
-    await database.runAsync(
-      `INSERT INTO service_intervals (
-         vehicle_id, name, interval_km, last_service_odometer_km, type, has_known_odometer_baseline,
-         canonical_task_id, recommended_interval_km, recommended_interval_months, user_interval_km,
-         user_override_active, recommendation_origin, source_manual_id, source_pages_json, manual_guidance_json,
-         initial_milestones_json, severe_use_note, is_applicable
-       ) VALUES (?, ?, ?, 0, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-      [vehicleId, interval.name, effectiveInterval, interval.type, ...metadata]
-    );
-  }
 }
 
 async function setActiveVehicleIdForDb(database: SQLite.SQLiteDatabase, vehicleId: number): Promise<void> {
@@ -1179,6 +1232,10 @@ export async function deleteVehicleProfile(vehicleId: number): Promise<void> {
   await database.execAsync('BEGIN;');
   try {
     for (const table of [
+      'maintenance_history_states',
+      'maintenance_preferences',
+      'odometer_correction_authorizations',
+      'odometer_events',
       'vehicle_vitals',
       'gas_logs',
       'inventory_items',
@@ -1232,6 +1289,45 @@ export async function getMinimumOdometerReading(): Promise<number> {
   const database = await getDb();
   const vehicleId = await getActiveVehicleIdForDb(database);
   return getMinimumOdometerForVehicle(database, vehicleId);
+}
+
+/** Lowest value accepted by the separate correction flow; excludes current mileage. */
+export async function getOdometerCorrectionFloor(): Promise<number> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  return getOdometerCorrectionFloorInTransaction(database, vehicleId);
+}
+
+/**
+ * Corrects an accidentally high active-vehicle reading downward while preserving
+ * every historical record and atomically appending an odometer audit event.
+ */
+export async function correctOdometerReading(
+  input: CorrectOdometerReadingInput
+): Promise<OdometerEvent> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let created: OdometerEvent | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    created = await correctOdometerReadingInTransaction(
+      transaction,
+      vehicleId,
+      input,
+      new Date().toISOString()
+    );
+  });
+  if (!created) throw new Error('The odometer correction could not be saved.');
+  return created;
+}
+
+/** Read-only audit access for the active vehicle's odometer history. */
+export async function getOdometerEvents(): Promise<OdometerEvent[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  return database.getAllAsync<OdometerEvent>(
+    'SELECT * FROM odometer_events WHERE vehicle_id = ? ORDER BY recorded_at DESC, id DESC',
+    [vehicleId]
+  );
 }
 
 export async function saveVehicleProfile(
@@ -1723,13 +1819,8 @@ export async function recordPreRideRun(input: {
 export async function getServiceLogs(options?: RecordListOptions): Promise<ServiceLog[]> {
   const database = await getDb();
   const vehicleId = await getActiveVehicleIdForDb(database);
-  const bounds = getRecordListBounds(options);
-  return database.getAllAsync<ServiceLog>(
-    `SELECT * FROM service_logs
-     WHERE vehicle_id = ?
-     ORDER BY date DESC, mileage DESC, id DESC${bounds.clause}`,
-    [vehicleId, ...bounds.values]
-  );
+  const query = buildServiceLogListQuery(vehicleId, options);
+  return database.getAllAsync<ServiceLog>(query.sql, query.params);
 }
 
 export async function getServiceLogMaxMileage(): Promise<number> {
@@ -1781,12 +1872,8 @@ export async function getInsightsRecordSummary(
       month_cost: number;
       first_mileage: number | null;
     }>(
-      `SELECT COALESCE(SUM(cost), 0) AS total_cost,
-              COUNT(*) AS record_count,
-              COALESCE(SUM(CASE WHEN substr(date, 1, 7) = ? THEN COALESCE(cost, 0) ELSE 0 END), 0) AS month_cost,
-              MIN(CASE WHEN sets_odometer_baseline = 1 THEN mileage ELSE NULL END) AS first_mileage
-       FROM service_logs WHERE vehicle_id = ?`,
-      [currentMonth, vehicleId]
+      MAINTENANCE_INSIGHTS_QUERY,
+      [vehicleId, currentMonth]
     ),
     database.getFirstAsync<{ record_count: number }>(
       'SELECT COUNT(*) AS record_count FROM inventory_items WHERE vehicle_id = ?',
@@ -1886,6 +1973,577 @@ export async function recordServiceCompletion(log: ServiceCompletionInput): Prom
   });
 }
 
+export type MaintenanceEventInput = {
+  ruleId: string;
+  action: MaintenanceAction;
+  performedOn: string;
+  odometerKm: number;
+  inspectionResult?: InspectionResult | null;
+  notes?: string;
+  cost?: number | null;
+};
+
+export type MaintenanceRecordActionInput = {
+  ruleId?: string | null;
+  componentId?: string;
+  action: MaintenanceAction;
+  title?: string;
+  category?: string;
+  inspectionResult?: InspectionResult | null;
+};
+
+export type WritableMaintenanceRecordConfidence = Exclude<
+  MaintenanceRecordConfidence,
+  'legacy_unmapped'
+>;
+
+export type WritableMaintenanceRecordSource = Exclude<MaintenanceRecordSource, 'legacy'>;
+
+export type CreateMaintenanceRecordInput = {
+  serviceDate: string | null;
+  mileageKm: number | null;
+  dateConfidence?: WritableMaintenanceRecordConfidence;
+  mileageConfidence?: WritableMaintenanceRecordConfidence;
+  notes?: string;
+  cost?: number | null;
+  serviceProvider?: string | null;
+  recordSource?: WritableMaintenanceRecordSource;
+  packageTitle?: string | null;
+  oil?: {
+    brand?: string | null;
+    type?: string | null;
+    viscosity?: string | null;
+    notes?: string | null;
+  };
+  actions: MaintenanceRecordActionInput[];
+  otherWork?: {
+    title: string;
+    category: string;
+  };
+  allowDuplicate?: boolean;
+};
+
+export type MaintenanceRecordResult = MaintenanceRecordMutationResult;
+
+const INSPECTION_RESULTS = new Set<InspectionResult>([
+  'healthy',
+  'cleaning_needed',
+  'monitor',
+  'service_soon',
+  'replace_soon',
+  'replace_now',
+  'unable_to_inspect',
+]);
+
+const MAINTENANCE_ACTIONS = new Set<MaintenanceAction>([
+  'inspect',
+  'replace',
+  'clean',
+  'adjust',
+  'lubricate',
+  'test',
+  'tighten',
+  'initial_service',
+  'condition_check',
+]);
+
+function selectableMaintenanceProfileForVehicle(vehicle: VehicleProfile) {
+  const profile = getMaintenanceProfileForSelection({
+    brandId: vehicle.scooter_brand_id,
+    modelId: vehicle.scooter_model_id,
+    versionId: vehicle.scooter_version_id,
+    variantId: vehicle.scooter_variant_id,
+  });
+  return profile?.status === 'validated' || profile?.status === 'production_ready' ? profile : null;
+}
+
+function normalizedOptionalText(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+function maintenancePackageId(vehicleId: number): string {
+  return `maintenance-${vehicleId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function prepareMaintenanceRecordInput(
+  vehicle: VehicleProfile,
+  input: CreateMaintenanceRecordInput,
+  timestamp: string,
+  existing: ServiceLog | null = null,
+  createPackageId = true
+): PreparedMaintenanceRecordInput {
+  const profile = selectableMaintenanceProfileForVehicle(vehicle);
+  const profileIsSelectable = profile !== null;
+  if (input.actions.length > 0 && input.otherWork) {
+    throw new Error('Choose maintenance actions or other work, not both.');
+  }
+  const preparedActions: PreparedMaintenanceRecordAction[] = input.actions.length === 0
+    ? (() => {
+      const title = input.otherWork?.title.trim();
+      const category = input.otherWork?.category.trim();
+      if (!title || !category) {
+        throw new Error('Other work requires a title and category.');
+      }
+      return [{
+        ruleId: null,
+        componentId: null,
+        action: null,
+        profileId: null,
+        profileVersion: null,
+        title,
+        category,
+        inspectionResult: null,
+      }];
+    })()
+    : input.actions.map((candidate) => {
+    if (!MAINTENANCE_ACTIONS.has(candidate.action)) {
+      throw new Error('Select a valid maintenance action.');
+    }
+    const ruleId = normalizedOptionalText(candidate.ruleId);
+    if (ruleId) {
+      if (!profile) {
+        throw new Error('This scooter does not have a selectable validated maintenance profile.');
+      }
+      const rule = profile.rules.find((item) => item.id === ruleId);
+      if (!rule || !rule.applicable) {
+        throw new Error('This maintenance rule is not applicable to the selected scooter.');
+      }
+      if (rule.action !== candidate.action) {
+        throw new Error('The recorded action does not match the maintenance rule.');
+      }
+      if (candidate.componentId && candidate.componentId.trim() !== rule.componentId) {
+        throw new Error('The recorded component does not match the maintenance rule.');
+      }
+      if (rule.conditionFollowUp && !candidate.inspectionResult) {
+        throw new Error('Record the inspection result before completing this action.');
+      }
+      return {
+        ruleId: rule.id,
+        componentId: rule.componentId,
+        action: rule.action,
+        profileId: profile.id,
+        profileVersion: profile.profileVersion,
+        title: candidate.title?.trim() || rule.label,
+        category: candidate.category?.trim() || rule.category,
+        inspectionResult: candidate.inspectionResult ?? null,
+      };
+    }
+
+    const componentId = candidate.componentId?.trim()
+      || (input.actions.length === 1 ? existing?.maintenance_component_id?.trim() : undefined);
+    const title = candidate.title?.trim()
+      || (input.actions.length === 1 ? existing?.title.trim() : undefined);
+    const category = candidate.category?.trim()
+      || (input.actions.length === 1 ? existing?.category.trim() : undefined);
+    if (!componentId || !title || !category) {
+      throw new Error('Unscheduled work requires a component, title, and category.');
+    }
+    return {
+      ruleId: null,
+      componentId,
+      action: candidate.action,
+      profileId: profileIsSelectable ? profile?.id ?? null : null,
+      profileVersion: profileIsSelectable ? profile?.profileVersion ?? null : null,
+      title,
+      category,
+      inspectionResult: candidate.inspectionResult ?? null,
+    };
+    });
+
+  const packageTitle = input.packageTitle === undefined
+    ? existing?.service_package_title ?? null
+    : normalizedOptionalText(input.packageTitle);
+  const packageId = existing?.service_package_id
+    ?? (createPackageId && (preparedActions.length > 1 || packageTitle !== null)
+      ? maintenancePackageId(vehicle.id)
+      : null);
+  const existingSource = existing?.maintenance_record_source;
+  const recordSource = input.recordSource
+    ?? (existingSource && existingSource !== 'legacy' ? existingSource : undefined)
+    ?? (preparedActions.length > 1 ? 'service_package' : 'manual_entry');
+
+  return {
+    serviceDate: input.serviceDate,
+    mileageKm: input.mileageKm,
+    dateConfidence: input.dateConfidence ?? (input.serviceDate === null ? 'unknown' : 'confirmed'),
+    mileageConfidence: input.mileageConfidence ?? (input.mileageKm === null ? 'unknown' : 'confirmed'),
+    notes: input.notes === undefined ? existing?.notes ?? '' : input.notes.trim(),
+    cost: input.cost === undefined ? existing?.cost ?? null : input.cost,
+    serviceProvider: input.serviceProvider === undefined
+      ? existing?.service_provider ?? null
+      : normalizedOptionalText(input.serviceProvider),
+    recordSource,
+    packageId,
+    packageTitle,
+    oilBrand: input.oil?.brand === undefined
+      ? existing?.oil_brand ?? null
+      : normalizedOptionalText(input.oil.brand),
+    oilType: input.oil?.type === undefined
+      ? existing?.oil_type ?? null
+      : normalizedOptionalText(input.oil.type),
+    oilViscosity: input.oil?.viscosity === undefined
+      ? existing?.oil_viscosity ?? null
+      : normalizedOptionalText(input.oil.viscosity),
+    oilNotes: input.oil?.notes === undefined
+      ? existing?.oil_notes ?? null
+      : normalizedOptionalText(input.oil.notes),
+    actions: preparedActions,
+    allowDuplicate: input.allowDuplicate === true,
+    timestamp,
+  };
+}
+
+export async function findDuplicateMaintenanceRecords(
+  input: CreateMaintenanceRecordInput
+): Promise<ServiceLog[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const vehicle = await database.getFirstAsync<VehicleProfile>(
+    'SELECT * FROM vehicle_profile WHERE id = ?',
+    [vehicleId]
+  );
+  if (!vehicle) throw new Error('The active vehicle no longer exists.');
+  const prepared = prepareMaintenanceRecordInput(
+    vehicle,
+    input,
+    new Date().toISOString(),
+    null,
+    false
+  );
+  validatePreparedMaintenanceRecord(prepared, vehicle.current_mileage);
+  return findDuplicateMaintenanceRecordsInTransaction(database, vehicleId, prepared);
+}
+
+export async function createMaintenanceRecord(
+  input: CreateMaintenanceRecordInput
+): Promise<MaintenanceRecordResult> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let result: MaintenanceRecordResult | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    const prepared = prepareMaintenanceRecordInput(vehicle, input, new Date().toISOString());
+    result = await insertMaintenanceRecordInTransaction(transaction, vehicleId, prepared);
+  });
+  if (!result) throw new Error('Maintenance record could not be saved.');
+  return result;
+}
+
+export async function updateMaintenanceRecord(
+  id: number,
+  input: CreateMaintenanceRecordInput
+): Promise<boolean> {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error('Maintenance record ID must be a positive whole number.');
+  }
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let updated = false;
+  await withWriteTransaction(database, async (transaction) => {
+    const [vehicle, existing] = await Promise.all([
+      transaction.getFirstAsync<VehicleProfile>('SELECT * FROM vehicle_profile WHERE id = ?', [vehicleId]),
+      transaction.getFirstAsync<ServiceLog>(
+        'SELECT * FROM service_logs WHERE id = ? AND vehicle_id = ?',
+        [id, vehicleId]
+      ),
+    ]);
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    if (!existing) return;
+    const currentProfile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (
+      existing.maintenance_profile_id
+      && existing.maintenance_profile_id !== currentProfile?.id
+    ) {
+      throw new Error(
+        'This record belongs to a previous scooter profile and cannot be reinterpreted under the current selection.'
+      );
+    }
+    const prepared = prepareMaintenanceRecordInput(
+      vehicle,
+      input,
+      new Date().toISOString(),
+      existing
+    );
+    updated = await updateMaintenanceRecordInTransaction(
+      transaction,
+      vehicleId,
+      id,
+      prepared
+    );
+  });
+  return updated;
+}
+
+export async function deleteMaintenanceRecord(id: number): Promise<boolean> {
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error('Maintenance record ID must be a positive whole number.');
+  }
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let deleted = false;
+  await withWriteTransaction(database, async (transaction) => {
+    deleted = await deleteMaintenanceRecordInTransaction(
+      transaction,
+      vehicleId,
+      id,
+      new Date().toISOString()
+    );
+  });
+  return deleted;
+}
+
+export async function recordMaintenanceEvent(input: MaintenanceEventInput): Promise<void> {
+  if (input.inspectionResult && !INSPECTION_RESULTS.has(input.inspectionResult)) {
+    throw new Error('Select a valid inspection result.');
+  }
+  await createMaintenanceRecord({
+    serviceDate: input.performedOn,
+    mileageKm: input.odometerKm,
+    dateConfidence: 'confirmed',
+    mileageConfidence: 'confirmed',
+    notes: input.notes,
+    cost: input.cost,
+    recordSource: 'maintenance_planner',
+    actions: [{
+      ruleId: input.ruleId,
+      action: input.action,
+      inspectionResult: input.inspectionResult,
+    }],
+  });
+}
+
+export async function getMaintenanceEvents(): Promise<MaintenanceEvent[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const vehicle = await database.getFirstAsync<VehicleProfile>(
+    'SELECT * FROM vehicle_profile WHERE id = ?',
+    [vehicleId]
+  );
+  if (!vehicle) throw new Error('The active vehicle no longer exists.');
+  const profile = selectableMaintenanceProfileForVehicle(vehicle);
+  if (!profile) return [];
+  const rows = await database.getAllAsync<ServiceLog>(
+    `SELECT * FROM service_logs
+     WHERE vehicle_id = ? AND maintenance_profile_id = ?
+       AND maintenance_migration_status IN ('confirmed', 'exact')
+       AND maintenance_rule_id IS NOT NULL AND maintenance_profile_id IS NOT NULL
+     ORDER BY
+       CASE WHEN maintenance_date_confidence = 'confirmed' THEN 0 ELSE 1 END,
+       date ASC,
+       CASE WHEN maintenance_mileage_confidence = 'confirmed' THEN 0 ELSE 1 END,
+       mileage ASC,
+       created_at ASC,
+       id ASC`,
+    [vehicleId, profile.id]
+  );
+  return rows.flatMap((row) => {
+    if (
+      !row.maintenance_rule_id
+      || !row.maintenance_component_id
+      || !row.maintenance_action
+      || !row.maintenance_profile_id
+      || !row.maintenance_profile_version
+      || !MAINTENANCE_ACTIONS.has(row.maintenance_action as MaintenanceAction)
+    ) return [];
+    const hasConfirmedDate = row.maintenance_date_confidence === 'confirmed'
+      && isValidIsoDate(row.date);
+    const hasConfirmedMileage = row.maintenance_mileage_confidence === 'confirmed'
+      && row.sets_odometer_baseline === 1;
+    if (!hasConfirmedDate && !hasConfirmedMileage) return [];
+    const source: MaintenanceEvent['recordSource'] = row.maintenance_record_source === 'maintenance_planner'
+      ? 'planner'
+      : row.maintenance_record_source === 'history_onboarding'
+        ? 'history_onboarding'
+        : row.maintenance_record_source === 'backup_restore'
+          ? 'import'
+          : row.maintenance_record_source === 'legacy'
+            ? 'legacy'
+            : 'manual_entry';
+    return [{
+      id: String(row.id),
+      vehicleId: row.vehicle_id,
+      profileId: row.maintenance_profile_id,
+      profileVersion: row.maintenance_profile_version,
+      ruleId: row.maintenance_rule_id,
+      componentId: row.maintenance_component_id,
+      action: row.maintenance_action as MaintenanceAction,
+      performedOn: hasConfirmedDate ? row.date : '',
+      odometerKm: hasConfirmedMileage ? row.mileage : null,
+      mileageConfidence: row.maintenance_mileage_confidence ?? 'unknown',
+      dateConfidence: row.maintenance_date_confidence ?? 'unknown',
+      inspectionResult: row.inspection_result as InspectionResult | null | undefined,
+      notes: row.notes,
+      cost: row.cost,
+      serviceProvider: row.service_provider ?? null,
+      recordSource: source,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      migrationConfidence: 'exact',
+    }];
+  });
+}
+
+export async function getMaintenancePreferences(): Promise<MaintenancePreference[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const vehicle = await database.getFirstAsync<VehicleProfile>(
+    'SELECT * FROM vehicle_profile WHERE id = ?',
+    [vehicleId]
+  );
+  if (!vehicle) throw new Error('The active vehicle no longer exists.');
+  const profile = selectableMaintenanceProfileForVehicle(vehicle);
+  if (!profile) return [];
+  return database.getAllAsync<MaintenancePreference>(
+    `SELECT * FROM maintenance_preferences
+     WHERE vehicle_id = ? AND profile_id = ?
+     ORDER BY component_id COLLATE NOCASE ASC, action ASC, id ASC`,
+    [vehicleId, profile.id]
+  );
+}
+
+export async function setMaintenancePreference(
+  input: SetMaintenancePreferenceInput
+): Promise<MaintenancePreference> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let preference: MaintenancePreference | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    const profile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (!profile) throw new Error('A validated maintenance profile is required.');
+    preference = await setMaintenancePreferenceInTransaction(
+      transaction,
+      vehicleId,
+      profile.id,
+      input,
+      new Date().toISOString()
+    );
+  });
+  if (!preference) throw new Error('Maintenance preference could not be saved.');
+  return preference;
+}
+
+export async function restoreMaintenancePreference(
+  componentId: string,
+  action: MaintenanceAction
+): Promise<MaintenancePreference | null> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  let preference: MaintenancePreference | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    const profile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (!profile) throw new Error('A validated maintenance profile is required.');
+    preference = await restoreMaintenancePreferenceInTransaction(
+      transaction,
+      vehicleId,
+      profile.id,
+      componentId,
+      action,
+      new Date().toISOString()
+    );
+  });
+  return preference;
+}
+
+const MAINTENANCE_HISTORY_LEVELS = new Set<MaintenanceHistoryLevel>([
+  'not_asked',
+  'detailed_records',
+  'recent_memory',
+  'little_or_none',
+  'skipped',
+]);
+
+export async function getMaintenanceHistoryLevel(): Promise<MaintenanceHistoryLevel> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const row = await database.getFirstAsync<{ maintenance_history_level: string }>(
+    'SELECT maintenance_history_level FROM vehicle_profile WHERE id = ?',
+    [vehicleId]
+  );
+  if (!row) throw new Error('The active vehicle no longer exists.');
+  return MAINTENANCE_HISTORY_LEVELS.has(row.maintenance_history_level as MaintenanceHistoryLevel)
+    ? row.maintenance_history_level as MaintenanceHistoryLevel
+    : 'not_asked';
+}
+
+export async function setMaintenanceHistoryLevel(level: MaintenanceHistoryLevel): Promise<void> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  await withWriteTransaction(database, (transaction) => (
+    setMaintenanceHistoryLevelInTransaction(transaction, vehicleId, level)
+  ));
+}
+
+export async function setMaintenanceHistoryState(
+  input: SetMaintenanceHistoryStateInput
+): Promise<MaintenanceHistoryState> {
+  const [state] = await setMaintenanceHistoryStates([input]);
+  return state;
+}
+
+export async function setMaintenanceHistoryStates(
+  inputs: SetMaintenanceHistoryStateInput[]
+): Promise<MaintenanceHistoryState[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const states: MaintenanceHistoryState[] = [];
+  const keys = new Set<string>();
+  await withWriteTransaction(database, async (transaction) => {
+    const timestamp = new Date().toISOString();
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    const profile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (!profile) throw new Error('A validated maintenance profile is required.');
+    for (const input of inputs) {
+      const key = `${input.componentId.trim()}\u0000${input.action}`;
+      if (keys.has(key)) throw new Error('Maintenance history states cannot repeat a component action.');
+      keys.add(key);
+      states.push(await setMaintenanceHistoryStateInTransaction(
+        transaction,
+        vehicleId,
+        profile.id,
+        input,
+        timestamp
+      ));
+    }
+  });
+  return states;
+}
+
+export async function getMaintenanceHistoryStates(): Promise<MaintenanceHistoryState[]> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const vehicle = await database.getFirstAsync<VehicleProfile>(
+    'SELECT * FROM vehicle_profile WHERE id = ?',
+    [vehicleId]
+  );
+  if (!vehicle) throw new Error('The active vehicle no longer exists.');
+  const profile = selectableMaintenanceProfileForVehicle(vehicle);
+  if (!profile) return [];
+  return database.getAllAsync<MaintenanceHistoryState>(
+    `SELECT * FROM maintenance_history_states
+     WHERE vehicle_id = ? AND profile_id = ?
+     ORDER BY component_id COLLATE NOCASE ASC, action ASC`,
+    [vehicleId, profile.id]
+  );
+}
+
 export async function completeServiceHistorySetup(entries: ServiceCompletionInput[]): Promise<void> {
   const preparedEntries = entries.map(prepareServiceCompletion);
   const database = await getDb();
@@ -1974,6 +2632,9 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     documents,
     preRideChecks,
     preRideRuns,
+    maintenancePreferences,
+    maintenanceHistoryStates,
+    odometerEvents,
   ] = await Promise.all([
     database.getAllAsync<VehicleProfile>('SELECT * FROM vehicle_profile ORDER BY id ASC'),
     database.getAllAsync<VehicleVitals>('SELECT * FROM vehicle_vitals ORDER BY id ASC'),
@@ -1984,6 +2645,11 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     database.getAllAsync<DocumentItem>('SELECT * FROM documents_vault ORDER BY id ASC'),
     database.getAllAsync<PreRideState>('SELECT * FROM pre_ride_checks ORDER BY id ASC'),
     database.getAllAsync<PreRideRun>('SELECT * FROM pre_ride_runs ORDER BY id ASC'),
+    database.getAllAsync<MaintenancePreference>('SELECT * FROM maintenance_preferences ORDER BY id ASC'),
+    database.getAllAsync<MaintenanceHistoryState>(
+      'SELECT * FROM maintenance_history_states ORDER BY vehicle_id ASC, profile_id ASC, component_id ASC, action ASC'
+    ),
+    database.getAllAsync<OdometerEvent>('SELECT * FROM odometer_events ORDER BY id ASC'),
   ]);
 
   return {
@@ -1997,6 +2663,9 @@ export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
     documents_vault: documents,
     pre_ride_checks: preRideChecks,
     pre_ride_runs: preRideRuns,
+    maintenance_preferences: maintenancePreferences,
+    maintenance_history_states: maintenanceHistoryStates,
+    odometer_events: odometerEvents,
   };
 }
 
@@ -2007,6 +2676,10 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
 
   try {
     for (const table of [
+      'maintenance_history_states',
+      'maintenance_preferences',
+      'odometer_correction_authorizations',
+      'odometer_events',
       'vehicle_vitals',
       'gas_logs',
       'inventory_items',
@@ -2025,8 +2698,8 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
         `INSERT INTO vehicle_profile (
           id, name, current_mileage, total_km_range, has_completed_setup, created_at,
           daily_average_km, last_odometer_update_timestamp, service_history_setup_completed, tank_capacity_liters,
-          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id, maintenance_history_level
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           vehicle.id,
           vehicle.name,
@@ -2042,6 +2715,7 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           vehicle.scooter_model_id,
           vehicle.scooter_version_id,
           vehicle.scooter_variant_id ?? null,
+          vehicle.maintenance_history_level ?? 'not_asked',
         ]
       );
     }
@@ -2103,8 +2777,14 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
       await database.runAsync(
         `INSERT INTO service_logs (
            id, vehicle_id, title, date, mileage, category, notes, cost,
-           service_type, sets_odometer_baseline
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           service_type, sets_odometer_baseline, maintenance_rule_id,
+           maintenance_component_id, maintenance_action, maintenance_profile_id,
+           maintenance_profile_version, inspection_result, maintenance_migration_status,
+           maintenance_mileage_confidence, maintenance_date_confidence,
+           maintenance_record_source, service_provider, service_package_id,
+           service_package_title, oil_brand, oil_type, oil_viscosity, oil_notes,
+           duplicate_confirmed, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           row.id,
           row.vehicle_id,
@@ -2116,6 +2796,114 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           row.cost,
           row.service_type,
           row.sets_odometer_baseline,
+          row.maintenance_rule_id ?? null,
+          row.maintenance_component_id ?? null,
+          row.maintenance_action ?? null,
+          row.maintenance_profile_id ?? null,
+          row.maintenance_profile_version ?? null,
+          row.inspection_result ?? null,
+          row.maintenance_migration_status === 'exact'
+            ? 'confirmed'
+            : row.maintenance_migration_status === 'legacy_needs_confirmation'
+              ? 'legacy_unmapped'
+              : row.maintenance_migration_status ?? 'legacy_unmapped',
+          row.maintenance_mileage_confidence
+            ?? (row.maintenance_migration_status === 'exact' && row.sets_odometer_baseline === 1
+              ? 'confirmed'
+              : 'legacy_unmapped'),
+          row.maintenance_date_confidence
+            ?? (row.maintenance_migration_status === 'exact' && isValidIsoDate(row.date)
+              ? 'confirmed'
+              : 'legacy_unmapped'),
+          row.maintenance_record_source
+            ?? (row.maintenance_migration_status === 'exact' ? 'maintenance_planner' : 'legacy'),
+          row.service_provider ?? null,
+          row.service_package_id ?? null,
+          row.service_package_title ?? null,
+          row.oil_brand ?? null,
+          row.oil_type ?? null,
+          row.oil_viscosity ?? null,
+          row.oil_notes ?? null,
+          row.duplicate_confirmed ?? 0,
+          row.created_at ?? new Date().toISOString(),
+          row.updated_at ?? row.created_at ?? new Date().toISOString(),
+        ]
+      );
+    }
+
+    for (const row of data.maintenance_preferences ?? []) {
+      await database.runAsync(
+        `INSERT INTO maintenance_preferences (
+           id, vehicle_id, profile_id, component_id, action, profile_recommended_interval_km,
+           user_interval_km, effective_interval_km, original_interval_km,
+           original_interval_months, custom_interval_km, custom_interval_months,
+           effective_interval_months, distance_enabled, time_enabled,
+           condition_based_default, custom_condition_reminder_enabled, interval_source,
+           longer_than_recommended_confirmed, reason, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.id,
+          row.vehicle_id,
+          row.profile_id,
+          row.component_id,
+          row.action,
+          row.profile_recommended_interval_km,
+          row.user_interval_km,
+          row.effective_interval_km,
+          row.original_interval_km ?? row.profile_recommended_interval_km,
+          row.original_interval_months ?? null,
+          row.custom_interval_km ?? row.user_interval_km,
+          row.custom_interval_months ?? null,
+          row.effective_interval_months ?? null,
+          row.distance_enabled ?? (row.effective_interval_km !== null ? 1 : 0),
+          row.time_enabled ?? 0,
+          row.condition_based_default ?? 0,
+          row.custom_condition_reminder_enabled ?? 0,
+          row.interval_source,
+          row.longer_than_recommended_confirmed,
+          row.reason,
+          row.created_at,
+          row.updated_at,
+        ]
+      );
+    }
+
+    for (const row of data.maintenance_history_states ?? []) {
+      await database.runAsync(
+        `INSERT INTO maintenance_history_states (
+           vehicle_id, profile_id, component_id, action, history_state, last_service_log_id,
+           notes, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.vehicle_id,
+          row.profile_id,
+          row.component_id,
+          row.action,
+          row.history_state,
+          row.last_service_log_id,
+          row.notes,
+          row.created_at,
+          row.updated_at,
+        ]
+      );
+    }
+
+    for (const row of data.odometer_events ?? []) {
+      await database.runAsync(
+        `INSERT INTO odometer_events (
+           id, vehicle_id, event_type, previous_effective_km, new_effective_km,
+           previous_displayed_km, new_displayed_km, reason, recorded_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.id,
+          row.vehicle_id,
+          row.event_type,
+          row.previous_effective_km,
+          row.new_effective_km,
+          row.previous_displayed_km,
+          row.new_displayed_km,
+          row.reason,
+          row.recorded_at,
         ]
       );
     }

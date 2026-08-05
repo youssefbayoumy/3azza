@@ -18,8 +18,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const tabWidth = width / Math.max(visibleRoutes.length, 1);
-    const labelFontSize = tabWidth < 84 ? 8 : tabWidth < 96 ? 9 : 10;
-    const labelLetterSpacing = tabWidth < 96 ? 0.4 : 0.8;
+    const labelFontSize = tabWidth < 84 ? 10 : 11;
+    const labelLetterSpacing = tabWidth < 96 ? 0.2 : 0.4;
 
     return (
         <View style={styles.tabBarContainer}>
@@ -34,11 +34,11 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
                         const iconName = route.name === 'Dashboard' ? 'speed' :
                             route.name === 'Inventory' ? 'inventory-2' :
-                                route.name === 'Vitals' ? 'monitor-heart' :
+                                route.name === 'Maintenance' ? 'build-circle' :
                                     route.name === 'Vault' ? 'folder-special' : 'settings';
                         const label = route.name === 'Dashboard' ? 'Home' :
                             route.name === 'Inventory' ? 'Parts' :
-                                route.name === 'Vitals' ? 'Maintenance' :
+                                route.name === 'Maintenance' ? 'Maintenance' :
                                     route.name === 'Vault' ? 'Documents' : route.name;
 
                         const onPress = () => {
@@ -78,12 +78,12 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                                 className={`font-label uppercase font-bold mt-1 ${
                                 isFocused ? 'text-primary' : 'text-slate-500'
                                 }`}
-                                maxFontSizeMultiplier={1.15}
+                                maxFontSizeMultiplier={1.35}
                                 numberOfLines={1}
                                 style={{
                                     fontSize: labelFontSize,
                                     letterSpacing: labelLetterSpacing,
-                                    lineHeight: labelFontSize + 3,
+                                    lineHeight: labelFontSize + 4,
                                     textAlign: 'center',
                                     width: '100%',
                                 }}
@@ -107,7 +107,7 @@ export default function TabNavigator() {
             screenOptions={{ headerShown: false }}
         >
             <Tab.Screen name="Dashboard" component={DashboardScreen} />
-            <Tab.Screen name="Vitals" component={MaintenanceScheduleScreen} />
+            <Tab.Screen name="Maintenance" component={MaintenanceScheduleScreen} />
             <Tab.Screen name="Vault" component={DocumentsVaultScreen} />
             <Tab.Screen name="Inventory" component={InventoryScreen} />
         </Tab.Navigator>

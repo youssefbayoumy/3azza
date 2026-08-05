@@ -1,6 +1,7 @@
 import catalogJson from '../generated/scooterCatalog.json';
-import { getApplicableMaintenance, getModelProfileForSelection } from '../modelData/modelKnowledge';
+import { getModelProfileForSelection } from '../modelData/modelKnowledge';
 import type { ModelVariant } from '../modelData/types';
+import { isMaintenanceProfileSelectable } from '../maintenance/profiles';
 
 export type ScooterVersion = {
   id: string;
@@ -93,7 +94,8 @@ export function isScooterSelectionComplete(selection: Partial<ScooterSelection>)
   const resolved = resolveScooterSelection(selection);
   if (!resolved) return false;
   const profile = getModelProfileForSelection(selection);
-  return !profile?.requiresVariant || resolved.variant !== null;
+  const exactVariantSelected = !profile?.requiresVariant || resolved.variant !== null;
+  return exactVariantSelected && isMaintenanceProfileSelectable(resolved);
 }
 
 export function selectionFromProfile(profile: {
@@ -127,24 +129,7 @@ export function getMaintenanceTemplate(selection: ScooterSelection): Maintenance
   if (!resolved) {
     throw new Error('Select a scooter from the available manual catalog first.');
   }
-  const vehicleSelection = {
-    scooter_brand_id: resolved.brandId,
-    scooter_model_id: resolved.modelId,
-    scooter_version_id: resolved.versionId,
-    scooter_variant_id: resolved.variant?.id ?? null,
-  };
-  return getApplicableMaintenance(vehicleSelection).map((task) => ({
-    canonicalId: task.canonicalId,
-    name: task.name,
-    intervalKm: task.recommendedIntervalKm,
-    intervalMonths: task.manualIntervalMonths,
-    type: task.action,
-    origin: task.recommendationOrigin,
-    manualIntervalKm: task.manualIntervalKm,
-    initialDistanceKm: task.initialDistanceKm,
-    sourceManualId: resolved.version.manualId,
-    sourcePages: task.pages,
-    guidance: task.guidance.map((item) => item.value),
-    severeUseNotes: task.severeUseNotes,
-  }));
+  throw new Error(
+    `Legacy interval templates are disabled for ${resolved.version.name}. Use the action-specific maintenance profile scheduler.`
+  );
 }

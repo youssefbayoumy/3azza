@@ -35,7 +35,11 @@ describe('notification routing', () => {
   it('maps tab and stack destinations without untyped route casts', () => {
     assert.deepEqual(
       getNotificationNavigationTarget({ route: 'Vitals', vehicleId: 1 }),
-      { kind: 'tab', screen: 'Vitals' }
+      { kind: 'tab', screen: 'Maintenance' }
+    );
+    assert.deepEqual(
+      getNotificationNavigationTarget({ route: 'Maintenance', vehicleId: 1 }),
+      { kind: 'tab', screen: 'Maintenance' }
     );
     assert.deepEqual(
       getNotificationNavigationTarget({ route: 'VehicleSettings', vehicleId: null }),

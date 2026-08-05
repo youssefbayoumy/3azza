@@ -1,13 +1,25 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { getDocuments, getServiceIntervals, getVehicleProfile } from './database';
-import { buildMaintenanceReminderPlan, MAINTENANCE_REMINDER_IDS } from '../utils/reminderPlan';
+import {
+  getDocuments,
+  getMaintenanceEvents,
+  getMaintenanceHistoryStates,
+  getMaintenancePreferences,
+  getVehicleProfile,
+} from './database';
+import { buildDomainMaintenanceReminderPlan, MAINTENANCE_REMINDER_IDS } from '../utils/reminderPlan';
 import {
   classifyNotificationPermission,
   getNotificationResponseFingerprint,
   parseNotificationIntent,
   type NotificationIntent,
 } from '../utils/notificationRouting';
+import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import { projectMaintenanceTasks } from '../maintenance/scheduler';
+import {
+  maintenanceHistoryByAction,
+  maintenancePreferencesForScheduler,
+} from '../maintenance/storageProjection';
 
 const CHANNEL_ID = '3azza-maintenance';
 const BACKUP_ID = '3azza-backup-weekly';
@@ -87,10 +99,27 @@ async function reconcileMaintenanceNotifications(enabled: boolean): Promise<Noti
     // Expo SQLite uses one shared connection. Keep these reads ordered so a UI
     // refresh cannot collide with statement finalization during reconciliation.
     const profile = await getVehicleProfile();
-    const intervals = await getServiceIntervals();
+    const events = await getMaintenanceEvents();
     const documents = await getDocuments();
-
-    const plan = buildMaintenanceReminderPlan(profile, intervals, documents);
+    const preferences = await getMaintenancePreferences();
+    const historyStates = await getMaintenanceHistoryStates();
+    const domainProfile = getMaintenanceProfileForSelection(profile ? {
+      brandId: profile.scooter_brand_id,
+      modelId: profile.scooter_model_id,
+      versionId: profile.scooter_version_id,
+      variantId: profile.scooter_variant_id,
+    } : null);
+    const tasks = profile && domainProfile ? projectMaintenanceTasks({
+      profile: domainProfile,
+      currentOdometerKm: profile.current_mileage,
+      now: new Date(),
+      events,
+      preferences: maintenancePreferencesForScheduler(preferences),
+      historyByAction: maintenanceHistoryByAction(historyStates),
+      defaultHistoryKnowledge: 'unknown',
+      vehicleInServiceDate: profile.created_at.slice(0, 10),
+    }) : [];
+    const plan = buildDomainMaintenanceReminderPlan(tasks, documents);
     for (const reminder of plan) {
       await Notifications.scheduleNotificationAsync({
         identifier: reminder.identifier,

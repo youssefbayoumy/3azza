@@ -6,13 +6,20 @@ import { useAppStore } from '../../store/useAppStore';
 import { getVehicleProfile, saveInitialVehicleSetup } from '../../services/database';
 import { syncMaintenanceNotifications } from '../../services/notifications';
 import AppFormScreen from '../../components/ui/AppFormScreen';
+import AppScreen from '../../components/ui/AppScreen';
 import { parseWholeNumberInput } from '../../utils/recordValidation';
 import ScooterSelectionFields from '../../components/ScooterSelectionFields';
+import MaintenanceHistoryOnboarding from '../../components/MaintenanceHistoryOnboarding';
+import {
+    saveMaintenanceHistorySetup,
+    skipMaintenanceHistorySetup,
+} from '../../services/maintenanceHistoryOnboarding';
 import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile } from '../../catalog/scooterCatalog';
 import {
     createGuidedSelectionDraft,
     type GuidedScooterSelectionDraft,
 } from '../../catalog/guidedScooterIdentification';
+import { getMaintenanceProfileForSelection } from '../../maintenance/profiles';
 
 type SetupFormData = {
     mileage: string;
@@ -23,6 +30,7 @@ export default function VehicleSetupScreen() {
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
+    const [savedOdometerKm, setSavedOdometerKm] = useState<number | null>(null);
     const [selectionDraft, setSelectionDraft] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
     const [showSelectionErrors, setShowSelectionErrors] = useState(false);
 
@@ -38,8 +46,16 @@ export default function VehicleSetupScreen() {
                 dailyAvg: String(profile.daily_average_km),
             });
             setSelectionDraft(createGuidedSelectionDraft(selectionFromProfile(profile) ?? {}));
+            if (profile.has_completed_setup === 1) {
+                const selection = selectionFromProfile(profile);
+                if (selection && getMaintenanceProfileForSelection(selection)) {
+                    setSavedOdometerKm(profile.current_mileage);
+                } else {
+                    completeVehicleSetup();
+                }
+            }
         }).catch((error) => console.info('Existing vehicle setup could not be prefilled:', error));
-    }, [reset]);
+    }, [completeVehicleSetup, reset]);
 
     const onSubmit = async (data: SetupFormData) => {
         const resolvedSelection = resolveScooterSelection(selectionDraft.selection);
@@ -62,8 +78,12 @@ export default function VehicleSetupScreen() {
                 dailyAverageKm: dailyAverageResult.value,
                 selection: resolvedSelection,
             });
-            await syncMaintenanceNotifications(maintenanceReminders);
-            completeVehicleSetup();
+            if (getMaintenanceProfileForSelection(resolvedSelection)) {
+                setSavedOdometerKm(mileageResult.value);
+            } else {
+                await syncMaintenanceNotifications(maintenanceReminders);
+                completeVehicleSetup();
+            }
         } catch (err) {
             console.error('Setup error:', err);
             Alert.alert('Error', 'Failed to save vehicle profile.');
@@ -71,6 +91,36 @@ export default function VehicleSetupScreen() {
             setSaving(false);
         }
     };
+
+    const finishHistorySetup = async (operation: () => Promise<void>) => {
+        setSaving(true);
+        try {
+            await operation();
+            await syncMaintenanceNotifications(maintenanceReminders);
+            completeVehicleSetup();
+        } catch (error) {
+            console.error('Maintenance history setup error:', error);
+            Alert.alert(
+                'History setup not saved',
+                error instanceof Error ? error.message : 'Your vehicle is saved. Try the history step again.'
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (savedOdometerKm !== null) {
+        return (
+            <AppScreen edges={['top', 'bottom', 'left', 'right']}>
+                <MaintenanceHistoryOnboarding
+                    currentOdometerKm={savedOdometerKm}
+                    onComplete={(draft) => finishHistorySetup(() => saveMaintenanceHistorySetup(draft))}
+                    onSkip={() => finishHistorySetup(skipMaintenanceHistorySetup)}
+                    saving={saving}
+                />
+            </AppScreen>
+        );
+    }
 
     return (
         <AppFormScreen>

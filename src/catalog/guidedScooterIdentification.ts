@@ -7,6 +7,7 @@ import {
 } from '../modelData/variantIdentification';
 import type { VariantIdentificationProfile } from '../modelData/types';
 import { isScooterSelectionComplete, type ScooterSelection } from './scooterCatalog';
+import { getSelectableMaintenanceProfiles } from '../maintenance/profiles';
 
 export type IdentificationAnswers = Partial<Record<IdentificationFeatureKey, string>>;
 
@@ -59,8 +60,11 @@ export function createGuidedSelectionDraft(
     answers: {},
     unsureFeatures: [],
   };
-  if (!selection.variantId) return draft;
-  const selected = getIdentificationProfilesForVersion(selection.versionId)
+  if (!selection.variantId) return recomputeDraft(draft);
+  const selected = filterSelectableCandidates(
+    selection.versionId,
+    getIdentificationProfilesForVersion(selection.versionId)
+  )
     .find((profile) => profile.variantId === selection.variantId);
   if (!selected || selected.modelCode.status !== 'confirmed' || !selected.modelCode.value) return draft;
   return recomputeDraft({
@@ -92,7 +96,10 @@ function keepBefore<T>(values: Partial<Record<IdentificationFeatureKey, T>>, key
 
 function recomputeDraft(draft: GuidedScooterSelectionDraft): GuidedScooterSelectionDraft {
   const candidates = filterIdentificationCandidates(
-    getIdentificationProfilesForVersion(draft.selection.versionId),
+    filterSelectableCandidates(
+      draft.selection.versionId,
+      getIdentificationProfilesForVersion(draft.selection.versionId)
+    ),
     draft.answers
   );
   return {
@@ -141,9 +148,22 @@ export function filterIdentificationCandidates(
   }));
 }
 
+function filterSelectableCandidates(
+  versionId: string | null | undefined,
+  profiles: VariantIdentificationProfile[]
+): VariantIdentificationProfile[] {
+  const selectableVariants = new Set(getSelectableMaintenanceProfiles()
+    .filter((profile) => profile.catalogSelection.versionId === versionId)
+    .map((profile) => profile.catalogSelection.variantId));
+  return profiles.filter((profile) => profile.variantId !== null && selectableVariants.has(profile.variantId));
+}
+
 export function getDraftCandidates(draft: GuidedScooterSelectionDraft): VariantIdentificationProfile[] {
   return filterIdentificationCandidates(
-    getIdentificationProfilesForVersion(draft.selection.versionId),
+    filterSelectableCandidates(
+      draft.selection.versionId,
+      getIdentificationProfilesForVersion(draft.selection.versionId)
+    ),
     draft.answers
   );
 }

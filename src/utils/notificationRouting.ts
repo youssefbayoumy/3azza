@@ -1,4 +1,6 @@
-export const NOTIFICATION_ROUTES = ['PreRideCheck', 'Vitals', 'Vault', 'VehicleSettings'] as const;
+// `Vitals` is accepted only so notifications scheduled by older app versions
+// still open the renamed Maintenance tab after an in-place update.
+export const NOTIFICATION_ROUTES = ['PreRideCheck', 'Maintenance', 'Vitals', 'Vault', 'VehicleSettings'] as const;
 
 export type NotificationRoute = (typeof NOTIFICATION_ROUTES)[number];
 
@@ -9,7 +11,7 @@ export type NotificationIntent = {
 
 export type NotificationNavigationTarget =
   | { kind: 'stack'; screen: 'PreRideCheck' | 'VehicleSettings' }
-  | { kind: 'tab'; screen: 'Vitals' | 'Vault' };
+  | { kind: 'tab'; screen: 'Maintenance' | 'Vault' };
 
 export type NotificationPermissionState = 'granted' | 'requestable' | 'blocked';
 
@@ -40,8 +42,11 @@ export function parseNotificationIntent(data: unknown): NotificationIntent | nul
 }
 
 export function getNotificationNavigationTarget(intent: NotificationIntent): NotificationNavigationTarget {
-  if (intent.route === 'Vitals' || intent.route === 'Vault') {
-    return { kind: 'tab', screen: intent.route };
+  if (intent.route === 'Vitals' || intent.route === 'Maintenance') {
+    return { kind: 'tab', screen: 'Maintenance' };
+  }
+  if (intent.route === 'Vault') {
+    return { kind: 'tab', screen: 'Vault' };
   }
 
   return { kind: 'stack', screen: intent.route };

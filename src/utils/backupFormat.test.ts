@@ -58,6 +58,89 @@ describe('backup format', () => {
     assert.equal(normalized.vehicle_profiles[0].service_history_setup_completed, 1);
     assert.equal(normalized.service_intervals[0].has_known_odometer_baseline, 1);
     assert.equal(normalized.service_logs[0].sets_odometer_baseline, 1);
+    assert.equal(normalized.vehicle_profiles[0].maintenance_history_level, 'not_asked');
+    assert.deepEqual(normalized.maintenance_preferences, []);
+    assert.deepEqual(normalized.maintenance_history_states, []);
+  });
+
+  it('round-trips maintenance record metadata, preferences, and history states in v4', () => {
+    const data = makeValidData();
+    data.vehicle_profiles[0].maintenance_history_level = 'detailed_records';
+    data.service_logs[0] = {
+      ...data.service_logs[0],
+      service_type: 'engine-oil-replace',
+      maintenance_rule_id: 'engine-oil-replace',
+      maintenance_component_id: 'engine-oil',
+      maintenance_action: 'replace',
+      maintenance_profile_id: 'sym-new-symphony-st-200',
+      maintenance_profile_version: '2026.1',
+      maintenance_migration_status: 'confirmed',
+      maintenance_mileage_confidence: 'confirmed',
+      maintenance_date_confidence: 'confirmed',
+      maintenance_record_source: 'manual_entry',
+      service_provider: 'Workshop A',
+      service_package_id: null,
+      service_package_title: null,
+      oil_brand: 'Brand A',
+      oil_type: 'synthetic',
+      oil_viscosity: '10W-40',
+      oil_notes: null,
+      duplicate_confirmed: 0,
+      created_at: '2026-07-24T09:00:00.000Z',
+      updated_at: '2026-07-24T09:30:00.000Z',
+    };
+    data.maintenance_preferences = [{
+      id: 1,
+      vehicle_id: 1,
+      profile_id: 'sym-new-symphony-st-200',
+      component_id: 'engine-oil',
+      action: 'replace',
+      profile_recommended_interval_km: 1000,
+      user_interval_km: 800,
+      effective_interval_km: 800,
+      interval_source: 'user_custom',
+      longer_than_recommended_confirmed: 0,
+      reason: null,
+      created_at: '2026-07-24T09:00:00.000Z',
+      updated_at: '2026-07-24T09:30:00.000Z',
+    }];
+    data.odometer_events = [{
+      id: 1,
+      vehicle_id: 1,
+      event_type: 'instrument_cluster_replacement',
+      previous_effective_km: 100,
+      new_effective_km: 100,
+      previous_displayed_km: 100,
+      new_displayed_km: 0,
+      reason: 'Cluster replaced',
+      recorded_at: '2026-07-24T10:00:00.000Z',
+    }];
+    data.maintenance_history_states = [{
+      vehicle_id: 1,
+      profile_id: 'sym-new-symphony-st-200',
+      component_id: 'engine-oil',
+      action: 'replace',
+      history_state: 'confirmed',
+      last_service_log_id: 1,
+      notes: null,
+      created_at: '2026-07-24T09:00:00.000Z',
+      updated_at: '2026-07-24T09:30:00.000Z',
+    }];
+
+    const normalized = normalizeBackupArchive({
+      schema: '3azza-local-backup/v4',
+      exported_at: '2026-08-01T00:00:00.000Z',
+      data,
+      document_files: [],
+    }).data;
+    assert.equal(normalized.service_logs[0].oil_viscosity, '10W-40');
+    assert.equal(normalized.maintenance_preferences?.[0].effective_interval_km, 800);
+    assert.equal(normalized.maintenance_preferences?.[0].original_interval_km, 1000);
+    assert.equal(normalized.maintenance_preferences?.[0].custom_interval_km, 800);
+    assert.equal(normalized.maintenance_preferences?.[0].distance_enabled, 1);
+    assert.equal(normalized.maintenance_preferences?.[0].time_enabled, 0);
+    assert.equal(normalized.maintenance_history_states?.[0].last_service_log_id, 1);
+    assert.equal(normalized.odometer_events?.[0].new_displayed_km, 0);
   });
 
   it('accepts a self-contained v4 backup with exactly one file per document', () => {

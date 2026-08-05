@@ -1,0 +1,136 @@
+08-02 12:42:00.077 14074 14074 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:42:00.084 14074 14074 I AndroidRuntime: Using default boot image
+08-02 12:42:00.084 14074 14074 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:42:00.085 14074 14074 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:42:00.209 14074 14074 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+08-02 12:42:00.364 14074 14074 I AndroidRuntime: VM exiting with result code 0.
+08-02 12:42:00.744 14102 14127 I ReactNativeJS: Running "main"
+08-02 12:42:04.245 14193 14193 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:42:04.250 14193 14193 I AndroidRuntime: Using default boot image
+08-02 12:42:04.250 14193 14193 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:42:04.251 14193 14193 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:42:04.348 14193 14193 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:42:05.477  4583 30520 W SQLiteLog: (28) walCheckpoint: rc(0) eMode(0), mxFrame(262), nBackfill(262), /data/data/com.google.android.providers.media.module/databases/external.db-wal taking (16) ms
+08-02 12:42:05.492 14193 14193 D AndroidRuntime: Shutting down VM
+08-02 12:42:47.575 14416 14416 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:42:47.580 14416 14416 I AndroidRuntime: Using default boot image
+08-02 12:42:47.580 14416 14416 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:42:47.581 14416 14416 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:42:47.674 14416 14416 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:42:48.926 14416 14416 D AndroidRuntime: Shutting down VM
+08-02 12:43:01.187 14460 14460 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:43:01.192 14460 14460 I AndroidRuntime: Using default boot image
+08-02 12:43:01.192 14460 14460 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:43:01.193 14460 14460 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:43:01.284 14460 14460 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:43:02.631 14460 14460 D AndroidRuntime: Shutting down VM
+08-02 12:43:17.802 14492 14492 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:43:17.807 14492 14492 I AndroidRuntime: Using default boot image
+08-02 12:43:17.807 14492 14492 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:43:17.808 14492 14492 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:43:17.900 14492 14492 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:43:19.044 14492 14492 D AndroidRuntime: Shutting down VM
+08-02 12:43:37.726 14543 14543 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:43:37.731 14543 14543 I AndroidRuntime: Using default boot image
+08-02 12:43:37.731 14543 14543 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:43:37.731 14543 14543 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:43:37.824 14543 14543 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:43:38.962 14543 14543 D AndroidRuntime: Shutting down VM
+08-02 12:43:51.714 14586 14586 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:43:51.719 14586 14586 I AndroidRuntime: Using default boot image
+08-02 12:43:51.719 14586 14586 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:43:51.720 14586 14586 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:43:51.809 14586 14586 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:43:52.992 14586 14586 D AndroidRuntime: Shutting down VM
+08-02 12:44:04.209 14633 14633 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:44:04.214 14633 14633 I AndroidRuntime: Using default boot image
+08-02 12:44:04.214 14633 14633 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:44:04.214 14633 14633 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:44:04.307 14633 14633 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:44:05.443 14633 14633 D AndroidRuntime: Shutting down VM
+08-02 12:44:17.689 14695 14695 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:44:17.694 14695 14695 I AndroidRuntime: Using default boot image
+08-02 12:44:17.694 14695 14695 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:44:17.695 14695 14695 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:44:17.785 14695 14695 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:44:19.250 14695 14695 D AndroidRuntime: Shutting down VM
+08-02 12:44:28.724 14739 14739 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:44:28.729 14739 14739 I AndroidRuntime: Using default boot image
+08-02 12:44:28.729 14739 14739 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:44:28.730 14739 14739 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:44:28.822 14739 14739 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:44:30.193 14739 14739 D AndroidRuntime: Shutting down VM
+08-02 12:44:38.427 14771 14771 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:44:38.432 14771 14771 I AndroidRuntime: Using default boot image
+08-02 12:44:38.432 14771 14771 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:44:38.433 14771 14771 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:44:38.525 14771 14771 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:44:39.881 14771 14771 D AndroidRuntime: Shutting down VM
+08-02 12:44:51.772 14802 14802 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:44:51.777 14802 14802 I AndroidRuntime: Using default boot image
+08-02 12:44:51.777 14802 14802 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:44:51.778 14802 14802 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:44:51.873 14802 14802 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:44:53.335 14802 14802 D AndroidRuntime: Shutting down VM
+08-02 12:45:07.286 14846 14846 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:45:07.291 14846 14846 I AndroidRuntime: Using default boot image
+08-02 12:45:07.291 14846 14846 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:45:07.291 14846 14846 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:45:07.384 14846 14846 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:45:08.460 14846 14846 D AndroidRuntime: Shutting down VM
+08-02 12:45:14.345 14921 15436 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:15.358 14921 15436 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:16.832 16682 16745 W SQLiteLog: (28) double-quoted string literal: "BACKUP_AND_RESTORE"
+08-02 12:45:19.367 14921 15436 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:21.077 17293 17293 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:45:21.090 17293 17293 I AndroidRuntime: Using default boot image
+08-02 12:45:21.090 17293 17293 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:45:21.092 17293 17293 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:45:21.299 17293 17293 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:45:21.716 14921 15436 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:22.364  4583   972 W SQLiteLog: (28) walCheckpoint: rc(0) eMode(0), mxFrame(264), nBackfill(264), /data/data/com.google.android.providers.media.module/databases/external.db-wal taking (4) ms
+08-02 12:45:22.436 17293 17293 D AndroidRuntime: Shutting down VM
+08-02 12:45:26.756 17922 17989 W SQLiteLog: (28) walIndexRecover: rc 0, nPage 116, mxFrame 52, /data/user/150/com.samsung.cmh/databases/cmh.db-wal
+08-02 12:45:29.376 15732 15732 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+08-02 12:45:33.555 10684 15814 E SQLiteLog: (10) POSIX Error : 11 SQLite Error : 3850
+08-02 12:45:33.555 10684 15814 E SQLiteLog: (10) LOCK : Getting pending lock for (1) failed due to (11). The current owner is (29062).
+08-02 12:45:33.558 10684 15814 E SQLiteLog: (10) POSIX Error : 11 SQLite Error : 3850
+08-02 12:45:33.558 10684 15814 E SQLiteLog: (10) LOCK : Getting pending lock for (1) failed due to (11). The current owner is (29062).
+08-02 12:45:34.332 19005 19005 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:45:34.338 19005 19005 I AndroidRuntime: Using default boot image
+08-02 12:45:34.338 19005 19005 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:45:34.339 19005 19005 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:45:34.460 19005 19005 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:45:35.641 19005 19005 D AndroidRuntime: Shutting down VM
+08-02 12:45:42.316  4583 22869 W SQLiteLog: (28) walCheckpoint: rc(0) eMode(0), mxFrame(267), nBackfill(267), /data/data/com.google.android.providers.media.module/databases/external.db-wal taking (9) ms
+08-02 12:45:42.360 20230 20258 W SQLiteLog: (28) walIndexRecover: rc 0, nPage 11491, mxFrame 45, /data/user/0/com.samsung.cmh/databases/cmh.db-wal
+08-02 12:45:43.966 20382 20382 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:45:43.976 20382 20382 I AndroidRuntime: Using default boot image
+08-02 12:45:43.976 20382 20382 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:45:43.977 20382 20382 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:45:44.117 20382 20382 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:45:45.276 20382 20382 D AndroidRuntime: Shutting down VM
+08-02 12:45:46.011 20594 20594 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+08-02 12:45:46.132 27487 27498 W SQLiteLog: (28) double-quoted string literal: "1785491146131"
+08-02 12:45:46.132 27487 27498 W SQLiteLog: (28) double-quoted string literal: "1"
+08-02 12:45:47.404 20702 20798 E SQLiteLog: (1) no such table: SleepPatternAnalyzerConfiguration in "SELECT * from SleepPatternAnalyzerConfiguration"
+08-02 12:45:47.625 20702 20798 E SQLiteLog: (1) no such table: SleepMonitorConfiguration in "SELECT * from SleepMonitorConfiguration"
+08-02 12:45:47.628 20702 20798 E SQLiteLog: (1) no such table: WakeupMonitorConfiguration in "SELECT * from WakeupMonitorConfiguration"
+08-02 12:45:51.976 27487 27978 W SQLiteLog: (28) double-quoted string literal: "1785491151976"
+08-02 12:45:51.977 27487 27978 W SQLiteLog: (28) double-quoted string literal: "1"
+08-02 12:45:56.654 21152 21443 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:57.115 21797 21797 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:45:57.125 21797 21797 I AndroidRuntime: Using default boot image
+08-02 12:45:57.125 21797 21797 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:45:57.125 21797 21797 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:45:57.271 21797 21797 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:45:57.670 21152 21443 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:45:58.388 21797 21797 D AndroidRuntime: Shutting down VM
+08-02 12:46:01.189 18653 18653 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+08-02 12:46:01.807 21152 21443 E msgr.msys: E[D db_vacuum_logging]MCISQLiteLogDatabaseErrorWithFormat(81)=>Failed to get database connection or file url.: (0)(0) not an error
+08-02 12:46:14.740 22181 22181 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+08-02 12:46:14.747 22181 22181 I AndroidRuntime: Using default boot image
+08-02 12:46:14.747 22181 22181 I AndroidRuntime: Leaving lock profiling enabled
+08-02 12:46:14.748 22181 22181 D AndroidRuntime: addProductProperty not brand or 7
+08-02 12:46:14.884 22181 22181 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+08-02 12:46:15.978 22181 22181 D AndroidRuntime: Shutting down VM

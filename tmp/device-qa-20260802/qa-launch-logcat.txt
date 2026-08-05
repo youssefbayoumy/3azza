@@ -1,0 +1,21 @@
+08-02 12:33:03.371 12125 12125 D nativeloader: Load /data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!/lib/arm64-v8a/libreactnative.so using class loader ns clns-9 (caller=/data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!classes2.dex): ok
+08-02 12:33:03.371 12125 12125 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76ddee14f8
+08-02 12:33:03.371 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76ddef7db8
+08-02 12:33:03.371 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76ddefe694
+08-02 12:33:03.377 12125 12125 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76ddee14f8
+08-02 12:33:03.377 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76ddef7db8
+08-02 12:33:03.377 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76ddefe694
+08-02 12:33:03.379 12125 12125 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76ddee14f8
+08-02 12:33:03.379 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76ddef7db8
+08-02 12:33:03.379 12125 12125 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76ddefe694
+08-02 12:33:03.489 12125 12148 I ExpoModulesCore: ? AppContext was initialized
+08-02 12:33:03.526 12125 12152 D nativeloader: Load /data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!/lib/arm64-v8a/libexpo-modules-core.so using class loader ns clns-9 (caller=/data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!classes2.dex): ok
+08-02 12:33:03.528 12125 12152 I ExpoModulesCore: ? JSI interop was installed
+08-02 12:33:03.529 12125 12152 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4744)] [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4912)] [android.net.ConnectivityManager.registerNetworkCallback(ConnectivityManager.java:5329)] [android.net.ConnectivityManager.registerNetworkCallback(ConnectivityManager.java:5299)] [expo.modules.network.NetworkModule$definition$lambda$5$$inlined$OnCreate$1.invoke(ModuleDefinitionBuilder.kt:112)] [expo.modules.network.NetworkModule$definition$lambda$5$$inlined$OnCreate$1.invoke(ModuleDefinitionBuilder.kt:110)] [expo.modules.kotlin.events.BasicEventListener.call(EventListener.kt:13)] [expo.modules.kotlin.ModuleHolder.post(ModuleHolder.kt:111)] [expo.modules.kotlin.ModuleRegistry.postOnCreate(ModuleRegistry.kt:88)] [expo.modules.kotlin.AppContext.onCreate(AppContext.kt:138)] [expo.modules.kotlin.KotlinInteropModuleRegistry.emitOnCreate(KotlinInteropModuleRegistry.kt:111)] [expo.modules.adapters.react.NativeModulesProxy.getConstants(NativeModulesProxy.java:83)] [com.facebook.jni.NativeRunnable.run(Native Method)]
+08-02 12:33:03.532 12125 12152 I ExpoModulesCore: ? Constants were exported
+08-02 12:33:03.543 12125 12152 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class expo.modules.kotlin.views.GroupViewManagerWrapper
+08-02 12:33:03.546 12125 12152 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.reactnativepagerview.PagerViewViewManager
+08-02 12:33:03.657 12125 12152 I ReactNativeJS: Running "main"
+08-02 12:33:03.676 12125 12152 D nativeloader: Load /data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!/lib/arm64-v8a/libexpo-sqlite.so using class loader ns clns-9 (caller=/data/app/~~tfXKJOviyJ2NNjY27X5Zqg==/com.youssefbayoumy.x3azza.qa-rZWk8LeUAYkDzCXJEJU2WA==/base.apk!classes2.dex): ok
+08-02 12:33:03.837 12125 12153 W unknown:ReactNative: StatusBarModule: Ignored status bar change, current activity is edge-to-edge.
+08-02 12:33:03.837 12125 12153 W unknown:ReactNative: StatusBarModule: Ignored status bar change, current activity is edge-to-edge.

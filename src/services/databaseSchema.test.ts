@@ -13,7 +13,7 @@ describe('fresh-install database schema', () => {
   it('creates the current multi-vehicle tables directly', () => {
     const database = createCurrentDatabase();
     try {
-      assert.equal(CURRENT_SCHEMA_VERSION, 13);
+      assert.equal(CURRENT_SCHEMA_VERSION, 17);
       const profileColumns = database.prepare('PRAGMA table_info(vehicle_profile)').all()
         .map((column) => (column as { name: string }).name);
       const expectedProfileColumns = [
@@ -26,6 +26,7 @@ describe('fresh-install database schema', () => {
         'daily_average_km',
         'last_odometer_update_timestamp',
         'service_history_setup_completed',
+        'maintenance_history_level',
         'tank_capacity_liters',
         'scooter_brand_id',
         'scooter_model_id',
@@ -63,11 +64,77 @@ describe('fresh-install database schema', () => {
         'is_applicable',
       ]) assert.equal(intervalColumns.has(name), true, `${name} should exist`);
 
+      const serviceLogColumns = new Set(database.prepare('PRAGMA table_info(service_logs)').all()
+        .map((column) => (column as { name: string }).name));
+      for (const name of [
+        'maintenance_rule_id',
+        'maintenance_component_id',
+        'maintenance_action',
+        'maintenance_profile_id',
+        'maintenance_profile_version',
+        'inspection_result',
+        'maintenance_migration_status',
+        'maintenance_mileage_confidence',
+        'maintenance_date_confidence',
+        'maintenance_record_source',
+        'service_provider',
+        'service_package_id',
+        'service_package_title',
+        'oil_brand',
+        'oil_type',
+        'oil_viscosity',
+        'oil_notes',
+        'duplicate_confirmed',
+        'created_at',
+        'updated_at',
+      ]) assert.equal(serviceLogColumns.has(name), true, `${name} should exist`);
+
+      for (const table of [
+        'maintenance_preferences',
+        'maintenance_history_states',
+        'odometer_events',
+        'odometer_correction_authorizations',
+      ]) {
+        assert.equal(
+          (database.prepare(
+            "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = ?"
+          ).get(table) as { count: number }).count,
+          1,
+          `${table} should exist`
+        );
+      }
+
+      const preferenceColumns = new Set(database.prepare('PRAGMA table_info(maintenance_preferences)').all()
+        .map((column) => (column as { name: string }).name));
+      for (const name of [
+        'original_interval_km',
+        'original_interval_months',
+        'custom_interval_km',
+        'custom_interval_months',
+        'effective_interval_months',
+        'distance_enabled',
+        'time_enabled',
+        'condition_based_default',
+        'custom_condition_reminder_enabled',
+      ]) assert.equal(preferenceColumns.has(name), true, `${name} should exist`);
+
       database.prepare(
         `INSERT INTO pre_ride_runs (
           vehicle_id, manual_id, variant_id, completed_at, items_json, completed_count, total_count
         ) VALUES (1, 'manual-a', 'variant-a', '2026-07-30T08:00:00Z', '[]', 0, 3)`
       ).run();
+      assert.throws(() => database.prepare(
+        `INSERT INTO odometer_events (
+          vehicle_id, event_type, previous_effective_km, new_effective_km,
+          previous_displayed_km, new_displayed_km, reason
+        ) VALUES (1, 'instrument_cluster_replacement', 1000, 1000, 1000, -1, 'Cluster replaced')`
+      ).run(), /Odometer event is invalid/);
+      assert.throws(() => database.prepare(
+        `INSERT INTO odometer_events (
+          vehicle_id, event_type, previous_effective_km, new_effective_km,
+          previous_displayed_km, new_displayed_km, reason
+        ) VALUES (1, 'correction', 1000, 1000, 1000, 1000, 'Not downward')`
+      ).run(), /Odometer event is invalid/);
       const run = database.prepare('SELECT manual_id, variant_id, total_count FROM pre_ride_runs').get() as {
         manual_id: string;
         variant_id: string;
@@ -104,6 +171,14 @@ describe('fresh-install database schema', () => {
           vehicle_id, title, date, mileage, category, notes, sets_odometer_baseline
         ) VALUES (1, 'History', '2026-07-25', 1, 'engine', '', 0)`
       ).run(), /Date-only service history/);
+      database.prepare(
+        `INSERT INTO service_logs (
+          vehicle_id, title, date, mileage, category, notes, sets_odometer_baseline,
+          maintenance_mileage_confidence, maintenance_date_confidence,
+          maintenance_record_source, maintenance_migration_status
+        ) VALUES (1, 'Estimated history', '2026-07-25', 900, 'engine', '', 0,
+          'estimated', 'confirmed', 'history_onboarding', 'confirmed')`
+      ).run();
 
       database.prepare(
         `INSERT INTO gas_logs (
@@ -126,6 +201,12 @@ describe('fresh-install database schema', () => {
         'idx_pre_ride_checks_vehicle',
         'idx_pre_ride_runs_vehicle_date',
         'idx_service_intervals_vehicle_task',
+        'idx_service_logs_vehicle_maintenance_rule',
+        'idx_service_logs_vehicle_package',
+        'idx_service_logs_vehicle_component_action',
+        'idx_maintenance_preferences_vehicle',
+        'idx_maintenance_history_states_vehicle',
+        'idx_odometer_events_vehicle_date',
       ]) {
         assert.equal(indexNames.has(name), true, `${name} should exist`);
       }

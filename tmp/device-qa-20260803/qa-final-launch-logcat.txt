@@ -1,0 +1,345 @@
+﻿--------- beginning of main
+08-03 13:26:23.595  8961  8961 I Zygote  : Process 8961 created for com.youssefbayoumy.x3azza.qa
+08-03 13:26:23.595  8961  8961 I youmy.x3azza.qa: Using generational CollectorTypeCMC GC.
+08-03 13:26:23.601  8961  8961 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+08-03 13:26:23.604  8961  8961 D ActivityThread: setConscryptValidator
+08-03 13:26:23.604  8961  8961 D ActivityThread: setConscryptValidator - put
+08-03 13:26:23.639  8961  8961 D nativeloader: Configuring clns-9 for other apk /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/lib/arm64:/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.youssefbayoumy.x3azza.qa
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment: Currently set values for:
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment: com.youssefbayoumy.x3azza.qa is not listed in per-application setting
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment: No special selections for ANGLE, returning default driver choice
+08-03 13:26:23.646  8961  8961 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+08-03 13:26:23.650  8961  8961 W FirebaseApp: Default FirebaseApp failed to initialize because no default options were found. This usually means that com.google.gms:google-services was not applied to your gradle project.
+08-03 13:26:23.650  8961  8961 I FirebaseInitProvider: FirebaseApp initialization unsuccessful
+08-03 13:26:23.655  8961  8961 W SoLoader: Initializing SoLoader: 0
+08-03 13:26:23.655  8961  8961 W SoLoader: Recording new base apk path: /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk
+08-03 13:26:23.655  8961  8961 W SoLoader: Previously recorded 0 base apk paths.
+08-03 13:26:23.656  8961  8961 I SoLoader: Preparing SO source: DirectorySoSource[root = /vendor/lib64 flags = 2]
+08-03 13:26:23.656  8961  8961 I SoLoader: Preparing SO source: DirectorySoSource[root = /system/lib64 flags = 2]
+08-03 13:26:23.656  8961  8961 I SoLoader: Preparing SO source: DirectApkSoSource[root = [/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a]]
+08-03 13:26:23.657  8961  8961 I SoLoader: Preparing SO source: ApplicationSoSource[DirectorySoSource[root = /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/lib/arm64 flags = 0]]
+08-03 13:26:23.658  8961  8961 I SoLoader: init finish: 4 SO sources prepared
+08-03 13:26:23.658  8961  8961 W SoLoader: SoLoader initialized: 8
+08-03 13:26:23.662  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libc++_shared.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.665  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libjsi.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.667  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libfbjni.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.670  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libreactnative.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Entering merged library JNI_OnLoad.
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing 12 pre-merged libs (including stub)
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libfabricjni_so.  onload_func: 0x76dfb804e8
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreact_devsupportjni_so.  onload_func: 0x76dfc45418
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreact_featureflagsjni_so.  onload_func: 0x76dfc605c0
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreact_newarchdefaults_so.  onload_func: 0x76dfca4d54
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76dfd474f8
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76dfd5ddb8
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76dfd64694
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register librninstance_so.  onload_func: 0x76dfd80d40
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libturbomodulejsijni_so.  onload_func: 0x76dfe29f40
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libuimanagerjni_so.  onload_func: 0x76dfe313c8
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: Preparing to register libyoga_so.  onload_func: 0x76dfe3898c
+08-03 13:26:23.670  8961  8961 D jni_lib_merge: About to register 11 actual methods.
+08-03 13:26:23.675  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libreact_codegen_rnscreens.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Entering merged library JNI_OnLoad.
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing 12 pre-merged libs (including stub)
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libfabricjni_so.  onload_func: 0x76dfb804e8
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreact_devsupportjni_so.  onload_func: 0x76dfc45418
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreact_featureflagsjni_so.  onload_func: 0x76dfc605c0
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreact_newarchdefaults_so.  onload_func: 0x76dfca4d54
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76dfd474f8
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76dfd5ddb8
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76dfd64694
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register librninstance_so.  onload_func: 0x76dfd80d40
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libturbomodulejsijni_so.  onload_func: 0x76dfe29f40
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libuimanagerjni_so.  onload_func: 0x76dfe313c8
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: Preparing to register libyoga_so.  onload_func: 0x76dfe3898c
+08-03 13:26:23.675  8961  8961 D jni_lib_merge: About to register 11 actual methods.
+08-03 13:26:23.678  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libreact_codegen_rnsvg.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Entering merged library JNI_OnLoad.
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing 12 pre-merged libs (including stub)
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libfabricjni_so.  onload_func: 0x76dfb804e8
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreact_devsupportjni_so.  onload_func: 0x76dfc45418
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreact_featureflagsjni_so.  onload_func: 0x76dfc605c0
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreact_newarchdefaults_so.  onload_func: 0x76dfca4d54
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x76dfd474f8
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x76dfd5ddb8
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x76dfd64694
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register librninstance_so.  onload_func: 0x76dfd80d40
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libturbomodulejsijni_so.  onload_func: 0x76dfe29f40
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libuimanagerjni_so.  onload_func: 0x76dfe313c8
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: Preparing to register libyoga_so.  onload_func: 0x76dfe3898c
+08-03 13:26:23.678  8961  8961 D jni_lib_merge: About to register 11 actual methods.
+08-03 13:26:23.680  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libreact_codegen_safeareacontext.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.682  8961  8961 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libappmodules.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+--------- beginning of system
+08-03 13:26:23.690  8961  8961 D ActivityThread: com.youssefbayoumy.x3azza.qa will use render engine as VK
+08-03 13:26:23.690  8961  8961 D HWUI    : HWUI - treat SMPTE_170M as sRGB
+08-03 13:26:23.696  8961  8961 D DesktopExperienceFlags: Toggle override initialized to: false
+08-03 13:26:23.697  8961  8961 D AppCompatDelegate: Checking for metadata for AppLocalesMetadataHolderService : Service not found
+08-03 13:26:23.700  8961  8979 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+08-03 13:26:23.702  8961  8979 D HWUI    : CacheManager constructor. deviceInfo=(1080, 1920)
+08-03 13:26:23.702  8961  8979 D vulkan  : searching for layers in '/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/lib/arm64'
+08-03 13:26:23.702  8961  8979 D vulkan  : searching for layers in '/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a'
+08-03 13:26:23.703  8961  8979 V XGL     : ----------------------------------------------------------------------
+08-03 13:26:23.703  8961  8979 V XGL     : SUMD version compiled date     = 2025-08-04 15:07 - KST
+08-03 13:26:23.703  8961  8979 V XGL     : SUMD version revision number   = 34bb549c57
+08-03 13:26:23.703  8961  8979 V XGL     : SUMD version info              = Driver version: 24.0.560, git hash: 34bb549c57
+08-03 13:26:23.703  8961  8979 V XGL     : ----------------------------------------------------------------------
+08-03 13:26:23.703  8961  8979 V XGL     : Entering: Create
+08-03 13:26:23.707  8961  8961 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+08-03 13:26:23.713  8961  8979 V XGL     : Exiting: Create
+08-03 13:26:23.735  8961  8961 D CompatChangeReporter: Compat change id reported: 377864165; UID 10296; state: ENABLED
+08-03 13:26:23.749  8961  8961 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+08-03 13:26:23.750  8961  8961 I DecorView: setWindowBackground: isPopOver=false color=ff081421 d=android.graphics.drawable.ColorDrawable@144b790
+08-03 13:26:23.765  8961  8961 W unknown:BridgelessReact: ReactHost{0}.startSurface(surfaceId = 0): Schedule
+08-03 13:26:23.765  8961  8961 W unknown:BridgelessReact: ReactHost{0}.attachSurface(surfaceId = 0)
+08-03 13:26:23.766  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask()
+08-03 13:26:23.766  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): Start
+08-03 13:26:23.767  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getJSBundleLoader()
+08-03 13:26:23.767  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): Creating BridgelessReactContext
+08-03 13:26:23.767  8961  8961 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+08-03 13:26:23.767  8961  8961 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+08-03 13:26:23.769  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): Creating ReactInstance
+08-03 13:26:23.771  8961  8961 W unknown:BridgelessReact: ReactHost{0}.onHostResume(activity)
+08-03 13:26:23.772  8961  8961 W unknown:BridgelessReact: ReactHost{0}.ReactContext.onHostResume()
+08-03 13:26:23.780  8961  8961 I ViewRootImpl: dVRR is disabled
+08-03 13:26:23.781  8961  8961 D HardwareRenderer: onDisplayChanged. displayId=0 current wxh=1080x2340 mLargest wxh=0x0
+08-03 13:26:23.781  8961  8961 D HardwareRenderer: Set largestWidth and largestHeight as logical resolution. (1080x2340)
+08-03 13:26:23.781  8961  8979 D HWUI    : setMaxSurfaceArea requested wxh=(1080,2340) requestedSurfaceArea(2527200) mMaxSurfaceArea(2073600)
+08-03 13:26:23.781  8961  8988 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libhermesvm.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.782  8961  8979 D NativeCustomFrequencyManager: [NativeCFMS] BpCustomFrequencyManager::BpCustomFrequencyManager()
+08-03 13:26:23.789  8961  8988 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libhermestooling.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: Entering merged library JNI_OnLoad.
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: Preparing 4 pre-merged libs (including stub)
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: Preparing to register libhermes_executor_so.  onload_func: 0x76e89ec760
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: Preparing to register libhermesinstancejni_so.  onload_func: 0x76e89f3dd4
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: Preparing to register libjsijniprofiler_so.  onload_func: 0x76e89f45c0
+08-03 13:26:23.789  8961  8988 D jni_lib_merge: About to register 3 actual methods.
+08-03 13:26:23.790  8961  8961 D InputTransport: Input channel constructed: '367c701', fd=115
+08-03 13:26:23.790  8961  8961 I InsetsController: onStateChanged: host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity, from=android.view.ViewRootImpl.onInsetsStateChanged:3038, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2340), mDisplayCutout=DisplayCutout{insets=Rect(0, 92 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(506, 24 - 574, 92), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2340 physicalDisplayWidth=1080 physicalDisplayHeight=2340 density={2.8125} cutoutSpec={M 0,0 M 0, 8.533333333333333 a 12.08888888888889,12.08888888888889 0 1,0 0,24.17777777777778 a 12.08888888888889,12.08888888888889 0 1,0 0,-24.17777777777778 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}} sideOverrides={}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=118, center=Point(118, 118)}, RoundedCorner{position=TopRight, radius=118, center=Point(962, 118)}, RoundedCorner{position=BottomRight, radius=118, center=Point(962, 2222)}, RoundedCorner{position=BottomLeft, radius=118, center=Point(118, 2222)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2340), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(956, 0 - 1080, 101) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2340 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {fd760001 mType=navigationBars mFrame=[0,2298][1080,2340] mAttachedInsets=null mVisible=true mFlags=SUPPRESS_SCRIM mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760004 mType=systemGestures mFrame=[0,0][84,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=LEFT mBoundingRects=null}, InsetsSource: {fd760005 mType=mandatorySystemGestures mFrame=[0,2250][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760006 mType=tappableElement mFrame=[0,0][0,0] mAttachedInsets=null mVisible=true mFlags= mSideHint=NONE mBoundingRects=null}, InsetsSource: {fd760024 mType=systemGestures mFrame=[996,0][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=RIGHT mBoundingRects=null}, InsetsSource: {3 mType=ime mFrame=[0,0][0,0] mAttachedInsets=null mVisible=false mFlags=INVALID mSideHint=NONE mBoundingRects=null}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,92] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00000 mType=statusBars mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00005 mType=mandatorySystemGestures mFrame=[0,0][1080,126] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00006 mType=tappableElement mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null} }
+08-03 13:26:23.792  8961  8961 I VRI[MainActivity]@880ce05: synced displayState. AttachInfo displayState=2
+08-03 13:26:23.792  8961  8961 I VRI[MainActivity]@880ce05: setView = com.android.internal.policy.DecorView@a060814 IsHRR=false mFlingFrameRateChange=0 TM=true
+08-03 13:26:23.793  8961  8961 I IDS_TAG : Starting IDS observe window
+08-03 13:26:23.793  8961  8961 I IDS_TAG : Getting Shared Preference for com.youssefbayoumy.x3azza.MainApplication@88f7800 uid = 10296
+08-03 13:26:23.795  8961  8961 I IDS_TAG : App com.youssefbayoumy.x3azza.MainApplication@88f7800 has not finished training
+08-03 13:26:23.795  8961  8979 D HWUI    : HWUI - treat SMPTE_170M as sRGB
+08-03 13:26:23.795  8961  8961 I IDS_TAG : Closing IDS observe window
+08-03 13:26:23.795  8961  8961 I IDS_TAG : Getting Shared Preference for com.youssefbayoumy.x3azza.MainApplication@88f7800 uid = 10296
+08-03 13:26:23.796  8961  8961 I IDS_TAG : IDS count updated to 6 for com.youssefbayoumy.x3azza.MainApplication@88f7800
+08-03 13:26:23.796  8961  8961 D VRI[MainActivity]@880ce05: WindowInsets changed: 1080x2340 statusBars:[0,101,0,0] navigationBars:[0,0,0,42] mandatorySystemGestures:[0,126,0,90] 
+08-03 13:26:23.797  8961  8961 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): android.view.ViewRootImpl$$ExternalSyntheticLambda16@bebc3fe
+08-03 13:26:23.801  8961  8961 W libc    : Access denied finding property "vendor.perf.ems.egg"
+08-03 13:26:23.802  8961  8961 I BLASTBufferQueue_Java: new BLASTBufferQueue, mName= VRI[MainActivity]@880ce05 mNativeObject= 0xb40000779d916800 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3603 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 android.view.Choreographer$CallbackRecord.run:1970 android.view.Choreographer.doCallbacks:1423 android.view.Choreographer.doFrame:1348 android.view.Choreographer$FrameDisplayEventReceiver.run:1930 
+08-03 13:26:23.802  8961  8961 I BLASTBufferQueue_Java: update, w= 1080 h= 2340 mName = VRI[MainActivity]@880ce05 mNativeObject= 0xb40000779d916800 sc.mNativeObject= 0xb4000077fd88fdd0 format= -1 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3608 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 
+08-03 13:26:23.803  8961  8961 W libc    : Access denied finding property "vendor.perf.ems.egg"
+08-03 13:26:23.803  8961  8961 I VRI[MainActivity]@880ce05: Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) relayoutAsync=false req=(1080,2340)0 dur=4 res=0x3 s={true 0xb4000079bd8affc0} ch=true seqId=0
+08-03 13:26:23.803  8961  8961 I VRI[MainActivity]@880ce05: performConfigurationChange setNightDimText nightDimLevel=0
+08-03 13:26:23.804  8961  8961 D VRI[MainActivity]@880ce05: mThreadedRenderer.initialize() mSurface={isValid=true 0xb4000079bd8affc0} hwInitialized=true
+08-03 13:26:23.805  8961  8961 D VRI[MainActivity]@880ce05: reportNextDraw android.view.ViewRootImpl.performTraversals:5507 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 android.view.Choreographer$CallbackRecord.run:1970 
+08-03 13:26:23.805  8961  8961 D VRI[MainActivity]@880ce05: Canceling draw. cancelDueToPreDrawListener=true cancelDueToSync=false
+08-03 13:26:23.807  8961  8988 I ExpoModulesCore: ✅ AppContext was initialized
+08-03 13:26:23.813  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=statusBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:23.814  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=navigationBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:23.826  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): Loading JS Bundle
+08-03 13:26:23.826  8961  8988 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): DevSupportManager.onNewReactContextCreated()
+08-03 13:26:23.826  8961  8988 W unknown:BridgelessReact: ReactHost{0}.startSurface(surfaceId = 0): Execute
+08-03 13:26:23.831  8961  8961 W unknown:BridgelessReact: ReactHost{0}.ReactContext.onHostResume()
+08-03 13:26:23.831  8961  8961 W unknown:BridgelessReact: ReactHost{0}.getOrCreateReactInstanceTask(): Executing ReactInstanceEventListeners
+08-03 13:26:23.837  8961  8989 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libworklets.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.839  8961  8989 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libexpo-modules-core.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.840  8961  8989 W BridgelessReactContext: [WARNING] Bridgeless doesn't support CatalystInstance. Accessing an API that's not part of the new architecture is not encouraged usage.
+08-03 13:26:23.842  8961  8989 I ExpoModulesCore: ✅ JSI interop was installed
+08-03 13:26:23.843  8961  8989 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4744)] [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4912)] [android.net.ConnectivityManager.registerNetworkCallback(ConnectivityManager.java:5329)] [android.net.ConnectivityManager.registerNetworkCallback(ConnectivityManager.java:5299)] [expo.modules.network.NetworkModule$definition$lambda$5$$inlined$OnCreate$1.invoke(ModuleDefinitionBuilder.kt:112)] [expo.modules.network.NetworkModule$definition$lambda$5$$inlined$OnCreate$1.invoke(ModuleDefinitionBuilder.kt:110)] [expo.modules.kotlin.events.BasicEventListener.call(EventListener.kt:13)] [expo.modules.kotlin.ModuleHolder.post(ModuleHolder.kt:111)] [expo.modules.kotlin.ModuleRegistry.postOnCreate(ModuleRegistry.kt:88)] [expo.modules.kotlin.AppContext.onCreate(AppContext.kt:138)] [expo.modules.kotlin.KotlinInteropModuleRegistry.emitOnCreate(KotlinInteropModuleRegistry.kt:111)] [expo.modules.adapters.react.NativeModulesProxy.getConstants(NativeModulesProxy.java:83)] [com.facebook.jni.NativeRunnable.run(Native Method)]
+08-03 13:26:23.845  8961  8989 I ExpoModulesCore: ✅ Constants were exported
+08-03 13:26:23.853  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaProviderManager
+08-03 13:26:23.854  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.uimanager.LayoutShadowNode
+08-03 13:26:23.855  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.SearchBarManager
+08-03 13:26:23.855  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenFooterManager
+08-03 13:26:23.855  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabScreenViewManager
+08-03 13:26:23.855  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class expo.modules.kotlin.views.GroupViewManagerWrapper
+08-03 13:26:23.856  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenContainerViewManager
+08-03 13:26:23.856  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabsHostViewManager
+08-03 13:26:23.856  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ModalScreenViewManager
+08-03 13:26:23.856  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderConfigViewManager
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenContentWrapperManager
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewManager
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewShadowNode
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.safearea.SafeAreaViewManager
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.safearea.paper.SafeAreaViewShadowNode
+08-03 13:26:23.857  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenViewManager
+08-03 13:26:23.858  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.reactnativepagerview.PagerViewViewManager
+08-03 13:26:23.858  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.stack.host.StackHostViewManager
+08-03 13:26:23.858  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderSubviewManager
+08-03 13:26:23.858  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.stack.screen.StackScreenViewManager
+08-03 13:26:23.858  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackViewManager
+08-03 13:26:23.866  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$DefsViewManager
+08-03 13:26:23.867  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.VirtualViewManager$RenderableShadowNode
+08-03 13:26:23.867  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeMergeManager
+08-03 13:26:23.868  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.safeareaview.ReactSafeAreaViewManager
+08-03 13:26:23.868  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$LinearGradientManager
+08-03 13:26:23.869  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeGaussianBlurManager
+08-03 13:26:23.870  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.progressbar.ReactProgressBarViewManager
+08-03 13:26:23.870  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.progressbar.ProgressBarShadowNode
+08-03 13:26:23.870  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollViewManager
+08-03 13:26:23.871  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactTextViewManager
+08-03 13:26:23.871  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactTextShadowNode
+08-03 13:26:23.872  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeColorMatrixManager
+08-03 13:26:23.873  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollContainerViewManager
+08-03 13:26:23.873  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$ClipPathViewManager
+08-03 13:26:23.874  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$SymbolManager
+08-03 13:26:23.875  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$PatternManager
+08-03 13:26:23.875  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeBlendManager
+08-03 13:26:23.876  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.view.ReactViewManager
+08-03 13:26:23.876  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.SvgViewManager
+08-03 13:26:23.877  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchManager
+08-03 13:26:23.877  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchShadowNode
+08-03 13:26:23.878  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$UseViewManager
+08-03 13:26:23.878  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$CircleViewManager
+08-03 13:26:23.879  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$TSpanViewManager
+08-03 13:26:23.880  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FilterManager
+08-03 13:26:23.880  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$MarkerManager
+08-03 13:26:23.881  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.modal.ReactModalHostManager
+08-03 13:26:23.882  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$ForeignObjectManager
+08-03 13:26:23.882  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$EllipseViewManager
+08-03 13:26:23.883  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$LineViewManager
+08-03 13:26:23.884  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageViewManager
+08-03 13:26:23.884  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageShadowNode
+08-03 13:26:23.884  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeFloodManager
+08-03 13:26:23.885  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$GroupViewManager
+08-03 13:26:23.886  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$TextViewManager
+08-03 13:26:23.886  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$ImageViewManager
+08-03 13:26:23.887  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeCompositeManager
+08-03 13:26:23.888  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.image.ReactImageManager
+08-03 13:26:23.888  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$RadialGradientManager
+08-03 13:26:23.889  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$MaskManager
+08-03 13:26:23.890  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.unimplementedview.ReactUnimplementedViewManager
+08-03 13:26:23.891  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$RectViewManager
+08-03 13:26:23.891  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$TextPathViewManager
+08-03 13:26:23.892  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactScrollViewManager
+08-03 13:26:23.893  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$FeOffsetManager
+08-03 13:26:23.894  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.horcrux.svg.RenderableViewManager$PathViewManager
+08-03 13:26:23.894  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.drawer.ReactDrawerLayoutManager
+08-03 13:26:23.895  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.swiperefresh.SwipeRefreshLayoutManager
+08-03 13:26:23.895  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputManager
+08-03 13:26:23.895  8961  8989 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputShadowNode
+08-03 13:26:23.918  8961  8989 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/librnscreens.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.971  8961  8989 I ReactNativeJS: Running "main"
+08-03 13:26:23.980  8961  8989 D nativeloader: Load /data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!/lib/arm64-v8a/libexpo-sqlite.so using class loader ns clns-9 (caller=/data/app/~~BSh4AhsM15N4Z8YgHsSozQ==/com.youssefbayoumy.x3azza.qa-xaFo6-0QZgJ0roVuJl6BMA==/base.apk!classes2.dex): ok
+08-03 13:26:23.989  8961  9001 I HWUI    : Using FreeType backend (prop=Auto)
+08-03 13:26:24.049  8961  8961 D VRI[MainActivity]@880ce05: Setup new sync=wmsSync-VRI[MainActivity]@880ce05#0
+08-03 13:26:24.049  8961  8961 I VRI[MainActivity]@880ce05: Creating new active sync group VRI[MainActivity]@880ce05#1
+08-03 13:26:24.050  8961  8961 D VRI[MainActivity]@880ce05: Draw frame after cancel
+08-03 13:26:24.050  8961  8961 D VRI[MainActivity]@880ce05: registerCallbacksForSync syncBuffer=false
+08-03 13:26:24.051  8961  8994 D VRI[MainActivity]@880ce05: Received frameDrawingCallback syncResult=0 frameNum=1.
+08-03 13:26:24.051  8961  8994 I VRI[MainActivity]@880ce05: mWNT: t=0xb4000079cd8bb420 mBlastBufferQueue=0xb40000779d916800 fn= 1 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$12.onFrameDraw:15561 android.view.ThreadedRenderer$1.onFrameDraw:751 <bottom of call stack> 
+08-03 13:26:24.051  8961  8994 I VRI[MainActivity]@880ce05: Setting up sync and frameCommitCallback
+08-03 13:26:24.053  8961  8979 I BLASTBufferQueue: [VRI[MainActivity]@880ce05#0](f:0,a:0,s:0) onFrameAvailable the first frame is available
+08-03 13:26:24.053  8961  8979 I VRI[MainActivity]@880ce05: Received frameCommittedCallback lastAttemptedDrawFrameNum=1 didProduceBuffer=true
+08-03 13:26:24.054  8961  8979 D HWUI    : CFMS:: SetUp Pid : 8961    Tid : 8979
+08-03 13:26:24.054  8961  8961 D VRI[MainActivity]@880ce05: reportDrawFinished seqId=0
+08-03 13:26:24.073  8961  8961 I VRI[MainActivity]@880ce05: registerCallbackForPendingTransactions
+08-03 13:26:24.074  8961  8993 I VRI[MainActivity]@880ce05: mWNT: t=0xb4000079cd8b6a20 mBlastBufferQueue=0xb40000779d916800 fn= 2 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$10.onFrameDraw:6615 android.view.ViewRootImpl$4.onFrameDraw:2485 android.view.ThreadedRenderer$1.onFrameDraw:751 
+08-03 13:26:24.078  8961  8961 D VRI[MainActivity]@880ce05: mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0xb4000079bd8affc0}
+08-03 13:26:24.078  8961  8961 D InputMethodManagerUtils: startInputInner - Id : 0
+08-03 13:26:24.078  8961  8961 I InputMethodManager: startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+08-03 13:26:24.091  8961  8961 D InsetsController: hide(ime())
+08-03 13:26:24.091  8961  8961 I ImeTracker: com.youssefbayoumy.x3azza.qa:37f3074d: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+08-03 13:26:24.093  8961  8973 D InputTransport: Input channel constructed: 'ClientS', fd=144
+08-03 13:26:24.105  8961  8961 W [RNScreens]: backTitleFontFamily prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: disableBackButtonMenu prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: backTitleVisible prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: topInsetEnabled prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: largeTitleHideShadow prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: largeTitleFontWeight prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: userInterfaceStyle prop is not available on Android
+08-03 13:26:24.105  8961  8961 W [RNScreens]: largeTitleFontFamily prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: backTitleFontFamily prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: disableBackButtonMenu prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: backTitleVisible prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: topInsetEnabled prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: largeTitleHideShadow prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: largeTitleFontWeight prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: userInterfaceStyle prop is not available on Android
+08-03 13:26:24.115  8961  8961 W [RNScreens]: largeTitleFontFamily prop is not available on Android
+08-03 13:26:24.117  8961  8961 I Dialog  : mIsDeviceDefault = false, mIsSamsungBasicInteraction = false, isMetaDataInActivity = false
+08-03 13:26:24.118  8961  8961 I DecorView: setWindowBackground: isPopOver=false color=0 d=android.graphics.drawable.ColorDrawable@26222cb
+08-03 13:26:24.118  8961  8961 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+08-03 13:26:24.118  8961  8961 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+08-03 13:26:24.119  8961  8961 I WindowManager: WindowManagerGlobal#addView, ty=2, view=com.android.internal.policy.DecorView{6522043 V.E...... R.....I. 0,0-0,0}[MainActivity], caller=android.view.WindowManagerImpl.addView:167 android.app.Dialog.show:544 com.facebook.react.views.modal.ReactModalHostView.showOrUpdate:341 
+08-03 13:26:24.119  8961  8961 I ViewRootImpl: dVRR is disabled
+08-03 13:26:24.119  8961  8979 D NativeCustomFrequencyManager: [NativeCFMS] BpCustomFrequencyManager::BpCustomFrequencyManager()
+08-03 13:26:24.122  8961  8961 D InputTransport: Input channel constructed: '414f625', fd=147
+08-03 13:26:24.122  8961  8961 I InsetsController: onStateChanged: host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity, from=android.view.ViewRootImpl.onInsetsStateChanged:3038, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2340), mDisplayCutout=DisplayCutout{insets=Rect(0, 92 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(506, 24 - 574, 92), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2340 physicalDisplayWidth=1080 physicalDisplayHeight=2340 density={2.8125} cutoutSpec={M 0,0 M 0, 8.533333333333333 a 12.08888888888889,12.08888888888889 0 1,0 0,24.17777777777778 a 12.08888888888889,12.08888888888889 0 1,0 0,-24.17777777777778 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}} sideOverrides={}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=118, center=Point(118, 118)}, RoundedCorner{position=TopRight, radius=118, center=Point(962, 118)}, RoundedCorner{position=BottomRight, radius=118, center=Point(962, 2222)}, RoundedCorner{position=BottomLeft, radius=118, center=Point(118, 2222)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2340), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(956, 0 - 1080, 101) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2340 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {fd760001 mType=navigationBars mFrame=[0,2298][1080,2340] mAttachedInsets=null mVisible=true mFlags=SUPPRESS_SCRIM mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760004 mType=systemGestures mFrame=[0,0][84,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=LEFT mBoundingRects=null}, InsetsSource: {fd760005 mType=mandatorySystemGestures mFrame=[0,2250][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760006 mType=tappableElement mFrame=[0,0][0,0] mAttachedInsets=null mVisible=true mFlags= mSideHint=NONE mBoundingRects=null}, InsetsSource: {fd760024 mType=systemGestures mFrame=[996,0][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=RIGHT mBoundingRects=null}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,92] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00000 mType=statusBars mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00005 mType=mandatorySystemGestures mFrame=[0,0][1080,126] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00006 mType=tappableElement mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null} }
+08-03 13:26:24.122  8961  8961 I VRI[MainActivity]@d9e56c0: synced displayState. AttachInfo displayState=2
+08-03 13:26:24.123  8961  8961 I VRI[MainActivity]@d9e56c0: setView = com.android.internal.policy.DecorView@6522043 IsHRR=false mFlingFrameRateChange=0 TM=true
+08-03 13:26:24.123  8961  8961 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): android.view.ViewRootImpl$$ExternalSyntheticLambda16@3721eec
+08-03 13:26:24.132  8961  8961 I InsetsController: onStateChanged: host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity, from=android.view.ViewRootImpl.onInsetsStateChanged:3038, state=InsetsState: {mDisplayFrame=Rect(0, 0 - 1080, 2340), mDisplayCutout=DisplayCutout{insets=Rect(0, 92 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(506, 24 - 574, 92), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=1080 displayHeight=2340 physicalDisplayWidth=1080 physicalDisplayHeight=2340 density={2.8125} cutoutSpec={M 0,0 M 0, 8.533333333333333 a 12.08888888888889,12.08888888888889 0 1,0 0,24.17777777777778 a 12.08888888888889,12.08888888888889 0 1,0 0,-24.17777777777778 Z @dp} rotation={0} scale={1.0} physicalPixelDisplaySizeRatio={1.0}}} sideOverrides={}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=118, center=Point(118, 118)}, RoundedCorner{position=TopRight, radius=118, center=Point(962, 118)}, RoundedCorner{position=BottomRight, radius=118, center=Point(962, 2222)}, RoundedCorner{position=BottomLeft, radius=118, center=Point(118, 2222)}]}  mRoundedCornerFrame=Rect(0, 0 - 1080, 2340), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(956, 0 - 1080, 101) rotation=0}, mDisplayShape=DisplayShape{ spec=-311912193 displayWidth=1080 displayHeight=2340 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}, mSources= { InsetsSource: {fd760001 mType=navigationBars mFrame=[0,2298][1080,2340] mAttachedInsets=null mVisible=true mFlags=SUPPRESS_SCRIM mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760004 mType=systemGestures mFrame=[0,0][84,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=LEFT mBoundingRects=null}, InsetsSource: {fd760005 mType=mandatorySystemGestures mFrame=[0,2250][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=BOTTOM mBoundingRects=null}, InsetsSource: {fd760006 mType=tappableElement mFrame=[0,0][0,0] mAttachedInsets=null mVisible=true mFlags= mSideHint=NONE mBoundingRects=null}, InsetsSource: {fd760024 mType=systemGestures mFrame=[996,0][1080,2340] mAttachedInsets=null mVisible=true mFlags= mSideHint=RIGHT mBoundingRects=null}, InsetsSource: {3 mType=ime mFrame=[0,0][0,0] mAttachedInsets=null mVisible=false mFlags=INVALID mSideHint=NONE mBoundingRects=null}, InsetsSource: {27 mType=displayCutout mFrame=[0,0][1080,92] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00000 mType=statusBars mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00005 mType=mandatorySystemGestures mFrame=[0,0][1080,126] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null}, InsetsSource: {26a00006 mType=tappableElement mFrame=[0,0][1080,101] mAttachedInsets=null mVisible=true mFlags= mSideHint=TOP mBoundingRects=null} }
+08-03 13:26:24.133  8961  8961 W libc    : Access denied finding property "vendor.perf.ems.egg"
+08-03 13:26:24.133  8961  8961 I BLASTBufferQueue_Java: new BLASTBufferQueue, mName= VRI[MainActivity]@d9e56c0 mNativeObject= 0xb40000779d97ae40 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3603 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 android.view.Choreographer$CallbackRecord.run:1970 android.view.Choreographer.doCallbacks:1423 android.view.Choreographer.doFrame:1348 android.view.Choreographer$FrameDisplayEventReceiver.run:1930 
+08-03 13:26:24.133  8961  8961 I BLASTBufferQueue_Java: update, w= 1080 h= 2340 mName = VRI[MainActivity]@d9e56c0 mNativeObject= 0xb40000779d97ae40 sc.mNativeObject= 0xb4000077fd896f10 format= -2 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3608 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 
+08-03 13:26:24.134  8961  8961 W libc    : Access denied finding property "vendor.perf.ems.egg"
+08-03 13:26:24.134  8961  8961 I VRI[MainActivity]@d9e56c0: Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) relayoutAsync=false req=(1080,2340)0 dur=9 res=0x3 s={true 0xb4000079bd8f5fe0} ch=true seqId=0
+08-03 13:26:24.134  8961  8961 I VRI[MainActivity]@d9e56c0: performConfigurationChange setNightDimText nightDimLevel=0
+08-03 13:26:24.134  8961  8961 D VRI[MainActivity]@d9e56c0: mThreadedRenderer.initialize() mSurface={isValid=true 0xb4000079bd8f5fe0} hwInitialized=true
+08-03 13:26:24.135  8961  8961 D VRI[MainActivity]@d9e56c0: reportNextDraw android.view.ViewRootImpl.performTraversals:5507 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 android.view.Choreographer$CallbackRecord.run:1970 
+08-03 13:26:24.135  8961  8961 D VRI[MainActivity]@d9e56c0: Setup new sync=wmsSync-VRI[MainActivity]@d9e56c0#2
+08-03 13:26:24.135  8961  8961 I VRI[MainActivity]@d9e56c0: Creating new active sync group VRI[MainActivity]@d9e56c0#3
+08-03 13:26:24.135  8961  8961 D VRI[MainActivity]@d9e56c0: registerCallbacksForSync syncBuffer=false
+08-03 13:26:24.135  8961  8993 D VRI[MainActivity]@d9e56c0: Received frameDrawingCallback syncResult=0 frameNum=1.
+08-03 13:26:24.135  8961  8993 I VRI[MainActivity]@d9e56c0: mWNT: t=0xb4000079cd8c9b60 mBlastBufferQueue=0xb40000779d97ae40 fn= 1 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$12.onFrameDraw:15561 android.view.ThreadedRenderer$1.onFrameDraw:751 <bottom of call stack> 
+08-03 13:26:24.135  8961  8993 I VRI[MainActivity]@d9e56c0: Setting up sync and frameCommitCallback
+08-03 13:26:24.137  8961  8979 I BLASTBufferQueue: [VRI[MainActivity]@d9e56c0#1](f:0,a:0,s:0) onFrameAvailable the first frame is available
+08-03 13:26:24.138  8961  8979 I VRI[MainActivity]@d9e56c0: Received frameCommittedCallback lastAttemptedDrawFrameNum=1 didProduceBuffer=true
+08-03 13:26:24.138  8961  8979 D HWUI    : CFMS:: SetUp Pid : 8961    Tid : 8979
+08-03 13:26:24.138  8961  8961 D VRI[MainActivity]@d9e56c0: reportDrawFinished seqId=0
+08-03 13:26:24.139  8961  8961 I BLASTBufferQueue_Java: update, w= 1080 h= 2340 mName = VRI[MainActivity]@880ce05 mNativeObject= 0xb40000779d916800 sc.mNativeObject= 0xb4000077fd88fdd0 format= -1 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3592 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 
+08-03 13:26:24.139  8961  8961 I VRI[MainActivity]@880ce05: Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) relayoutAsync=true req=(1080,2340)0 dur=0 res=0x0 s={true 0xb4000079bd8affc0} ch=false seqId=0
+08-03 13:26:24.139  8961  8961 I VRI[MainActivity]@880ce05: registerCallbackForPendingTransactions
+08-03 13:26:24.143  8961  8994 I VRI[MainActivity]@880ce05: mWNT: t=0xb4000079cd8c6f70 mBlastBufferQueue=0xb40000779d916800 fn= 3 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$10.onFrameDraw:6615 android.view.ViewRootImpl$4.onFrameDraw:2485 android.view.ThreadedRenderer$1.onFrameDraw:751 
+08-03 13:26:24.144  8961  8979 D HWUI    : HWUI - treat SMPTE_170M as sRGB
+08-03 13:26:24.143  8961  8990 W unknown:ReactNative: StatusBarModule: Ignored status bar change, current activity is edge-to-edge.
+08-03 13:26:24.145  8961  8990 W unknown:ReactNative: StatusBarModule: Ignored status bar change, current activity is edge-to-edge.
+08-03 13:26:24.160  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=statusBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:24.160  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=navigationBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:24.166  8961  8961 I ImeFocusController: onPreWindowFocus: skipped hasWindowFocus=false mHasImeFocus=true
+08-03 13:26:24.166  8961  8961 I ImeFocusController: onPostWindowFocus: skipped hasWindowFocus=false mHasImeFocus=true
+08-03 13:26:24.167  8961  8961 I BLASTBufferQueue_Java: update, w= 1080 h= 2340 mName = VRI[MainActivity]@d9e56c0 mNativeObject= 0xb40000779d97ae40 sc.mNativeObject= 0xb4000077fd896f10 format= -2 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:3592 android.view.ViewRootImpl.relayoutWindow:11813 android.view.ViewRootImpl.performTraversals:4840 android.view.ViewRootImpl.doTraversal:3959 android.view.ViewRootImpl$TraversalRunnable.run:13034 android.view.Choreographer$CallbackRecord.run:1961 
+08-03 13:26:24.167  8961  8961 I VRI[MainActivity]@d9e56c0: Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) relayoutAsync=true req=(1080,2340)0 dur=0 res=0x0 s={true 0xb4000079bd8f5fe0} ch=false seqId=0
+08-03 13:26:24.168  8961  8961 I VRI[MainActivity]@d9e56c0: registerCallbackForPendingTransactions
+08-03 13:26:24.169  8961  8993 I VRI[MainActivity]@d9e56c0: mWNT: t=0xb4000079cd8d7960 mBlastBufferQueue=0xb40000779d97ae40 fn= 5 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl$10.onFrameDraw:6615 android.view.ViewRootImpl$4.onFrameDraw:2485 android.view.ThreadedRenderer$1.onFrameDraw:751 
+08-03 13:26:24.173  8961  8961 D VRI[MainActivity]@d9e56c0: mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0xb4000079bd8f5fe0}
+08-03 13:26:24.174  8961  8961 D InputMethodManagerUtils: startInputInner - Id : 0
+08-03 13:26:24.174  8961  8961 I InputMethodManager: startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+08-03 13:26:24.178  8961  8961 D InsetsController: hide(ime())
+08-03 13:26:24.178  8961  8961 I ImeTracker: com.youssefbayoumy.x3azza.qa:5b249513: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+08-03 13:26:24.181  8961  8972 D InputTransport: Input channel constructed: 'ClientS', fd=183
+08-03 13:26:24.199  8961  8961 D ScrollView: initGoToTop
+08-03 13:26:24.209  8961  8961 D VRI[MainActivity]@d9e56c0: Canceling draw. cancelDueToPreDrawListener=true cancelDueToSync=false
+08-03 13:26:24.215  8961  8961 D VRI[MainActivity]@d9e56c0: Draw frame after cancel
+08-03 13:26:24.291  8961  8961 D ScrollView: initGoToTop
+08-03 13:26:25.464  8961  8961 I VRI[MainActivity]@d9e56c0: ViewPostIme pointer 0
+08-03 13:26:25.468  8961  8961 I VRI[MainActivity]@d9e56c0: call setFrameRateCategory for touch hint category=high hint, reason=touch, vri=VRI[MainActivity]@d9e56c0
+08-03 13:26:25.578  8961  8961 I VRI[MainActivity]@d9e56c0: ViewPostIme pointer 1
+08-03 13:26:25.643  8961  8966 D InputTransport: Input channel destroyed: 'ClientS', fd=183
+08-03 13:26:25.906  8961  8961 I ImeFocusController: onPreWindowFocus: skipped hasWindowFocus=false mHasImeFocus=true
+08-03 13:26:25.906  8961  8961 I ImeFocusController: onPostWindowFocus: skipped hasWindowFocus=false mHasImeFocus=true
+08-03 13:26:25.955  8961  8961 D InputTransport: Input channel destroyed: 'ClientS', fd=144
+08-03 13:26:26.556  8961  8973 I BiometricPrompt: onAuthenticationSucceeded: 2
+08-03 13:26:26.573  8961  8990 W unknown:ReactNative: StatusBarModule: Ignored status bar change, current activity is edge-to-edge.
+08-03 13:26:26.579  8961  8961 I WindowManager: WindowManagerGlobal#removeView, ty=2, view=com.android.internal.policy.DecorView{6522043 V.E...... R......D 0,0-1080,2340 aid=1073741824}[MainActivity], caller=android.view.WindowManagerGlobal.removeView:654 android.view.WindowManagerImpl.removeViewImmediate:254 android.app.Dialog.dismissDialog:854 
+08-03 13:26:26.579  8961  8961 D WindowOnBackDispatcher: setTopOnBackInvokedCallback (unwrapped): null
+08-03 13:26:26.581  8961  8961 I VRI[MainActivity]@d9e56c0: dispatchDetachedFromWindow
+08-03 13:26:26.585  8961  8961 D InputTransport: Input channel destroyed: '414f625', fd=147
+08-03 13:26:26.585  8961  8961 D VRI[MainActivity]@d9e56c0: Pending transaction will not be applied in sync with a draw due to shutting down VRI
+08-03 13:26:26.585  8961  8961 I VRI[MainActivity]@d9e56c0: mWNT: t=0xb4000079cd8b3be0 mBlastBufferQueue=0xnull fn= 0 HdrRenderState mRenderHdrSdrRatio=1.0 caller= android.view.ViewRootImpl.handleSyncRequestWhenNoAsyncDraw:6812 android.view.ViewRootImpl.doDie:12443 android.view.ViewRootImpl.die:12381 
+08-03 13:26:26.608  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=statusBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:26.609  8961  8961 I InsetsSourceConsumer: applyRequestedVisibilityToControl: visible=true, type=navigationBars, host=com.youssefbayoumy.x3azza.qa/com.youssefbayoumy.x3azza.MainActivity
+08-03 13:26:26.609  8961  8961 D VRI[MainActivity]@880ce05: mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0xb4000079bd8affc0}
+08-03 13:26:26.609  8961  8961 D InputMethodManagerUtils: startInputInner - Id : 0
+08-03 13:26:26.609  8961  8961 I InputMethodManager: startInputInner - IInputMethodManagerGlobalInvoker.startInputOrWindowGainedFocus
+08-03 13:26:26.612  8961  8961 D InsetsController: hide(ime())
+08-03 13:26:26.612  8961  8961 I ImeTracker: com.youssefbayoumy.x3azza.qa:953c0013: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+08-03 13:26:26.614  8961  8972 D InputTransport: Input channel constructed: 'ClientS', fd=140
+08-03 13:26:28.966  8961  9158 D ProfileInstaller: Skipping profile installation for com.youssefbayoumy.x3azza.qa

@@ -12,7 +12,6 @@ import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
 import OnlineManualAction from '../components/OnlineManualAction';
-import SourceProvenance from '../components/SourceProvenance';
 import {
   formatKnowledgeValue,
   getApplicableBreakInGuidance,
@@ -20,13 +19,12 @@ import {
   getApplicableIndicators,
   getApplicableSpecifications,
   getApplicableTroubleshooting,
-  getConflictsForContext,
   getModelProfileForVehicle,
   getSelectedVariant,
 } from '../modelData/modelKnowledge';
-import type { ApplicableSpecification, KnowledgeRecord, ModelKnowledgeProfile } from '../modelData/types';
+import type { ApplicableSpecification, KnowledgeRecord } from '../modelData/types';
 
-type SectionKey = 'specs' | 'fluids' | 'indicators' | 'troubleshooting' | 'break-in' | 'data-notes';
+type SectionKey = 'specs' | 'fluids' | 'indicators' | 'troubleshooting' | 'break-in';
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'specs', label: 'Specs' },
@@ -34,20 +32,18 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'indicators', label: 'Indicators' },
   { key: 'troubleshooting', label: 'Troubleshooting' },
   { key: 'break-in', label: 'Break-in' },
-  { key: 'data-notes', label: 'Conflicts & missing' },
 ];
 
-function RecordCard({ modelProfile, record }: { modelProfile: ModelKnowledgeProfile; record: KnowledgeRecord }) {
+function RecordCard({ record }: { record: KnowledgeRecord }) {
   return (
     <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-5 mb-3">
       <Text className="font-headline text-base font-bold text-on-surface">{record.subject.replaceAll('_', ' ')}</Text>
       <Text className="font-body text-sm text-on-surface-variant leading-5 mt-2">{formatKnowledgeValue(record.value)}</Text>
-      <SourceProvenance compact pages={record.pages} profile={modelProfile} />
     </View>
   );
 }
 
-function SpecificationCard({ item, modelProfile }: { item: ApplicableSpecification; modelProfile: ModelKnowledgeProfile }) {
+function SpecificationCard({ item }: { item: ApplicableSpecification }) {
   return (
     <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-5 mb-3">
       <View className="flex-row items-start justify-between gap-3">
@@ -59,7 +55,6 @@ function SpecificationCard({ item, modelProfile }: { item: ApplicableSpecificati
         ) : null}
       </View>
       <Text className="font-headline text-base font-bold text-on-surface mt-2">{formatKnowledgeValue(item.value)}</Text>
-      <SourceProvenance compact pages={item.pages} profile={modelProfile} />
     </View>
   );
 }
@@ -90,7 +85,7 @@ export default function TechSpecsScreen() {
   }, [profile]);
 
   if (loading || loadError) {
-    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE_REFERENCE" />;
+    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE REFERENCE" />;
   }
 
   const renderSelectedSection = () => {
@@ -107,11 +102,11 @@ export default function TechSpecsScreen() {
               </Text>
             </View>
           ) : null}
-          {exact.map((item) => <SpecificationCard item={item} key={item.id} modelProfile={modelProfile} />)}
+          {exact.map((item) => <SpecificationCard item={item} key={item.id} />)}
           {specifications.variantAlternatives.length > 0 ? (
             <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-5 mb-3">Variant alternatives</Text>
           ) : null}
-          {specifications.variantAlternatives.map((item) => <SpecificationCard item={item} key={item.id} modelProfile={modelProfile} />)}
+          {specifications.variantAlternatives.map((item) => <SpecificationCard item={item} key={item.id} />)}
         </>
       );
     }
@@ -125,10 +120,10 @@ export default function TechSpecsScreen() {
               Confirm workshop-critical capacities, pressures, grades, and tightening values against the scooter placard or a qualified SYM technician before service.
             </Text>
           </View>
-          {fluidSpecs.map((item) => <SpecificationCard item={item} key={item.id} modelProfile={modelProfile} />)}
-          {manualFluids.map((record) => <RecordCard key={record.recordId} modelProfile={modelProfile} record={record} />)}
+          {fluidSpecs.map((item) => <SpecificationCard item={item} key={item.id} />)}
+          {manualFluids.map((record) => <RecordCard key={record.recordId} record={record} />)}
           {fluidSpecs.length === 0 && manualFluids.length === 0 ? (
-            <Text className="font-body text-sm text-on-surface-variant">Not specified in this manual.</Text>
+            <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific value is available.</Text>
           ) : null}
         </>
       );
@@ -136,51 +131,22 @@ export default function TechSpecsScreen() {
     if (section === 'indicators') {
       const records = getApplicableIndicators(profile);
       return records.length > 0
-        ? records.map((record) => <RecordCard key={record.recordId} modelProfile={modelProfile} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">Not specified in this manual.</Text>;
+        ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
+        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific guidance is available.</Text>;
     }
     if (section === 'troubleshooting') {
       const records = getApplicableTroubleshooting(profile);
       return records.length > 0
-        ? records.map((record) => <RecordCard key={record.recordId} modelProfile={modelProfile} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">Not specified in this manual.</Text>;
+        ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
+        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific guidance is available.</Text>;
     }
     if (section === 'break-in') {
       const records = getApplicableBreakInGuidance(profile);
       return records.length > 0
-        ? records.map((record) => <RecordCard key={record.recordId} modelProfile={modelProfile} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">Not specified in this manual.</Text>;
+        ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
+        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific break-in guidance is available.</Text>;
     }
-
-    const missing = modelProfile.records.filter((record) => record.section === 'missing_data');
-    const conflicts = getConflictsForContext(profile);
-    return (
-      <>
-        <Text className="font-label text-xs font-bold text-error uppercase tracking-[0.2em] mb-3">Manual conflicts</Text>
-        {conflicts.map((conflict) => (
-          <View key={conflict.recordId} className="bg-error/10 border border-error/30 rounded-xl p-5 mb-3">
-            <Text className="font-headline text-base font-bold text-error">Manual conflict · {conflict.subject.replaceAll('_', ' ')}</Text>
-            {conflict.alternatives.length > 0
-              ? conflict.alternatives.map((alternative, index) => (
-                <View className="mt-3" key={`${conflict.recordId}:${index}`}>
-                  <Text className="font-label text-xs font-bold text-on-surface">{alternative.label.replaceAll('_', ' ')}</Text>
-                  <Text className="font-body text-sm text-on-surface-variant mt-1">{formatKnowledgeValue(alternative.value)}</Text>
-                  <SourceProvenance compact origin="conflict" pages={alternative.pages} profile={modelProfile} />
-                </View>
-              ))
-              : <Text className="font-body text-sm text-on-surface-variant mt-2">{formatKnowledgeValue(conflict.value)}</Text>}
-          </View>
-        ))}
-        <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-5 mb-3">Not specified</Text>
-        {missing.map((record) => (
-          <View key={record.recordId} className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-4 mb-3">
-            <Text className="font-headline text-sm font-bold text-on-surface">{record.subject.replaceAll('_', ' ')}</Text>
-            <Text className="font-body text-xs text-on-surface-variant mt-1">Not specified in this manual.</Text>
-            <SourceProvenance compact origin="missing" pages={record.pages} profile={modelProfile} />
-          </View>
-        ))}
-      </>
-    );
+    return null;
   };
 
   return (
@@ -206,11 +172,11 @@ export default function TechSpecsScreen() {
             <Text className="font-label text-xs text-primary uppercase tracking-[0.25em] font-bold">{profile?.name ?? 'Active vehicle'}</Text>
             <Text className="font-headline text-3xl font-bold text-on-surface tracking-tight mt-2">{modelProfile.brandName} {modelProfile.modelName}</Text>
             <Text className="font-body text-sm text-on-surface-variant mt-2">
-              {selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} · {modelProfile.manualYears}
+              {selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.modelName)} · {modelProfile.manualYears}
             </Text>
             <View className="bg-primary/10 border border-primary/20 rounded-xl p-5 mt-5 mb-6">
-              <Text className="font-headline text-sm font-bold text-primary">Selected owner manual</Text>
-              <Text className="font-body text-xs text-on-surface-variant mt-1">{modelProfile.modelName} · {modelProfile.manualYears} · {modelProfile.pageCount} PDF pages</Text>
+              <Text className="font-headline text-sm font-bold text-primary">Vehicle reference</Text>
+              <Text className="font-body text-xs text-on-surface-variant mt-1">{modelProfile.modelName} · {modelProfile.manualYears}</Text>
               <OnlineManualAction selection={scooter} />
             </View>
 

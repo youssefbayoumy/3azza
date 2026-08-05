@@ -143,6 +143,37 @@ const DOCUMENT_EXTENSIONS = new Set<EmbeddedDocumentFile['extension']>([
 ]);
 const MAX_DOCUMENT_FILE_BASE64_LENGTH = 32 * 1024 * 1024;
 const MAX_TOTAL_DOCUMENT_FILE_BASE64_LENGTH = 128 * 1024 * 1024;
+const MAINTENANCE_HISTORY_LEVELS = new Set([
+  'not_asked',
+  'detailed_records',
+  'recent_memory',
+  'little_or_none',
+  'skipped',
+]);
+const MAINTENANCE_CONFIDENCES = new Set([
+  'confirmed',
+  'estimated',
+  'unknown',
+  'historical_unverified',
+  'legacy_unmapped',
+]);
+const MAINTENANCE_RECORD_SOURCES = new Set([
+  'maintenance_planner',
+  'manual_entry',
+  'history_onboarding',
+  'service_package',
+  'backup_restore',
+  'legacy',
+]);
+const MAINTENANCE_HISTORY_STATES = new Set([
+  'confirmed',
+  'estimated',
+  'unknown',
+  'never_done',
+  'not_applicable',
+  'historical_unverified',
+  'legacy_unmapped',
+]);
 
 function invalid(path: string, message: string): never {
   throw new Error(`Invalid backup at ${path}: ${message}`);
@@ -251,6 +282,12 @@ export function validateDatabaseBackupData(value: unknown): asserts value is Dat
     requireNumber(profile, 'total_km_range', path, { integer: true, min: 0 });
     requireBooleanFlag(profile, 'has_completed_setup', path);
     requireBooleanFlag(profile, 'service_history_setup_completed', path);
+    if (profile.maintenance_history_level !== undefined) {
+      const historyLevel = requireString(profile, 'maintenance_history_level', path, { nonEmpty: true });
+      if (!MAINTENANCE_HISTORY_LEVELS.has(historyLevel as string)) {
+        invalid(`${path}.maintenance_history_level`, 'is not a supported history level');
+      }
+    }
     requireDateTime(requireString(profile, 'created_at', path, { nonEmpty: true }), `${path}.created_at`);
     requireNumber(profile, 'daily_average_km', path, { integer: true, min: 0 });
     requireNumber(profile, 'tank_capacity_liters', path, { min: Number.MIN_VALUE, nullable: true });
@@ -326,25 +363,286 @@ export function validateDatabaseBackupData(value: unknown): asserts value is Dat
   });
 
   const serviceLogIds = new Set<number>();
+  const serviceLogsById = new Map<number, Record<string, unknown>>();
   rows(value, 'service_logs').forEach((log, index) => {
     const path = `data.service_logs[${index}]`;
-    requireUniqueId(requirePositiveId(log, path), serviceLogIds, path);
+    const logId = requirePositiveId(log, path);
+    requireUniqueId(logId, serviceLogIds, path);
+    serviceLogsById.set(logId, log);
     const vehicleId = requireVehicleReference(log, path, vehicleIds);
     requireString(log, 'title', path, { nonEmpty: true });
-    requireIsoDate(requireString(log, 'date', path, { nonEmpty: true }), `${path}.date`);
+    const storedDate = requireString(log, 'date', path);
     const mileage = requireNumber(log, 'mileage', path, { integer: true, min: 0 }) as number;
     requireString(log, 'category', path, { nonEmpty: true });
     requireString(log, 'notes', path);
     requireNumber(log, 'cost', path, { min: 0, nullable: true });
     const serviceType = requireString(log, 'service_type', path, { nullable: true, nonEmpty: true });
     const setsBaseline = requireBooleanFlag(log, 'sets_odometer_baseline', path);
-    if (setsBaseline === 0 && mileage !== 0) invalid(`${path}.mileage`, 'must be 0 for date-only history');
+    const migrationStatus = log.maintenance_migration_status === undefined
+      ? 'legacy_unmapped'
+      : requireString(log, 'maintenance_migration_status', path, { nonEmpty: true });
+    if (!['confirmed', 'legacy_unmapped', 'exact', 'legacy_needs_confirmation'].includes(migrationStatus as string)) {
+      invalid(`${path}.maintenance_migration_status`, 'is not a supported migration status');
+    }
+    const mileageConfidence = log.maintenance_mileage_confidence === undefined
+      ? migrationStatus === 'exact' && setsBaseline === 1 ? 'confirmed' : 'legacy_unmapped'
+      : requireString(log, 'maintenance_mileage_confidence', path, { nonEmpty: true });
+    const dateConfidence = log.maintenance_date_confidence === undefined
+      ? migrationStatus === 'exact' ? 'confirmed' : 'legacy_unmapped'
+      : requireString(log, 'maintenance_date_confidence', path, { nonEmpty: true });
+    if (!MAINTENANCE_CONFIDENCES.has(mileageConfidence as string)) {
+      invalid(`${path}.maintenance_mileage_confidence`, 'is not a supported confidence');
+    }
+    if (!MAINTENANCE_CONFIDENCES.has(dateConfidence as string)) {
+      invalid(`${path}.maintenance_date_confidence`, 'is not a supported confidence');
+    }
+    if (dateConfidence === 'unknown') {
+      if (storedDate !== '') invalid(`${path}.date`, 'must be empty when date confidence is unknown');
+    } else {
+      requireIsoDate(storedDate, `${path}.date`);
+    }
+    if (mileageConfidence === 'unknown' && mileage !== 0) {
+      invalid(`${path}.mileage`, 'must be 0 when mileage confidence is unknown');
+    }
+    const recordSource = log.maintenance_record_source === undefined
+      ? migrationStatus === 'exact' ? 'maintenance_planner' : 'legacy'
+      : requireString(log, 'maintenance_record_source', path, { nonEmpty: true });
+    if (!MAINTENANCE_RECORD_SOURCES.has(recordSource as string)) {
+      invalid(`${path}.maintenance_record_source`, 'is not a supported source');
+    }
+    if (migrationStatus === 'exact') {
+      for (const key of [
+        'maintenance_rule_id',
+        'maintenance_component_id',
+        'maintenance_action',
+        'maintenance_profile_id',
+        'maintenance_profile_version',
+      ]) requireString(log, key, path, { nonEmpty: true });
+      if (log.inspection_result !== undefined) {
+        requireString(log, 'inspection_result', path, { nullable: true, nonEmpty: true });
+      }
+    }
+    if (migrationStatus === 'confirmed') {
+      const componentId = requireString(log, 'maintenance_component_id', path, { nullable: true, nonEmpty: true });
+      const action = requireString(log, 'maintenance_action', path, { nullable: true, nonEmpty: true });
+      if ((componentId === null) !== (action === null)) {
+        invalid(`${path}.maintenance_action`, 'must be present with component ID, or both must be null');
+      }
+      if (componentId === null) {
+        for (const key of [
+          'maintenance_rule_id',
+          'maintenance_profile_id',
+          'maintenance_profile_version',
+        ]) {
+          if (requireString(log, key, path, { nullable: true, nonEmpty: true }) !== null) {
+            invalid(`${path}.${key}`, 'must be null for other work');
+          }
+        }
+      }
+    }
+    if (
+      setsBaseline === 0
+      && mileage !== 0
+      && mileageConfidence !== 'estimated'
+      && mileageConfidence !== 'historical_unverified'
+    ) {
+      invalid(`${path}.mileage`, 'requires estimated or historical-unverified confidence without a baseline');
+    }
+    if (setsBaseline === 1 && mileageConfidence !== 'confirmed' && migrationStatus === 'confirmed') {
+      invalid(`${path}.sets_odometer_baseline`, 'requires confirmed mileage confidence');
+    }
     const mileageMessage = validateRecordedOdometer(mileage, vehicleOdometers.get(vehicleId) ?? -1);
     if (mileageMessage) invalid(`${path}.mileage`, mileageMessage);
-    if (serviceType !== null && !intervalKeys.has(`${vehicleId}\u0000${serviceType}`)) {
+    if (
+      migrationStatus !== 'exact'
+      && migrationStatus !== 'confirmed'
+      && serviceType !== null
+      && !intervalKeys.has(`${vehicleId}\u0000${serviceType}`)
+    ) {
       invalid(`${path}.service_type`, 'does not match an interval for this vehicle');
     }
+    for (const key of [
+      'service_provider',
+      'service_package_id',
+      'service_package_title',
+      'oil_brand',
+      'oil_type',
+      'oil_viscosity',
+      'oil_notes',
+    ]) {
+      if (log[key] !== undefined) requireString(log, key, path, { nullable: true, nonEmpty: true });
+    }
+    if (log.duplicate_confirmed !== undefined) requireBooleanFlag(log, 'duplicate_confirmed', path);
+    if (log.created_at !== undefined) {
+      requireDateTime(requireString(log, 'created_at', path, { nonEmpty: true }), `${path}.created_at`);
+    }
+    if (log.updated_at !== undefined) {
+      requireDateTime(requireString(log, 'updated_at', path, { nonEmpty: true }), `${path}.updated_at`);
+    }
   });
+
+  if (value.maintenance_preferences !== undefined) {
+    if (!Array.isArray(value.maintenance_preferences)) {
+      invalid('data.maintenance_preferences', 'must be an array when present');
+    }
+    const preferenceIds = new Set<number>();
+    const preferenceKeys = new Set<string>();
+    value.maintenance_preferences.forEach((preference, index) => {
+      const path = `data.maintenance_preferences[${index}]`;
+      if (!isObject(preference)) invalid(path, 'must be an object');
+      requireUniqueId(requirePositiveId(preference, path), preferenceIds, path);
+      const vehicleId = requireVehicleReference(preference, path, vehicleIds);
+      const profileId = requireString(preference, 'profile_id', path, { nullable: true, nonEmpty: true });
+      const componentId = requireString(preference, 'component_id', path, { nonEmpty: true }) as string;
+      const action = requireString(preference, 'action', path, { nonEmpty: true }) as string;
+      const key = `${vehicleId}\u0000${profileId ?? '<quarantine>'}\u0000${componentId}\u0000${action}`;
+      if (preferenceKeys.has(key)) invalid(`${path}.action`, 'duplicates a component action preference');
+      preferenceKeys.add(key);
+      const recommended = requireNumber(
+        preference,
+        'profile_recommended_interval_km',
+        path,
+        { integer: true, min: 1, nullable: true }
+      );
+      const user = requireNumber(preference, 'user_interval_km', path, { integer: true, min: 1, nullable: true });
+      const effective = requireNumber(
+        preference,
+        'effective_interval_km',
+        path,
+        { integer: true, min: 1, nullable: true }
+      );
+      const originalKm = requireNumber(preference, 'original_interval_km', path, { integer: true, min: 1, nullable: true });
+      const originalMonths = requireNumber(preference, 'original_interval_months', path, { integer: true, min: 1, nullable: true });
+      const customKm = requireNumber(preference, 'custom_interval_km', path, { integer: true, min: 1, nullable: true });
+      const customMonths = requireNumber(preference, 'custom_interval_months', path, { integer: true, min: 1, nullable: true });
+      const effectiveMonths = requireNumber(preference, 'effective_interval_months', path, { integer: true, min: 1, nullable: true });
+      const distanceEnabled = requireBooleanFlag(preference, 'distance_enabled', path);
+      const timeEnabled = requireBooleanFlag(preference, 'time_enabled', path);
+      const conditionBasedDefault = requireBooleanFlag(preference, 'condition_based_default', path);
+      const customConditionReminderEnabled = requireBooleanFlag(
+        preference,
+        'custom_condition_reminder_enabled',
+        path
+      );
+      const source = requireString(preference, 'interval_source', path, { nonEmpty: true });
+      if (!['profile_default', 'user_custom', 'workshop_recommendation'].includes(source as string)) {
+        invalid(`${path}.interval_source`, 'is not supported');
+      }
+      const confirmedLonger = requireBooleanFlag(
+        preference,
+        'longer_than_recommended_confirmed',
+        path
+      );
+      if (source === 'profile_default') {
+        if (user !== null) invalid(`${path}.user_interval_km`, 'must be null for profile default');
+        if (effective !== recommended) invalid(`${path}.effective_interval_km`, 'must equal the recommendation');
+        if (confirmedLonger !== 0) {
+          invalid(`${path}.longer_than_recommended_confirmed`, 'must be 0 for profile default');
+        }
+      } else {
+        if (distanceEnabled === 1) {
+          const expectedKm = customKm ?? originalKm;
+          if (expectedKm === null || effective !== expectedKm || user !== customKm) {
+            invalid(`${path}.effective_interval_km`, 'must equal the enabled custom distance schedule');
+          }
+        } else if (effective !== null) {
+          invalid(`${path}.effective_interval_km`, 'must be null when distance reminders are disabled');
+        }
+        if (timeEnabled === 1) {
+          const expectedMonths = customMonths ?? originalMonths;
+          if (expectedMonths === null || effectiveMonths !== expectedMonths) {
+            invalid(`${path}.effective_interval_months`, 'must equal the enabled custom time schedule');
+          }
+        } else if (effectiveMonths !== null) {
+          invalid(`${path}.effective_interval_months`, 'must be null when time reminders are disabled');
+        }
+        if (conditionBasedDefault === 1 && (distanceEnabled === 1 || timeEnabled === 1)
+          && customConditionReminderEnabled !== 1) {
+          invalid(`${path}.custom_condition_reminder_enabled`, 'must identify a user-created condition reminder');
+        }
+        const longer = originalKm !== null && customKm !== null && customKm > originalKm
+          || originalMonths !== null && customMonths !== null && customMonths > originalMonths;
+        if (longer && confirmedLonger !== 1) {
+          invalid(`${path}.longer_than_recommended_confirmed`, 'must confirm a longer interval');
+        }
+      }
+      requireString(preference, 'reason', path, { nullable: true });
+      requireDateTime(
+        requireString(preference, 'created_at', path, { nonEmpty: true }),
+        `${path}.created_at`
+      );
+      requireDateTime(
+        requireString(preference, 'updated_at', path, { nonEmpty: true }),
+        `${path}.updated_at`
+      );
+    });
+  }
+
+  if (value.maintenance_history_states !== undefined) {
+    if (!Array.isArray(value.maintenance_history_states)) {
+      invalid('data.maintenance_history_states', 'must be an array when present');
+    }
+    const stateKeys = new Set<string>();
+    value.maintenance_history_states.forEach((state, index) => {
+      const path = `data.maintenance_history_states[${index}]`;
+      if (!isObject(state)) invalid(path, 'must be an object');
+      const vehicleId = requireVehicleReference(state, path, vehicleIds);
+      const profileId = requireString(state, 'profile_id', path, { nullable: true, nonEmpty: true });
+      const componentId = requireString(state, 'component_id', path, { nonEmpty: true }) as string;
+      const action = requireString(state, 'action', path, { nonEmpty: true }) as string;
+      const key = `${vehicleId}\u0000${profileId ?? '<quarantine>'}\u0000${componentId}\u0000${action}`;
+      if (stateKeys.has(key)) invalid(`${path}.action`, 'duplicates a component action history state');
+      stateKeys.add(key);
+      const historyState = requireString(state, 'history_state', path, { nonEmpty: true });
+      if (!MAINTENANCE_HISTORY_STATES.has(historyState as string)) {
+        invalid(`${path}.history_state`, 'is not supported');
+      }
+      const lastServiceLogId = requireNumber(
+        state,
+        'last_service_log_id',
+        path,
+        { integer: true, min: 1, nullable: true }
+      );
+      if (lastServiceLogId !== null) {
+        const log = serviceLogsById.get(lastServiceLogId);
+        if (
+          !log
+          || log.vehicle_id !== vehicleId
+          || log.maintenance_profile_id !== profileId
+          || log.maintenance_component_id !== componentId
+          || log.maintenance_action !== action
+        ) {
+          invalid(`${path}.last_service_log_id`, 'must match this vehicle component action');
+        }
+      }
+      requireString(state, 'notes', path, { nullable: true });
+      requireDateTime(requireString(state, 'created_at', path, { nonEmpty: true }), `${path}.created_at`);
+      requireDateTime(requireString(state, 'updated_at', path, { nonEmpty: true }), `${path}.updated_at`);
+    });
+  }
+
+  if (value.odometer_events !== undefined) {
+    if (!Array.isArray(value.odometer_events)) {
+      invalid('data.odometer_events', 'must be an array when present');
+    }
+    const eventIds = new Set<number>();
+    value.odometer_events.forEach((event, index) => {
+      const path = `data.odometer_events[${index}]`;
+      if (!isObject(event)) invalid(path, 'must be an object');
+      requireUniqueId(requirePositiveId(event, path), eventIds, path);
+      requireVehicleReference(event, path, vehicleIds);
+      const eventType = requireString(event, 'event_type', path, { nonEmpty: true });
+      if (!['confirmed_reading', 'correction', 'instrument_cluster_replacement'].includes(eventType as string)) {
+        invalid(`${path}.event_type`, 'is not supported');
+      }
+      requireNumber(event, 'previous_effective_km', path, { integer: true, min: 0 });
+      requireNumber(event, 'new_effective_km', path, { integer: true, min: 0 });
+      requireNumber(event, 'previous_displayed_km', path, { integer: true, min: 0, nullable: true });
+      requireNumber(event, 'new_displayed_km', path, { integer: true, min: 0, nullable: true });
+      requireString(event, 'reason', path, { nonEmpty: true });
+      requireDateTime(requireString(event, 'recorded_at', path, { nonEmpty: true }), `${path}.recorded_at`);
+    });
+  }
 
   const gasLogIds = new Set<number>();
   rows(value, 'gas_logs').forEach((log, index) => {
@@ -517,6 +815,29 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
       log.sets_odometer_baseline,
       log.mileage > 0 ? 1 : 0
     ),
+    maintenance_migration_status:
+      log.maintenance_migration_status === 'exact' || log.maintenance_migration_status === 'confirmed'
+        ? 'confirmed'
+        : 'legacy_unmapped',
+    maintenance_mileage_confidence: log.maintenance_mileage_confidence
+      ?? (log.maintenance_migration_status === 'exact'
+        && normalizeBooleanFlag(log.sets_odometer_baseline, log.mileage > 0 ? 1 : 0) === 1
+        ? 'confirmed'
+        : 'legacy_unmapped'),
+    maintenance_date_confidence: log.maintenance_date_confidence
+      ?? (log.maintenance_migration_status === 'exact' ? 'confirmed' : 'legacy_unmapped'),
+    maintenance_record_source: log.maintenance_record_source
+      ?? (log.maintenance_migration_status === 'exact' ? 'maintenance_planner' : 'legacy'),
+    service_provider: log.service_provider ?? null,
+    service_package_id: log.service_package_id ?? null,
+    service_package_title: log.service_package_title ?? null,
+    oil_brand: log.oil_brand ?? null,
+    oil_type: log.oil_type ?? null,
+    oil_viscosity: log.oil_viscosity ?? null,
+    oil_notes: log.oil_notes ?? null,
+    duplicate_confirmed: normalizeBooleanFlag(log.duplicate_confirmed, 0),
+    created_at: log.created_at ?? `${log.date}T00:00:00.000Z`,
+    updated_at: log.updated_at ?? log.created_at ?? `${log.date}T00:00:00.000Z`,
   }));
 
   const serviceIntervals: ServiceInterval[] = data.service_intervals.map((interval) => ({
@@ -555,6 +876,7 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
     scooter_model_id: vehicle.scooter_model_id ?? null,
     scooter_version_id: vehicle.scooter_version_id ?? null,
     scooter_variant_id: vehicle.scooter_variant_id ?? null,
+    maintenance_history_level: vehicle.maintenance_history_level ?? 'not_asked',
   }));
 
   const gasLogs: GasLog[] = data.gas_logs.map((log) => ({
@@ -569,6 +891,27 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
     service_intervals: serviceIntervals,
     service_logs: serviceLogs,
     gas_logs: gasLogs,
+    maintenance_preferences: (data.maintenance_preferences ?? []).map((row) => ({
+      ...row,
+      profile_id: row.profile_id ?? null,
+      original_interval_km: row.original_interval_km ?? row.profile_recommended_interval_km,
+      original_interval_months: row.original_interval_months ?? null,
+      custom_interval_km: row.custom_interval_km ?? row.user_interval_km,
+      custom_interval_months: row.custom_interval_months ?? null,
+      effective_interval_months: row.effective_interval_months ?? null,
+      distance_enabled: row.distance_enabled
+        ?? (row.effective_interval_km !== null ? 1 : 0),
+      time_enabled: row.time_enabled
+        ?? (row.effective_interval_months !== undefined && row.effective_interval_months !== null ? 1 : 0),
+      condition_based_default: row.condition_based_default ?? 0,
+      custom_condition_reminder_enabled: row.custom_condition_reminder_enabled ?? 0,
+    })),
+    maintenance_history_states: (data.maintenance_history_states ?? []).map((row) => ({
+      ...row,
+      profile_id: row.profile_id ?? null,
+      last_service_log_id: row.profile_id ? row.last_service_log_id : null,
+    })),
+    odometer_events: data.odometer_events ?? [],
   };
 }
 

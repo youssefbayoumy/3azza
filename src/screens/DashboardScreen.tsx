@@ -3,10 +3,19 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput,
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
-import { getMinimumOdometerReading, getVehicleProfile, getServiceIntervals, saveVehicleProfile } from '../services/database';
-import type { VehicleProfile, ServiceInterval } from '../types/database.types';
+import {
+    correctOdometerReading,
+    getMaintenanceEvents,
+    getMaintenanceHistoryStates,
+    getMaintenancePreferences,
+    getMinimumOdometerReading,
+    getOdometerCorrectionFloor,
+    getVehicleProfile,
+    saveVehicleProfile,
+} from '../services/database';
+import type { VehicleProfile } from '../types/database.types';
 import type { DashboardNavigationProp } from '../navigation/types';
-import { computePredictedOdometer, countServiceWarnings, getIntervalProgress, getNextServiceProgress } from '../utils/maintenance';
+import { computePredictedOdometer } from '../utils/maintenance';
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { parseWholeNumberInput, validateOdometerReading } from '../utils/recordValidation';
@@ -17,24 +26,168 @@ import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { getApplicableBreakInGuidance, getModelProfileForVehicle, getSelectedVariant } from '../modelData/modelKnowledge';
+import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import { projectMaintenanceTasks } from '../maintenance/scheduler';
+import { maintenanceComponentGroup, naturalMaintenanceActionLabel } from '../maintenance/presentation';
+import {
+    maintenanceHistoryByAction,
+    maintenancePreferencesForScheduler,
+} from '../maintenance/storageProjection';
+import type {
+    MaintenanceTaskProjection,
+} from '../maintenance/types';
+
+const HOME_COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+    'engine-oil': 'opacity',
+    'gear-oil': 'settings',
+    'air-filter': 'air',
+    'spark-plug': 'bolt',
+    cvt: 'settings-input-component',
+    brakes: 'do-not-disturb-on',
+    tires: 'trip-origin',
+    battery: 'battery-charging-full',
+    steering: 'device-hub',
+    suspension: 'device-hub',
+    'nuts-and-bolts': 'build',
+    'main-side-stands': 'two-wheeler',
+    'general-workshop-inspection': 'fact-check',
+};
+
+function homeGroup(task: MaintenanceTaskProjection): { id: string; label: string; icon: keyof typeof MaterialIcons.glyphMap } {
+    const group = maintenanceComponentGroup(task.componentId);
+    return {
+        id: group.key,
+        label: group.label,
+        icon: HOME_COMPONENT_ICONS[group.key] ?? 'build',
+    };
+}
+
+function isHomePriority(task: MaintenanceTaskProjection): boolean {
+    return task.status === 'condition_attention'
+        || task.status === 'overdue'
+        || task.status === 'due'
+        || task.status === 'due_soon'
+        || task.status === 'history_unknown_recommend_service'
+        || task.status === 'upcoming';
+}
+
+function homePriorityCopy(task: MaintenanceTaskProjection): string {
+    if (task.status === 'condition_attention') {
+        if (task.conditionResult === 'replace_now') return 'Replace now';
+        if (task.conditionResult === 'replace_soon') return 'Replace soon';
+        if (task.conditionResult === 'service_soon') return 'Service soon';
+        if (task.conditionResult === 'cleaning_needed') return 'Cleaning needed';
+        if (task.conditionResult === 'unable_to_inspect') return 'Workshop inspection needed';
+        return 'Condition needs attention';
+    }
+    if (task.status === 'history_unknown_recommend_service') return 'Last change unknown';
+    if (task.remainingKm !== null) {
+        if (task.remainingKm < 0) return `${Math.abs(task.remainingKm).toLocaleString()} km overdue`;
+        if (task.remainingKm === 0) return 'Due now';
+        return `${task.remainingKm.toLocaleString()} km remaining`;
+    }
+    if (task.remainingDays !== null) {
+        if (task.remainingDays < 0) return `${Math.abs(task.remainingDays)} days overdue`;
+        if (task.remainingDays === 0) return 'Due today';
+        return `${task.remainingDays} days remaining`;
+    }
+    return task.status === 'due' ? 'Due now' : task.status === 'due_soon' ? 'Due soon' : 'Upcoming';
+}
+
+function homePriorityColor(task: MaintenanceTaskProjection): string {
+    if (task.status === 'overdue' || task.status === 'due' || task.conditionResult === 'replace_now') return 'text-error';
+    if (task.status === 'due_soon' || task.status === 'condition_attention') return 'text-amber-400';
+    if (task.status === 'history_unknown_recommend_service') return 'text-secondary';
+    return 'text-primary';
+}
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavigationProp>();
     const { width: viewportWidth } = useWindowDimensions();
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const [profile, setProfile] = useState<VehicleProfile | null>(null);
-    const [intervals, setIntervals] = useState<ServiceInterval[]>([]);
+    const [maintenanceTasks, setMaintenanceTasks] = useState<MaintenanceTaskProjection[]>([]);
 
     const [isOdoModalVisible, setIsOdoModalVisible] = useState(false);
     const [newOdoValue, setNewOdoValue] = useState('');
     const [odoError, setOdoError] = useState('');
     const [savingOdometer, setSavingOdometer] = useState(false);
+    const [isCorrectionModalVisible, setIsCorrectionModalVisible] = useState(false);
+    const [correctionValue, setCorrectionValue] = useState('');
+    const [correctionReason, setCorrectionReason] = useState('');
+    const [correctionFloor, setCorrectionFloor] = useState(0);
+    const [correctionError, setCorrectionError] = useState('');
+    const [savingCorrection, setSavingCorrection] = useState(false);
 
     const openOdoModal = () => {
         // We will default the input box to the computed mileage (prediction) rather than the last confirmed
         setNewOdoValue(computedMileage.toString() || '');
         setOdoError('');
         setIsOdoModalVisible(true);
+    };
+
+    const openCorrectionModal = async () => {
+        if (!profile) return;
+        setCorrectionValue(String(profile.current_mileage));
+        setCorrectionReason('');
+        // Fail closed until durable baselines have been read for this vehicle.
+        setCorrectionFloor(profile.current_mileage);
+        setCorrectionError('');
+        setIsOdoModalVisible(false);
+        setIsCorrectionModalVisible(true);
+        try {
+            setCorrectionFloor(await getOdometerCorrectionFloor());
+        } catch (error) {
+            console.error('Failed to read the odometer correction floor:', error);
+            setCorrectionError('Saved odometer baselines could not be checked. Close this dialog and try again.');
+        }
+    };
+
+    const saveCorrection = async (correctedMileageKm: number) => {
+        setSavingCorrection(true);
+        setCorrectionError('');
+        try {
+            await correctOdometerReading({ correctedMileageKm, reason: correctionReason });
+            const data = await getVehicleProfile();
+            await syncMaintenanceNotifications(maintenanceReminders);
+            setProfile(data);
+            setIsCorrectionModalVisible(false);
+        } catch (error) {
+            console.error('Failed to correct odometer:', error);
+            setCorrectionError(error instanceof Error ? error.message : 'The odometer correction was not saved.');
+        } finally {
+            setSavingCorrection(false);
+        }
+    };
+
+    const confirmCorrection = () => {
+        if (!profile) return;
+        const parsed = parseWholeNumberInput(correctionValue, { label: 'Corrected odometer' });
+        if (!parsed.ok) {
+            setCorrectionError(parsed.message);
+            return;
+        }
+        if (parsed.value >= profile.current_mileage) {
+            setCorrectionError(`Enter a value below the current ${profile.current_mileage.toLocaleString()} km reading.`);
+            return;
+        }
+        if (parsed.value < correctionFloor) {
+            setCorrectionError(`Saved records require at least ${correctionFloor.toLocaleString()} km.`);
+            return;
+        }
+        if (!correctionReason.trim()) {
+            setCorrectionError('Explain why this reading needs correction.');
+            return;
+        }
+        setCorrectionError('');
+        Alert.alert(
+            'Confirm odometer correction',
+            `Change the current odometer from ${profile.current_mileage.toLocaleString()} km to ${parsed.value.toLocaleString()} km? Maintenance due values will be recalculated, but saved maintenance and fuel records will not be changed.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Correct reading', onPress: () => void saveCorrection(parsed.value) },
+            ]
+        );
     };
 
     const confirmPredictedMileage = async () => {
@@ -138,13 +291,31 @@ export default function DashboardScreen() {
     };
 
     const loadDashboard = useCallback(async (isCurrent: () => boolean) => {
-        const [profileData, intervalsData] = await Promise.all([
+        const [profileData, events, preferences, historyStates] = await Promise.all([
             getVehicleProfile(),
-            getServiceIntervals(),
+            getMaintenanceEvents(),
+            getMaintenancePreferences(),
+            getMaintenanceHistoryStates(),
         ]);
         if (!isCurrent()) return;
         setProfile(profileData);
-        setIntervals(intervalsData);
+        const domainProfile = getMaintenanceProfileForSelection(profileData ? {
+            brandId: profileData.scooter_brand_id,
+            modelId: profileData.scooter_model_id,
+            versionId: profileData.scooter_version_id,
+            variantId: profileData.scooter_variant_id,
+        } : null);
+        setMaintenanceTasks(profileData && domainProfile ? projectMaintenanceTasks({
+            profile: domainProfile,
+            currentOdometerKm: profileData.current_mileage,
+            vehicleId: profileData.id,
+            now: new Date(),
+            events,
+            preferences: maintenancePreferencesForScheduler(preferences),
+            historyByAction: maintenanceHistoryByAction(historyStates),
+            defaultHistoryKnowledge: 'unknown',
+            vehicleInServiceDate: profileData.created_at.slice(0, 10),
+        }) : []);
     }, []);
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadDashboard,
@@ -155,30 +326,76 @@ export default function DashboardScreen() {
     // ── Predictive Odometer Engine ──
     const dailyAvg = profile?.daily_average_km ?? 0;
     const { mileage: computedMileage, predictedAdded, diffDays } = computePredictedOdometer(profile);
-    // We treat this variable identically to previous 'mileage', serving UI and Service Warning Math natively.
-    const mileage = computedMileage;
+    // Maintenance stays on the confirmed reading until the owner accepts or adjusts the prediction.
+    const mileage = profile?.current_mileage ?? 0;
+    const hasSelectableMaintenanceProfile = Boolean(getMaintenanceProfileForSelection(profile ? {
+        brandId: profile.scooter_brand_id,
+        modelId: profile.scooter_model_id,
+        versionId: profile.scooter_version_id,
+        variantId: profile.scooter_variant_id,
+    } : null));
+    const setupNeeded = hasSelectableMaintenanceProfile && (
+        profile?.maintenance_history_level === undefined
+        || profile.maintenance_history_level === 'not_asked'
+        || profile.maintenance_history_level === 'skipped'
+    );
 
     // Status logic: if we've added at least 1 KM via prediction, show the verify banner
     const isPredicted = predictedAdded >= 1;
 
-    // Keep Home calibrated to the same nearest-service selector as the planner.
-    const nextService = getNextServiceProgress(intervals, mileage);
-    const gaugeProgress = nextService?.progressPct ?? 0;
+    // Home uses the same projected odometer, task order, and baselines as Maintenance.
+    const homePriorities = maintenanceTasks.reduce<{
+        group: ReturnType<typeof homeGroup>;
+        task: MaintenanceTaskProjection;
+    }[]>((items, task) => {
+        if (!isHomePriority(task)) return items;
+        // The compact setup prompt outranks purely informational upcoming work.
+        // Confirmed due work and important unknown fixed changes still stay first.
+        if (setupNeeded && task.status === 'upcoming') return items;
+        const group = homeGroup(task);
+        if (!items.some((item) => item.group.id === group.id)) items.push({ group, task });
+        return items;
+    }, []).slice(0, 3);
+    const nextService = maintenanceTasks.find((task) =>
+        task.dueAtKm !== null
+        && task.status !== 'historical_unverified'
+        && task.status !== 'history_unknown_recommend_service'
+        && task.status !== 'history_unknown_request_record'
+        && task.status !== 'unknown'
+    );
+    const remainingToNext = nextService?.remainingKm ?? null;
+    const gaugeStartKm = nextService?.lastPerformedAtKm
+        ?? (nextService?.isOneTime
+            ? 0
+            : nextService?.dueAtKm !== null && nextService?.dueAtKm !== undefined && nextService.effectiveIntervalKm
+                ? nextService.dueAtKm - nextService.effectiveIntervalKm
+                : null);
+    const gaugeDistance = nextService?.dueAtKm !== null && nextService?.dueAtKm !== undefined && gaugeStartKm !== null
+        ? nextService.dueAtKm - gaugeStartKm
+        : null;
+    const gaugeProgress = gaugeDistance !== null && gaugeDistance > 0
+        ? Math.max(0, Math.min(100, ((mileage - (gaugeStartKm ?? 0)) / gaugeDistance) * 100))
+        : 0;
     const gaugePathLength = Math.PI * 80;
     const gaugeOffset = gaugePathLength * (1 - (gaugeProgress / 100));
     const gaugeWidth = Math.min(Math.max(viewportWidth - 48, 0), 520);
     const gaugeHeight = gaugeWidth * 0.54;
-    const gaugeColor = nextService?.status === 'overdue'
+    const gaugeColor = nextService?.status === 'overdue' || nextService?.status === 'due'
         ? '#ffb4ab'
-        : nextService?.status === 'due-soon'
+        : nextService?.status === 'due_soon'
             ? '#f59e0b'
             : '#a9c7ff';
     const gaugeServiceLabel = !nextService
         ? 'ADD SERVICE HISTORY TO CALIBRATE'
-        : nextService.remainingKm <= 0
-            ? `${Math.abs(nextService.remainingKm).toLocaleString()} KM OVER · ${nextService.name}`
-            : `${nextService.remainingKm.toLocaleString()} KM TO ${nextService.name}`;
-    const warningsCount = countServiceWarnings(intervals, mileage);
+        : (remainingToNext ?? 0) <= 0
+            ? `${Math.abs(remainingToNext ?? 0).toLocaleString()} KM OVER - ${homeGroup(nextService).label}`
+            : `${(remainingToNext ?? 0).toLocaleString()} KM TO ${homeGroup(nextService).label}`;
+    const warningsCount = new Set(maintenanceTasks
+        .filter((task) => task.status === 'overdue'
+            || task.status === 'due'
+            || task.status === 'due_soon'
+            || task.status === 'condition_attention')
+        .map((task) => homeGroup(task).id)).size;
     const modelProfile = getModelProfileForVehicle(profile);
     const selectedVariant = getSelectedVariant(profile, modelProfile);
     const breakInGuidance = getApplicableBreakInGuidance(profile);
@@ -189,12 +406,6 @@ export default function DashboardScreen() {
     );
     const breakInLimit = breakInLimits.length > 0 ? Math.max(...breakInLimits) : null;
     const isInBreakIn = breakInLimit !== null && mileage <= breakInLimit;
-    const nextItems = intervals
-        .map((interval) => ({ interval, progress: getIntervalProgress(interval, mileage) }))
-        .filter((item) => item.progress.status !== 'manual')
-        .sort((a, b) => (a.progress.remainingKm ?? Number.MAX_SAFE_INTEGER) - (b.progress.remainingKm ?? Number.MAX_SAFE_INTEGER))
-        .slice(0, 3);
-
     if (loading || loadError) {
         return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title="DASHBOARD" />;
     }
@@ -216,7 +427,7 @@ export default function DashboardScreen() {
                 <TouchableOpacity 
                     className="w-full bg-error/90 px-6 py-3 flex-row items-center justify-between"
                     activeOpacity={0.9}
-                    onPress={() => navigation.navigate('Vitals')}
+                    onPress={() => navigation.navigate('Maintenance')}
                 >
                     <View className="flex-row items-center gap-3 flex-1 min-w-0 pr-2">
                         <MaterialIcons name="warning" size={20} color="#fff" />
@@ -267,7 +478,7 @@ export default function DashboardScreen() {
                     </Text>
                     <Text className="font-body text-xs text-on-surface-variant mt-1">
                         {modelProfile
-                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} · ${modelProfile.manualYears}`
+                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} / ${modelProfile.manualYears}`
                             : 'Choose an exact manual in Vehicle Settings.'}
                     </Text>
                     {isInBreakIn ? (
@@ -279,28 +490,55 @@ export default function DashboardScreen() {
                             <MaterialCommunityIcons name="engine-outline" size={20} color="#f2ca50" />
                             <View className="flex-1">
                                 <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">Break-in guidance active</Text>
-                                <Text className="font-body text-xs text-on-surface-variant mt-1">Manual guidance extends to {breakInLimit?.toLocaleString()} km. Open Model Reference to review it.</Text>
+                                <Text className="font-body text-xs text-on-surface-variant mt-1">Break-in guidance extends to {breakInLimit?.toLocaleString()} km. Open Model Reference to review it.</Text>
                             </View>
                         </TouchableOpacity>
                     ) : null}
                 </View>
 
-                {nextItems.length > 0 ? (
-                    <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-6">
-                        <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-3">Next model services</Text>
-                        {nextItems.map(({ interval, progress }) => (
-                            <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
-                                <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
-                                <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
-                                    {progress.remainingKm === null
-                                        ? 'Not set'
-                                        : progress.remainingKm <= 0
-                                            ? `${Math.abs(progress.remainingKm).toLocaleString()} km over`
-                                            : `${progress.remainingKm.toLocaleString()} km`}
+                {homePriorities.length > 0 ? (
+                    <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-4">
+                        <View className="flex-row items-center justify-between gap-3 mb-2">
+                            <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em]">Maintenance priorities</Text>
+                            <TouchableOpacity accessibilityRole="button" className="min-h-11 justify-center" onPress={() => navigation.navigate('Maintenance')}>
+                                <Text className="font-label text-xs font-bold text-primary">View plan</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {homePriorities.map(({ group, task }) => (
+                            <TouchableOpacity
+                                key={`${group.id}:${task.key}`}
+                                accessibilityRole="button"
+                                className="min-h-14 flex-row items-center gap-3 py-2 border-b border-outline-variant/10 last:border-b-0"
+                                onPress={() => group.id === 'engine-oil'
+                                    ? navigation.navigate('OilChangeDetails')
+                                    : navigation.navigate('Maintenance', { openRuleId: task.ruleId })}
+                            >
+                                <View className="w-9 h-9 rounded-lg bg-surface-container-high items-center justify-center">
+                                    <MaterialIcons name={group.icon} size={18} color="#a9c7ff" />
+                                </View>
+                                <Text className="font-body text-sm font-semibold text-on-surface flex-1">{naturalMaintenanceActionLabel(task)}</Text>
+                                <Text className={`font-label text-xs font-bold text-right ${homePriorityColor(task)}`} numberOfLines={2}>
+                                    {homePriorityCopy(task)}
                                 </Text>
-                            </View>
+                                <MaterialIcons name="chevron-right" size={18} color="#8e9196" />
+                            </TouchableOpacity>
                         ))}
                     </View>
+                ) : null}
+
+                {setupNeeded ? (
+                    <TouchableOpacity
+                        accessibilityRole="button"
+                        className="w-full min-h-20 bg-primary/10 border border-primary/25 rounded-xl p-4 mb-6 flex-row items-center gap-3"
+                        onPress={() => navigation.navigate('MaintenanceHistorySetup')}
+                    >
+                        <MaterialIcons name="playlist-add-check" size={22} color="#a9c7ff" />
+                        <View className="flex-1">
+                            <Text className="font-headline text-sm font-bold text-on-surface">Finish setting up maintenance history</Text>
+                            <Text className="font-body text-xs text-on-surface-variant mt-1">Add only the recent records you know.</Text>
+                        </View>
+                        <MaterialIcons name="chevron-right" size={20} color="#a9c7ff" />
+                    </TouchableOpacity>
                 ) : null}
 
                 {/* Kinetic Gauge Section */}
@@ -519,6 +757,15 @@ export default function DashboardScreen() {
                         />
                         {odoError ? <Text className="font-body text-xs text-error mb-6">{odoError}</Text> : null}
 
+                        <TouchableOpacity
+                            accessibilityRole="button"
+                            className="min-h-11 justify-center mb-4"
+                            disabled={savingOdometer}
+                            onPress={() => void openCorrectionModal()}
+                        >
+                            <Text className="font-label text-sm font-bold text-primary">Correct a previously saved reading</Text>
+                        </TouchableOpacity>
+
                         <View className="flex-row justify-end gap-3">
                             <TouchableOpacity onPress={() => setIsOdoModalVisible(false)} className="px-4 py-2 rounded-lg" disabled={savingOdometer} accessibilityRole="button">
                                 <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
@@ -526,6 +773,76 @@ export default function DashboardScreen() {
                             <TouchableOpacity onPress={handleSaveOdo} className="px-6 py-2 bg-primary rounded-lg shadow-lg min-w-24 items-center" disabled={savingOdometer} accessibilityLabel="Save odometer" accessibilityRole="button" accessibilityState={{ busy: savingOdometer, disabled: savingOdometer }}>
                                 {savingOdometer ? <ActivityIndicator size="small" color="#081421" /> : (
                                     <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Update</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </ProtectedModal>
+
+            <ProtectedModal
+                accessibilityLabel="Correct odometer reading dialog"
+                visible={isCorrectionModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => !savingCorrection && setIsCorrectionModalVisible(false)}
+            >
+                <View className="flex-1 bg-black/80 items-center justify-center px-6">
+                    <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
+                        <Text className="font-headline text-xl font-bold text-on-surface">Correct odometer</Text>
+                        <Text className="font-body text-sm text-on-surface-variant mt-2 leading-5">
+                            Use this only to fix a previously saved lifetime reading. Maintenance projections will refresh; saved history stays unchanged.
+                        </Text>
+                        <Text className="font-body text-xs text-secondary mt-3">
+                            Lowest value allowed by saved records: {correctionFloor.toLocaleString()} km
+                        </Text>
+
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-6 mb-2">Corrected odometer (KM)</Text>
+                        <TextInput
+                            accessibilityLabel="Corrected odometer in kilometres"
+                            className={`min-h-12 bg-surface-container-highest px-4 py-3 rounded-xl border text-on-surface font-body text-base ${correctionError ? 'border-error' : 'border-outline-variant/10'}`}
+                            keyboardType="number-pad"
+                            value={correctionValue}
+                            onChangeText={(value) => {
+                                setCorrectionValue(value);
+                                setCorrectionError('');
+                            }}
+                        />
+
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-5 mb-2">Reason</Text>
+                        <TextInput
+                            accessibilityLabel="Reason for odometer correction"
+                            className={`min-h-20 bg-surface-container-highest px-4 py-3 rounded-xl border text-on-surface font-body text-base ${correctionError ? 'border-error' : 'border-outline-variant/10'}`}
+                            multiline
+                            placeholder="e.g. I entered an extra zero"
+                            placeholderTextColor="#64748b"
+                            style={{ textAlignVertical: 'top' }}
+                            value={correctionReason}
+                            onChangeText={(value) => {
+                                setCorrectionReason(value);
+                                setCorrectionError('');
+                            }}
+                        />
+                        {correctionError ? <Text accessibilityRole="alert" className="font-body text-xs text-error mt-2">{correctionError}</Text> : null}
+
+                        <View className="flex-row justify-end gap-3 mt-6">
+                            <TouchableOpacity
+                                accessibilityRole="button"
+                                className="min-h-11 px-4 items-center justify-center rounded-lg"
+                                disabled={savingCorrection}
+                                onPress={() => setIsCorrectionModalVisible(false)}
+                            >
+                                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                accessibilityRole="button"
+                                accessibilityState={{ busy: savingCorrection, disabled: savingCorrection }}
+                                className="min-h-11 min-w-32 px-5 bg-primary rounded-lg items-center justify-center"
+                                disabled={savingCorrection}
+                                onPress={confirmCorrection}
+                            >
+                                {savingCorrection ? <ActivityIndicator size="small" color="#081421" /> : (
+                                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Review correction</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

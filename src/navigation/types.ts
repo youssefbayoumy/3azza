@@ -4,7 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export type TabParamList = {
   Dashboard: undefined;
-  Vitals: undefined;
+  Maintenance: { openRuleId?: string } | undefined;
   Vault: undefined;
   Inventory: undefined;
 };
@@ -19,6 +19,8 @@ export type MainStackParamList = {
   VehicleSettings: undefined;
   PreRideCheck: undefined;
   ServiceLogs: undefined;
+  MaintenanceHistorySetup: undefined;
+  MaintenanceReminderCustomization: { ruleId: string };
 };
 
 export type RootStackParamList = {
@@ -32,10 +34,13 @@ export type DashboardNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<MainStackParamList>
 >;
 
-export type VitalsNavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<TabParamList, 'Vitals'>,
+export type MaintenanceNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<TabParamList, 'Maintenance'>,
   NativeStackNavigationProp<MainStackParamList>
 >;
+
+/** @deprecated Use MaintenanceNavigationProp. */
+export type VitalsNavigationProp = MaintenanceNavigationProp;
 
 export type PreRideNavigationProp = NativeStackNavigationProp<MainStackParamList, 'PreRideCheck'>;
 

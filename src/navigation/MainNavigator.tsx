@@ -9,6 +9,8 @@ import VehicleVitalsScreen from '../screens/VehicleVitalsScreen';
 import VehicleSettingsScreen from '../screens/VehicleSettingsScreen';
 import PreRideCheckScreen from '../screens/PreRideCheckScreen';
 import ServiceLogsScreen from '../screens/ServiceLogsScreen';
+import MaintenanceHistorySetupScreen from '../screens/MaintenanceHistorySetupScreen';
+import MaintenanceReminderCustomizationScreen from '../screens/MaintenanceReminderCustomizationScreen';
 import type { MainStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -25,6 +27,8 @@ export default function MainNavigator() {
       <Stack.Screen name="VehicleSettings" component={VehicleSettingsScreen} />
       <Stack.Screen name="PreRideCheck" component={PreRideCheckScreen} />
       <Stack.Screen name="ServiceLogs" component={ServiceLogsScreen} />
+      <Stack.Screen name="MaintenanceHistorySetup" component={MaintenanceHistorySetupScreen} />
+      <Stack.Screen name="MaintenanceReminderCustomization" component={MaintenanceReminderCustomizationScreen} />
     </Stack.Navigator>
   );
 }

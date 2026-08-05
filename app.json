@@ -2,7 +2,7 @@
   "expo": {
     "name": "3azza",
     "slug": "3azza",
-    "version": "2.1.0",
+    "version": "2.3.3",
     "orientation": "portrait",
     "icon": "./assets/icon-v2.png",
     "backgroundColor": "#081421",
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 7,
+      "versionCode": 12,
       "package": "com.youssefbayoumy.x3azza",
       "permissions": [
         "android.permission.USE_BIOMETRIC",
@@ -50,6 +50,14 @@
         }
       ],
       "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow 3azza to attach photos to your maintenance records and documents.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-system-ui",
       [
         "expo-navigation-bar",

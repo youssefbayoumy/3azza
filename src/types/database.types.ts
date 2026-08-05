@@ -1,3 +1,46 @@
+export type MaintenanceHistoryLevel =
+  | 'not_asked'
+  | 'detailed_records'
+  | 'recent_memory'
+  | 'little_or_none'
+  | 'skipped';
+
+export type MaintenanceRecordConfidence =
+  | 'confirmed'
+  | 'estimated'
+  | 'unknown'
+  | 'historical_unverified'
+  | 'legacy_unmapped';
+
+export type MaintenanceRecordSource =
+  | 'maintenance_planner'
+  | 'manual_entry'
+  | 'history_onboarding'
+  | 'service_package'
+  | 'backup_restore'
+  | 'legacy';
+
+export type MaintenanceMigrationStatus =
+  | 'confirmed'
+  | 'legacy_unmapped'
+  // Accepted while reading/restoring pre-v15 data.
+  | 'exact'
+  | 'legacy_needs_confirmation';
+
+export type MaintenanceIntervalSource =
+  | 'profile_default'
+  | 'user_custom'
+  | 'workshop_recommendation';
+
+export type MaintenanceHistoryStateValue =
+  | 'confirmed'
+  | 'estimated'
+  | 'unknown'
+  | 'never_done'
+  | 'not_applicable'
+  | 'historical_unverified'
+  | 'legacy_unmapped';
+
 export interface VehicleProfile {
   id: number;
   name: string;
@@ -5,6 +48,7 @@ export interface VehicleProfile {
   total_km_range: number;
   has_completed_setup: number;
   service_history_setup_completed: number;
+  maintenance_history_level?: MaintenanceHistoryLevel;
   created_at: string;
   daily_average_km: number;
   last_odometer_update_timestamp: string | null;
@@ -78,6 +122,85 @@ export interface ServiceLog {
   cost: number | null;
   service_type: string | null;
   sets_odometer_baseline: number;
+  maintenance_rule_id?: string | null;
+  maintenance_component_id?: string | null;
+  maintenance_action?: string | null;
+  maintenance_profile_id?: string | null;
+  maintenance_profile_version?: string | null;
+  inspection_result?: string | null;
+  maintenance_migration_status?: MaintenanceMigrationStatus;
+  maintenance_mileage_confidence?: MaintenanceRecordConfidence;
+  maintenance_date_confidence?: MaintenanceRecordConfidence;
+  maintenance_record_source?: MaintenanceRecordSource;
+  service_provider?: string | null;
+  service_package_id?: string | null;
+  service_package_title?: string | null;
+  oil_brand?: string | null;
+  oil_type?: string | null;
+  oil_viscosity?: string | null;
+  oil_notes?: string | null;
+  duplicate_confirmed?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MaintenancePreference {
+  id: number;
+  vehicle_id: number;
+  profile_id: string | null;
+  component_id: string;
+  action: string;
+  profile_recommended_interval_km: number | null;
+  user_interval_km: number | null;
+  effective_interval_km: number | null;
+  original_interval_km?: number | null;
+  original_interval_months?: number | null;
+  custom_interval_km?: number | null;
+  custom_interval_months?: number | null;
+  effective_interval_months?: number | null;
+  distance_enabled?: number;
+  time_enabled?: number;
+  condition_based_default?: number;
+  custom_condition_reminder_enabled?: number;
+  interval_source: MaintenanceIntervalSource;
+  longer_than_recommended_confirmed: number;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceHistoryState {
+  vehicle_id: number;
+  profile_id: string | null;
+  component_id: string;
+  action: string;
+  history_state: MaintenanceHistoryStateValue;
+  last_service_log_id: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OdometerEventType =
+  | 'confirmed_reading'
+  | 'correction'
+  | 'instrument_cluster_replacement';
+
+/**
+ * Audit model used by odometer correction and prepared for a future cluster
+ * replacement flow. `effective` is lifetime distance; `displayed` is the
+ * physical cluster reading.
+ */
+export interface OdometerEvent {
+  id: number;
+  vehicle_id: number;
+  event_type: OdometerEventType;
+  previous_effective_km: number;
+  new_effective_km: number;
+  previous_displayed_km: number | null;
+  new_displayed_km: number | null;
+  reason: string;
+  recorded_at: string;
 }
 
 export interface ServiceInterval {

@@ -1,448 +1,487 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { getServiceIntervals, getServiceLogMaxMileage, getServiceLogs, recordServiceCompletion, deleteServiceLogAndRecomputeBaseline } from '../services/database';
-import type { ServiceInterval, ServiceLog } from '../types/database.types';
-import type { ServiceLogsNavigationProp } from '../navigation/types';
-import { syncMaintenanceNotifications } from '../services/notifications';
-import { useAppStore } from '../store/useAppStore';
-import ProtectedModal from '../components/ProtectedModal';
 import ActiveVehicleChip from '../components/ActiveVehicleChip';
+import MaintenanceRecordForm, {
+  type MaintenanceRecordActionOption,
+  type MaintenanceRecordDraft,
+  type MaintenanceRecordFormInitialValue,
+} from '../components/MaintenanceRecordForm';
 import AppIconButton from '../components/ui/AppIconButton';
-import AppTopBar from '../components/ui/AppTopBar';
-import AppScreen from '../components/ui/AppScreen';
 import AppListContinuation from '../components/ui/AppListContinuation';
-import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
+import AppScreen from '../components/ui/AppScreen';
+import AppTopBar from '../components/ui/AppTopBar';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
-import { isPastOrTodayIsoDate } from '../utils/dates';
-import { parseDecimalNumberInput, parseWholeNumberInput } from '../utils/recordValidation';
+import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
+import {
+  maintenanceComponentGroup,
+  naturalMaintenanceActionLabel,
+} from '../maintenance/presentation';
+import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import type { InspectionResult, MaintenanceAction, ScooterMaintenanceProfile } from '../maintenance/types';
+import type { ServiceLogsNavigationProp } from '../navigation/types';
+import {
+  createMaintenanceRecord,
+  deleteMaintenanceRecord,
+  getServiceLogs,
+  getVehicleProfile,
+  MaintenanceDuplicateError,
+  updateMaintenanceRecord,
+  type CreateMaintenanceRecordInput,
+  type MaintenanceRecordActionInput,
+} from '../services/database';
+import { syncMaintenanceNotifications } from '../services/notifications';
+import { useAppStore } from '../store/useAppStore';
+import type { ServiceLog, VehicleProfile } from '../types/database.types';
 
-// Tracked labels come from the active vehicle's interval rows and resolve by canonical ID.
-const OTHER_CATEGORIES = ['Electrical', 'Repair', 'Bodywork', 'General', 'Tires'] as const;
+const CURATED_RULE_IDS = [
+  'engine-oil.replace.recurring-1000km',
+  'transmission-oil.replace.recurring-5000km-5mo',
+  'air-cleaner-element.inspect.recurring-1000km-1mo',
+  'air-cleaner-element.clean.if-needed',
+  'air-cleaner-element.replace.if-necessary',
+  'brake-pads.inspect.recurring-1000km-1mo',
+  'tires.inspect.recurring-1000km-1mo',
+  'drive-belt-rollers.inspect.recurring-6000km-6mo',
+  'general-fasteners.inspect.recurring-1000km-1mo',
+] as const;
+
+const GENERAL_INSPECTION_OPTION: MaintenanceRecordActionOption = {
+  ruleId: 'general-workshop-inspection',
+  componentId: 'general-workshop-inspection',
+  action: 'inspect',
+  label: 'General workshop inspection',
+};
+
+type TimelineGroup = {
+  key: string;
+  rows: ServiceLog[];
+  primary: ServiceLog;
+};
+
+type EditorState = {
+  mode: 'maintenance' | 'other';
+  group: TimelineGroup | null;
+} | null;
+
+function groupLogs(logs: ServiceLog[]): TimelineGroup[] {
+  const groups = new Map<string, TimelineGroup>();
+  for (const log of logs) {
+    const key = log.service_package_id ? `package:${log.service_package_id}` : `record:${log.id}`;
+    const existing = groups.get(key);
+    if (existing) existing.rows.push(log);
+    else groups.set(key, { key, rows: [log], primary: log });
+  }
+  return [...groups.values()];
+}
+
+function looksInternal(value: string): boolean {
+  return /\.pdf\b|\bpage\s*\d+|profile[_ -]?version|release[_ -]?candidate|manual[_ -]?id|(?:^|\s)[a-z0-9]+(?:-[a-z0-9]+){1,}\.(?:inspect|replace|clean|adjust|test|tighten|lubricate)\./i.test(value);
+}
+
+function safeStoredText(value: string | null | undefined, fallback: string): string {
+  const text = value?.trim();
+  return !text || looksInternal(text) ? fallback : text;
+}
+
+function logActionLabel(log: ServiceLog): string {
+  if (!log.maintenance_component_id || !log.maintenance_action) {
+    return safeStoredText(log.title, 'Older maintenance record');
+  }
+  const component = maintenanceComponentGroup(log.maintenance_component_id);
+  const action = naturalMaintenanceActionLabel({
+    componentId: log.maintenance_component_id,
+    action: log.maintenance_action as MaintenanceAction,
+  });
+  if (component.key === 'engine-oil' || component.key === 'gear-oil' || component.key === 'air-filter') return action;
+  return `${component.label} - ${action.toLowerCase()}`;
+}
+
+function displayTitle(group: TimelineGroup): string {
+  if (group.primary.service_package_title) {
+    return safeStoredText(group.primary.service_package_title, 'Workshop maintenance');
+  }
+  return logActionLabel(group.primary);
+}
+
+function affectedActionLabels(group: TimelineGroup): string[] {
+  return [...new Set(group.rows.map(logActionLabel))];
+}
+
+function editAdvisory(group: TimelineGroup): string {
+  const actions = affectedActionLabels(group);
+  const scope = actions.length > 1
+    ? `Changes apply to all ${actions.length} actions in this package.`
+    : 'Changes apply to this maintenance action.';
+  return `${scope} Changing its actions, date, or mileage may recalculate maintenance reminders.`;
+}
+
+function optionForRule(
+  profile: ScooterMaintenanceProfile,
+  ruleId: string
+): MaintenanceRecordActionOption | null {
+  const rule = profile.rules.find((candidate) => candidate.id === ruleId && candidate.applicable);
+  if (!rule) return null;
+  return {
+    ruleId: rule.id,
+    componentId: rule.componentId,
+    action: rule.action,
+    label: naturalMaintenanceActionLabel({ componentId: rule.componentId, action: rule.action }),
+    requiresConditionResult: Boolean(rule.conditionFollowUp),
+  };
+}
+
+function curatedActionOptions(profile: ScooterMaintenanceProfile | null): MaintenanceRecordActionOption[] {
+  if (!profile) return [GENERAL_INSPECTION_OPTION];
+  return [
+    ...CURATED_RULE_IDS.map((ruleId) => optionForRule(profile, ruleId)).filter(
+      (option): option is MaintenanceRecordActionOption => option !== null
+    ),
+    GENERAL_INSPECTION_OPTION,
+  ];
+}
+
+function optionForStoredLog(
+  log: ServiceLog,
+  profile: ScooterMaintenanceProfile | null
+): MaintenanceRecordActionOption | null {
+  if (!log.maintenance_component_id || !log.maintenance_action) return null;
+  if (
+    log.maintenance_component_id === GENERAL_INSPECTION_OPTION.componentId
+    && log.maintenance_action === GENERAL_INSPECTION_OPTION.action
+  ) return GENERAL_INSPECTION_OPTION;
+  if (log.maintenance_rule_id && profile) {
+    const profileOption = optionForRule(profile, log.maintenance_rule_id);
+    if (profileOption) return profileOption;
+  }
+  return {
+    ruleId: log.maintenance_rule_id ?? `stored:${log.maintenance_component_id}:${log.maintenance_action}`,
+    componentId: log.maintenance_component_id,
+    action: log.maintenance_action as MaintenanceAction,
+    label: logActionLabel(log),
+    requiresConditionResult: log.inspection_result !== null && log.inspection_result !== undefined,
+  };
+}
+
+function editorOptions(
+  editor: EditorState,
+  profile: ScooterMaintenanceProfile | null,
+  baseOptions: MaintenanceRecordActionOption[]
+): MaintenanceRecordActionOption[] {
+  if (!editor || editor.mode === 'other') return [];
+  const current = editor.group?.rows
+    .map((row) => optionForStoredLog(row, profile))
+    .filter((option): option is MaintenanceRecordActionOption => option !== null) ?? [];
+  return [...new Map([...baseOptions, ...current].map((option) => [option.ruleId, option])).values()];
+}
+
+function initialValueForEditor(editor: EditorState, options: MaintenanceRecordActionOption[]): MaintenanceRecordFormInitialValue | undefined {
+  if (!editor?.group) return undefined;
+  const { primary, rows } = editor.group;
+  const selectedIds = new Set(rows.map((row) =>
+    row.maintenance_rule_id ?? (row.maintenance_component_id && row.maintenance_action
+      ? `stored:${row.maintenance_component_id}:${row.maintenance_action}`
+      : '')
+  ));
+  if (rows.some((row) => row.maintenance_component_id === 'general-workshop-inspection' && row.maintenance_action === 'inspect')) {
+    selectedIds.add(GENERAL_INSPECTION_OPTION.ruleId);
+  }
+  const conditionResults: Partial<Record<string, InspectionResult>> = {};
+  for (const row of rows) {
+    const id = row.maintenance_rule_id ?? (row.maintenance_component_id && row.maintenance_action
+      ? `stored:${row.maintenance_component_id}:${row.maintenance_action}`
+      : '');
+    if (id && row.inspection_result) conditionResults[id] = row.inspection_result as InspectionResult;
+  }
+  return {
+    title: displayTitle(editor.group),
+    serviceDate: primary.maintenance_date_confidence === 'unknown' ? null : primary.date,
+    mileageKm: primary.maintenance_mileage_confidence === 'unknown' ? null : primary.mileage,
+    selectedActions: options.filter((option) => selectedIds.has(option.ruleId)),
+    conditionResults,
+    cost: primary.cost,
+    notes: primary.maintenance_migration_status === 'legacy_unmapped' ? '' : primary.notes,
+    serviceProvider: primary.service_provider ?? '',
+    oilBrand: primary.oil_brand ?? '',
+    oilType: primary.oil_type as MaintenanceRecordFormInitialValue['oilType'],
+    oilViscosity: primary.oil_viscosity ?? '',
+    mechanicRecommendation: primary.oil_notes ?? '',
+  };
+}
+
+function actionInput(
+  option: MaintenanceRecordActionOption,
+  draft: MaintenanceRecordDraft,
+  profile: ScooterMaintenanceProfile | null
+): MaintenanceRecordActionInput {
+  const rule = profile?.rules.find((candidate) => candidate.id === option.ruleId);
+  const inspectionResult = draft.conditionResults[option.ruleId] ?? null;
+  if (rule) return {
+    ruleId: rule.id,
+    action: rule.action,
+    title: option.label,
+    inspectionResult,
+  };
+  return {
+    ruleId: null,
+    componentId: option.componentId,
+    action: option.action,
+    title: option.label,
+    category: option.componentId === 'general-workshop-inspection'
+      ? 'general_safety_inspections'
+      : 'general',
+    inspectionResult,
+  };
+}
+
+function recordInput(
+  draft: MaintenanceRecordDraft,
+  mode: 'maintenance' | 'other',
+  profile: ScooterMaintenanceProfile | null,
+  allowDuplicate = false
+): CreateMaintenanceRecordInput {
+  const common = {
+    serviceDate: draft.serviceDate,
+    mileageKm: draft.mileageKm,
+    dateConfidence: draft.serviceDate === null ? 'unknown' as const : 'confirmed' as const,
+    mileageConfidence: draft.mileageKm === null ? 'unknown' as const : 'confirmed' as const,
+    notes: draft.notes,
+    cost: draft.cost,
+    serviceProvider: draft.serviceProvider,
+    oil: {
+      brand: draft.oilBrand,
+      type: draft.oilType,
+      viscosity: draft.oilViscosity,
+      notes: draft.mechanicRecommendation,
+    },
+    allowDuplicate,
+  };
+  if (mode === 'other') return {
+    ...common,
+    actions: [],
+    otherWork: { title: draft.title, category: 'other_work' },
+    recordSource: 'manual_entry',
+  };
+  return {
+    ...common,
+    actions: draft.selectedActions.map((option) => actionInput(option, draft, profile)),
+    packageTitle: draft.selectedActions.length > 1 ? draft.title : null,
+    recordSource: draft.selectedActions.length > 1 ? 'service_package' : 'manual_entry',
+  };
+}
 
 export default function ServiceLogsScreen() {
-    const navigation = useNavigation<ServiceLogsNavigationProp>();
-    const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
-    const [logs, setLogs] = useState<ServiceLog[]>([]);
-    const [lastServiceMileage, setLastServiceMileage] = useState(0);
-    const { canLoadOlder, limit, loadOlder } = useIncrementalRecordLimit(logs.length);
-    const [intervals, setIntervals] = useState<ServiceInterval[]>([]);
-    const [isAddModalVisible, setAddModalVisible] = useState(false);
+  const navigation = useNavigation<ServiceLogsNavigationProp>();
+  const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
+  const [logs, setLogs] = useState<ServiceLog[]>([]);
+  const [vehicle, setVehicle] = useState<VehicleProfile | null>(null);
+  const [profile, setProfile] = useState<ScooterMaintenanceProfile | null>(null);
+  const [editor, setEditor] = useState<EditorState>(null);
+  const [saving, setSaving] = useState(false);
+  const groups = useMemo(() => groupLogs(logs), [logs]);
+  const { canLoadOlder, limit, loadOlder } = useIncrementalRecordLimit(groups.length);
 
-    // Form State
-    const [title, setTitle] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [mileage, setMileage] = useState('');
-    const [serviceType, setServiceType] = useState<string | null>(null); // Tracked interval name, if selected
-    const [otherCategory, setOtherCategory] = useState<string | null>(null); // Non-tracked category
-    const [notes, setNotes] = useState('');
-    const [cost, setCost] = useState('');
+  const load = useCallback(async (isCurrent: () => boolean) => {
+    const [records, activeVehicle] = await Promise.all([getServiceLogs({ limit }), getVehicleProfile()]);
+    if (!activeVehicle) throw new Error('The active vehicle could not be found.');
+    if (!isCurrent()) return;
+    setLogs(records);
+    setVehicle(activeVehicle);
+    setProfile(getMaintenanceProfileForSelection({
+      brandId: activeVehicle.scooter_brand_id,
+      modelId: activeVehicle.scooter_model_id,
+      versionId: activeVehicle.scooter_version_id,
+      variantId: activeVehicle.scooter_variant_id,
+    }));
+  }, [limit]);
+  const { error, loading, reload } = useFocusedLoader(
+    load,
+    'Maintenance history could not be loaded. Your records were not changed.',
+    'Failed to load maintenance history:'
+  );
 
-    const isTracked = serviceType !== null;
+  const baseOptions = useMemo(() => curatedActionOptions(profile), [profile]);
+  const options = useMemo(() => editorOptions(editor, profile, baseOptions), [baseOptions, editor, profile]);
+  const initialValue = useMemo(() => initialValueForEditor(editor, options), [editor, options]);
 
-    const loadLogs = useCallback(async (isCurrent: () => boolean) => {
-        const [data, intervalData, maxMileage] = await Promise.all([
-            getServiceLogs({ limit }),
-            getServiceIntervals(),
-            getServiceLogMaxMileage(),
-        ]);
-        if (!isCurrent()) return;
-        setLogs(data);
-        setIntervals(intervalData);
-        setLastServiceMileage(maxMileage);
-    }, [limit]);
+  const closeEditor = () => {
+    if (!saving) setEditor(null);
+  };
 
-    const { error: loadError, loading, reload } = useFocusedLoader(
-        loadLogs,
-        'Service history could not be loaded. Your maintenance records were not changed.',
-        'Failed to load service logs:'
-    );
-
-    const resetForm = () => {
-        setTitle('');
-        setDate(new Date().toISOString().split('T')[0]);
-        setMileage('');
-        setServiceType(null);
-        setOtherCategory(null);
-        setNotes('');
-        setCost('');
-    };
-
-    const handleAddSubmit = async () => {
-        const category = serviceType ? serviceType.toLowerCase() : (otherCategory ?? 'general').toLowerCase();
-        if (!title.trim() || !date.trim() || !mileage.trim() || (!serviceType && !otherCategory)) {
-            Alert.alert('Missing Fields', 'Please fill in all required fields and select a service type.');
-            return;
-        }
-
-        const mileageResult = parseWholeNumberInput(mileage, { label: 'Service odometer' });
-        if (!mileageResult.ok) {
-            Alert.alert('Invalid service details', mileageResult.message);
-            return;
-        }
-        if (!isPastOrTodayIsoDate(date)) {
-            Alert.alert('Invalid service details', 'Enter a valid service date on or before today (YYYY-MM-DD).');
-            return;
-        }
-
-        const costResult = cost.trim() === ''
-            ? null
-            : parseDecimalNumberInput(cost, { label: 'Service cost' });
-        if (costResult && !costResult.ok) {
-            Alert.alert('Invalid service details', costResult.message);
-            return;
-        }
-        const km = mileageResult.value;
-        const recordedCost = costResult?.value ?? null;
-
-        const trackedInterval = serviceType
-            ? intervals.find((interval) => interval.name === serviceType)
-            : null;
-        if (serviceType && !trackedInterval) {
-            Alert.alert('Unavailable service type', 'The selected interval is not available for the active vehicle. Reopen this screen and try again.');
-            return;
-        }
-
-        try {
-            await recordServiceCompletion({
-                title: title.trim(),
-                date,
-                mileage: km,
-                category,
-                notes: notes.trim(),
-                cost: recordedCost,
-                serviceIntervalId: trackedInterval?.id ?? null,
-            });
-            setAddModalVisible(false);
-            resetForm();
-            await reload();
-            await syncMaintenanceNotifications(maintenanceReminders);
-        } catch (error) {
-            Alert.alert(
-                'Service log not saved',
-                error instanceof Error ? error.message : 'The service log and maintenance interval were not changed.'
-            );
-        }
-    };
-
-    const handleDelete = (log: ServiceLog) => {
-        const deleteMessage = log.service_type
-            ? `Remove this "${log.title}" entry? The linked service interval will automatically roll back to its previous log entry.`
-            : `Remove this "${log.title}" entry? This custom log is not linked to a maintenance interval.`;
-
+  const persist = async (draft: MaintenanceRecordDraft, allowDuplicate = false) => {
+    if (!editor) return;
+    setSaving(true);
+    const input = recordInput(draft, editor.mode, profile, allowDuplicate);
+    try {
+      if (editor.group) await updateMaintenanceRecord(editor.group.primary.id, input);
+      else await createMaintenanceRecord(input);
+      setEditor(null);
+      await reload();
+      await syncMaintenanceNotifications(maintenanceReminders);
+    } catch (saveError) {
+      if (saveError instanceof MaintenanceDuplicateError && !allowDuplicate) {
         Alert.alert(
-            'Delete Log',
-            deleteMessage,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteServiceLogAndRecomputeBaseline(log.id);
-                            await reload();
-                            await syncMaintenanceNotifications(maintenanceReminders);
-                        } catch (error) {
-                            console.error('Failed to delete service log:', error);
-                            Alert.alert(
-                                'Delete failed',
-                                log.service_type
-                                    ? 'The service log and linked interval were not changed.'
-                                    : 'The custom service log was not deleted.'
-                            );
-                        }
-                    }
-                }
-            ]
+          'Possible duplicate',
+          'A record for the same action, date, and mileage already exists. Save another copy only if both records are intentional.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Save anyway', onPress: () => void persist(draft, true) },
+          ]
         );
-    };
-
-    const getIconForCategory = (cat: string) => {
-        switch (cat.toLowerCase()) {
-            case 'oil change': case 'engine': return 'oil-barrel';
-            case 'gearbox oil change': return 'settings';
-            case 'filter': case 'air filter': return 'filter';
-            case 'tires': case 'wheels': return 'tire-repair';
-            case 'brakes': case 'brake pads': return 'emergency';
-            case 'electrical': return 'battery-charging-full';
-            default: return 'build-circle';
-        }
-    };
-
-    if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="SERVICE LOGS" />;
+      } else {
+        Alert.alert(
+          'Maintenance not saved',
+          saveError instanceof Error ? saveError.message : 'Your existing records were not changed.'
+        );
+      }
+    } finally {
+      setSaving(false);
     }
+  };
 
-    return (
-        <AppScreen edges={['top', 'bottom', 'left', 'right']}>
-            <AppTopBar tone="subtle" className="z-50" leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}>
-                <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#C0C0C0]" numberOfLines={1}>SERVICE LOGS</Text>
-            </AppTopBar>
-
-            <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 }}
-            >
-                {/* Header */}
-                <View className="mb-8">
-                    <ActiveVehicleChip />
-                    <View className="flex-row items-end justify-between">
-                        <View>
-                            <Text className="font-label text-xs tracking-[0.2em] text-secondary/60 uppercase">Maintenance Logs</Text>
-                            <Text className="font-headline text-4xl font-bold text-on-surface tracking-tight mt-1 uppercase">History</Text>
-                        </View>
-                        <View className="items-end">
-                            <Text className="font-headline text-2xl font-bold text-primary tracking-tighter italic shadow-[0_0_12px_rgba(169,199,255,0.4)]">{lastServiceMileage} KM</Text>
-                            <Text className="font-label text-xs uppercase text-secondary/50 tracking-widest">Last Service</Text>
-                        </View>
-                    </View>
-                    <View className="h-[1px] w-full bg-secondary/20 mt-4" />
-                </View>
-
-                <TouchableOpacity
-                    className="mb-6 py-3.5 px-4 rounded-xl bg-primary flex-row items-center justify-center gap-2"
-                    accessibilityLabel="Add service log"
-                    accessibilityRole="button"
-                    onPress={() => setAddModalVisible(true)}
-                >
-                    <MaterialIcons name="add" size={20} color="#081421" />
-                    <Text className="font-label text-xs font-bold uppercase tracking-wider text-on-primary">Add service log</Text>
-                </TouchableOpacity>
-
-                {/* Timeline */}
-                <View className="relative">
-                    <View className="absolute left-6 top-0 bottom-0 w-[2px] bg-secondary/20 shadow-[0_0_8px_rgba(192,192,192,0.3)]">
-                        <View className="absolute inset-0 bg-primary/40 opacity-50" />
-                    </View>
-
-                    {logs.length === 0 ? (
-                        <View className="pl-16 pt-10">
-                            <Text className="text-secondary/60 italic font-body">No service logs found. Use Add service log to record the first one.</Text>
-                        </View>
-                    ) : (
-                        <View className="space-y-8">
-                            {logs.map((log, index) => {
-                                const isFirst = index === 0;
-                                return (
-                                    <View key={log.id} className="relative pl-14 mb-8">
-                                        <View className={`absolute left-[21px] top-6 w-3 h-3 rounded-full border-4 border-background z-10 ${isFirst ? 'bg-primary shadow-[0_0_10px_rgba(169,199,255,0.8)]' : 'bg-secondary/40'}`} />
-                                        <View className="bg-surface-container-lowest border-t border-t-primary-fixed/10 border-b border-b-primary-container/30 rounded-xl p-5 gap-3">
-                                            <View className="flex-row items-center justify-between">
-                                                <View className="w-12 h-12 flex items-center justify-center rounded-lg bg-surface-container-high border border-outline-variant/30">
-                                                    <MaterialIcons name={getIconForCategory(log.service_type ?? log.category) as any} size={24} color={isFirst ? '#a9c7ff' : '#c6c6c6'} />
-                                                </View>
-                                                <TouchableOpacity
-                                                    onPress={() => handleDelete(log)}
-                                                    className="p-2 -mr-1"
-                                                    accessibilityLabel={`Delete ${log.title} service log`}
-                                                    accessibilityRole="button"
-                                                >
-                                                    <MaterialIcons name="delete-outline" size={20} color="#8e9196" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View>
-                                                <View className="flex-row items-start justify-between mb-1 gap-2">
-                                                    <Text className="font-headline text-xl font-bold tracking-tight text-on-surface" style={{ flexShrink: 1 }}>
-                                                        {log.sets_odometer_baseline === 1 ? `${log.mileage.toLocaleString()} KM` : 'Date only'}
-                                                    </Text>
-                                                    <View className="flex-row flex-wrap items-center gap-1 justify-end" style={{ flexShrink: 0, maxWidth: '55%' }}>
-                                                        {log.service_type && (
-                                                            <View className="px-2 py-0.5 bg-primary/10 border border-primary/30 rounded">
-                                                                <Text className="text-xs font-label font-bold text-primary tracking-widest uppercase">Tracked</Text>
-                                                            </View>
-                                                        )}
-                                                        {log.sets_odometer_baseline === 0 && (
-                                                            <View className="px-2 py-0.5 bg-secondary/10 border border-secondary/30 rounded">
-                                                                <Text className="text-xs font-label font-bold text-secondary tracking-widest uppercase">No odometer</Text>
-                                                            </View>
-                                                        )}
-                                                        <View className="px-2 py-0.5 border border-secondary/30 rounded">
-                                                            <Text className="text-xs font-label font-bold text-secondary tracking-widest uppercase">{log.service_type ?? log.category}</Text>
-                                                        </View>
-                                                    </View>
-                                                </View>
-                                                <Text className="font-label text-xs font-medium text-secondary/50 tracking-widest uppercase">{log.date}</Text>
-                                                <Text className="mt-2 text-xs text-on-surface-variant font-body">{log.title}</Text>
-                                                {log.notes ? (
-                                                    <Text className="mt-1 text-xs text-secondary/60 italic leading-relaxed">{log.notes}</Text>
-                                                ) : null}
-                                                {log.cost !== null ? (
-                                                    <Text className="mt-1 text-xs text-primary font-label">{log.cost.toLocaleString()} EGP</Text>
-                                                ) : null}
-                                            </View>
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    )}
-                </View>
-                <AppListContinuation visible={canLoadOlder} onPress={loadOlder} />
-            </ScrollView>
-
-            {/* ── Add Log Modal ── */}
-            <ProtectedModal
-                accessibilityLabel="New service log dialog"
-                visible={isAddModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => {
-                    setAddModalVisible(false);
-                    resetForm();
-                }}
-            >
-                <View className="flex-1 justify-end bg-black/60">
-                    <View className="w-full max-w-2xl self-center bg-surface-container-low rounded-t-3xl p-6 border-t border-outline-variant/20 shadow-2xl" style={{ maxHeight: '92%' }}>
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="font-headline text-2xl font-bold text-on-surface">New Log</Text>
-                            <TouchableOpacity onPress={() => { setAddModalVisible(false); resetForm(); }} className="bg-surface-container-high rounded-full p-2" accessibilityLabel="Close add service log form" accessibilityRole="button">
-                                <MaterialIcons name="close" size={24} color="#c6c6c6" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                            <View className="gap-4 mb-10">
-                                {/* Title */}
-                                <View>
-                                    <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Title</Text>
-                                    <TextInput
-                                        accessibilityLabel="Service log title"
-                                        className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
-                                        placeholder="e.g. Synthetic Oil Change"
-                                        placeholderTextColor="#454747"
-                                        value={title}
-                                        onChangeText={setTitle}
-                                    />
-                                </View>
-
-                                {/* Mileage & Date */}
-                                <View className="flex-row gap-4">
-                                    <View className="flex-1">
-                                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Mileage (KM)</Text>
-                                        <TextInput
-                                            accessibilityLabel="Service mileage in kilometres"
-                                            className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
-                                            placeholder="15000"
-                                            placeholderTextColor="#454747"
-                                            keyboardType="numeric"
-                                            value={mileage}
-                                            onChangeText={setMileage}
-                                        />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Date</Text>
-                                        <TextInput
-                                            accessibilityLabel="Service date"
-                                            className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
-                                            placeholder="YYYY-MM-DD"
-                                            placeholderTextColor="#454747"
-                                            value={date}
-                                            onChangeText={setDate}
-                                        />
-                                    </View>
-                                </View>
-
-                                {/* ── Service Type Selector ── */}
-                                <View>
-                                    <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Service Type</Text>
-
-                                    {/* Section: Tracked */}
-                                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary/60 mb-1.5">
-                                        Tracked intervals (updates planner)
-                                    </Text>
-                                    <View className="flex-row flex-wrap gap-2 mb-3">
-                                        {intervals.map((interval) => {
-                                            const type = interval.name;
-                                            return (
-                                            <TouchableOpacity
-                                                key={type}
-                                                onPress={() => { setServiceType(type === serviceType ? null : type); setOtherCategory(null); }}
-                                                accessibilityRole="radio"
-                                                accessibilityState={{ checked: serviceType === type }}
-                                                className={`px-3 py-2 rounded-lg border ${serviceType === type ? 'bg-primary/20 border-primary' : 'bg-surface-container-highest border-outline-variant/20'}`}
-                                            >
-                                                <Text className={`font-label text-xs font-bold ${serviceType === type ? 'text-primary' : 'text-secondary/70'}`}>{type}</Text>
-                                            </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-
-                                    {/* Section: Other */}
-                                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-secondary/50 mb-1.5">
-                                        ↳ Other
-                                    </Text>
-                                    <View className="flex-row flex-wrap gap-2">
-                                        {OTHER_CATEGORIES.map(cat => (
-                                            <TouchableOpacity
-                                                key={cat}
-                                                onPress={() => { setOtherCategory(cat === otherCategory ? null : cat); setServiceType(null); }}
-                                                accessibilityRole="radio"
-                                                accessibilityState={{ checked: otherCategory === cat }}
-                                                className={`px-3 py-2 rounded-lg border ${otherCategory === cat ? 'bg-secondary/20 border-secondary/50' : 'bg-surface-container-highest border-outline-variant/20'}`}
-                                            >
-                                                <Text className={`font-label text-xs font-bold ${otherCategory === cat ? 'text-on-surface' : 'text-secondary/70'}`}>{cat}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-
-                                    {/* Smart-Link hint */}
-                                    {isTracked && (
-                                        <View className="mt-3 flex-row items-start gap-2 bg-primary/10 border border-primary/20 rounded-xl px-3 py-2.5">
-                                            <MaterialIcons name="link" size={14} color="#a9c7ff" style={{ marginTop: 1 }} />
-                                            <Text className="font-body text-xs text-primary/90 flex-1 leading-4">
-                                                Selecting this sets the{' '}
-                                                <Text className="font-bold">{serviceType}</Text>{' '}
-                                                planner baseline to this log&apos;s odometer.
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                {/* Notes */}
-                                <View>
-                                    <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Cost (EGP, optional)</Text>
-                                    <TextInput
-                                        accessibilityLabel="Service cost in EGP"
-                                        className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
-                                        placeholder="e.g. 750"
-                                        placeholderTextColor="#454747"
-                                        keyboardType="decimal-pad"
-                                        value={cost}
-                                        onChangeText={setCost}
-                                    />
-                                </View>
-
-                                {/* Notes */}
-                                <View>
-                                    <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Notes</Text>
-                                    <TextInput
-                                        accessibilityLabel="Service notes"
-                                        className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base min-h-[80px]"
-                                        placeholder="Add any extra details..."
-                                        placeholderTextColor="#454747"
-                                        multiline
-                                        textAlignVertical="top"
-                                        value={notes}
-                                        onChangeText={setNotes}
-                                    />
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                className="w-full h-14 bg-primary rounded-xl items-center justify-center mb-10 shadow-lg shadow-primary/20"
-                                onPress={handleAddSubmit}
-                                accessibilityLabel="Save service log"
-                                accessibilityRole="button"
-                            >
-                                <Text className="font-headline font-bold text-on-primary text-base uppercase tracking-widest">Save Log</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </ProtectedModal>
-        </AppScreen>
+  const confirmDelete = (group: TimelineGroup) => {
+    const actions = affectedActionLabels(group);
+    const affected = actions.length === 1
+      ? `Action: ${actions[0]}.`
+      : `Actions: ${actions.join(', ')}.`;
+    Alert.alert(
+      'Delete maintenance record?',
+      `Delete "${displayTitle(group)}"?\n\n${affected}\n\nMaintenance reminders for these actions will be recalculated.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMaintenanceRecord(group.primary.id);
+              await reload();
+              await syncMaintenanceNotifications(maintenanceReminders);
+            } catch (deleteError) {
+              Alert.alert('Record not deleted', deleteError instanceof Error ? deleteError.message : 'Try again.');
+            }
+          },
+        },
+      ]
     );
+  };
+
+  if (loading || error || !vehicle) {
+    return <ScreenLoadState error={error} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="MAINTENANCE HISTORY" />;
+  }
+
+  return (
+    <AppScreen edges={['top', 'bottom', 'left', 'right']}>
+      <AppTopBar
+        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+        tone="subtle"
+      >
+        <Text className="font-headline text-sm font-bold text-on-surface">Maintenance history</Text>
+      </AppTopBar>
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 36 }}>
+        <ActiveVehicleChip />
+        <Text accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-3">Maintenance history</Text>
+        <Text className="font-body text-sm text-on-surface-variant mt-2">
+          {groups.length === 0 ? 'No maintenance recorded yet.' : `Latest maintenance record: ${displayTitle(groups[0])}`}
+        </Text>
+
+        <View className="flex-row gap-3 mt-6">
+          <TouchableOpacity
+            accessibilityRole="button"
+            className="min-h-12 flex-1 rounded-xl bg-primary items-center justify-center px-3"
+            onPress={() => setEditor({ mode: 'maintenance', group: null })}
+          >
+            <Text className="font-label text-sm font-bold text-on-primary">Add maintenance</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            className="min-h-12 flex-1 rounded-xl border border-outline-variant/30 bg-surface-container-low items-center justify-center px-3"
+            onPress={() => setEditor({ mode: 'other', group: null })}
+          >
+            <Text className="font-label text-sm font-bold text-on-surface">Other work</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="gap-3 mt-7">
+          {groups.map((group) => {
+            const primary = group.primary;
+            const isLegacy = primary.maintenance_migration_status === 'legacy_unmapped'
+              || primary.maintenance_migration_status === 'legacy_needs_confirmation';
+            const safeNotes = isLegacy ? '' : safeStoredText(primary.notes, '');
+            return (
+              <View key={group.key} className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4">
+                <View className="flex-row items-start gap-3">
+                  <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
+                    <MaterialIcons color="#a9c7ff" name="build-circle" size={23} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-headline text-base font-bold text-on-surface">{displayTitle(group)}</Text>
+                    <Text className="font-body text-xs text-on-surface-variant mt-1">
+                      {primary.maintenance_date_confidence === 'unknown' || !primary.date ? 'Date unknown' : primary.date}
+                      {' - '}
+                      {primary.maintenance_mileage_confidence === 'unknown' || primary.sets_odometer_baseline === 0
+                        ? 'Mileage unknown'
+                        : `${primary.mileage.toLocaleString()} km`}
+                    </Text>
+                  </View>
+                </View>
+
+                {group.rows.length > 1 ? (
+                  <View className="mt-3 gap-1.5">
+                    {group.rows.map((row) => (
+                      <View key={row.id} className="flex-row items-center gap-2">
+                        <MaterialIcons color="#8e9196" name="check" size={15} />
+                        <Text className="font-body text-xs text-on-surface-variant flex-1">{logActionLabel(row)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {primary.service_provider ? <Text className="font-body text-xs text-on-surface-variant mt-3">Workshop: {primary.service_provider}</Text> : null}
+                {safeNotes ? <Text className="font-body text-xs text-on-surface-variant mt-2">{safeNotes}</Text> : null}
+                {primary.cost !== null ? <Text className="font-label text-xs text-primary mt-2">{primary.cost.toLocaleString()} EGP</Text> : null}
+
+                <View className="flex-row gap-2 mt-4">
+                  <TouchableOpacity
+                    accessibilityLabel={`Edit ${displayTitle(group)}`}
+                    accessibilityRole="button"
+                    className="min-h-11 flex-1 rounded-lg bg-surface-container-high items-center justify-center"
+                    onPress={() => setEditor({ mode: primary.maintenance_component_id || primary.maintenance_rule_id ? 'maintenance' : 'other', group })}
+                  >
+                    <Text className="font-label text-xs font-bold text-on-surface">Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityLabel={`Delete ${displayTitle(group)}`}
+                    accessibilityRole="button"
+                    className="min-h-11 flex-1 rounded-lg border border-error/30 items-center justify-center"
+                    onPress={() => confirmDelete(group)}
+                  >
+                    <Text className="font-label text-xs font-bold text-error">Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+        <AppListContinuation onPress={loadOlder} visible={canLoadOlder} />
+      </ScrollView>
+
+      <MaintenanceRecordForm
+        actionOptions={options}
+        advisoryText={editor?.group ? editAdvisory(editor.group) : undefined}
+        allowMultipleActions={editor?.mode === 'maintenance'}
+        currentOdometerKm={vehicle.current_mileage}
+        initialValue={initialValue}
+        onClose={closeEditor}
+        onSubmit={persist}
+        saving={saving}
+        submitLabel={editor?.group ? 'Save changes' : editor?.mode === 'other' ? 'Save other work' : 'Save maintenance'}
+        title={editor?.group ? 'Edit maintenance record' : editor?.mode === 'other' ? 'Other work' : 'Add maintenance'}
+        visible={editor !== null}
+      />
+    </AppScreen>
+  );
 }

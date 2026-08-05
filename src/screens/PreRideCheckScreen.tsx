@@ -11,7 +11,6 @@ import AppIconButton from '../components/ui/AppIconButton';
 import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
-import SourceProvenance from '../components/SourceProvenance';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import {
   formatKnowledgeValue,
@@ -158,7 +157,7 @@ export default function PreRideCheckScreen() {
 
             {items.length === 0 ? (
               <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-5">
-                <Text className="font-headline text-base font-bold text-on-surface">Not specified in this manual.</Text>
+                <Text className="font-headline text-base font-bold text-on-surface">No pre-ride checklist is available for this selection.</Text>
               </View>
             ) : items.map((item) => {
               const isChecked = Boolean(checked[item.recordId]);
@@ -178,7 +177,6 @@ export default function PreRideCheckScreen() {
                     <View className="flex-1">
                       <Text className="font-headline text-sm font-bold text-on-surface capitalize">{recordTitle(item)}</Text>
                       <Text className="font-body text-xs text-on-surface-variant leading-5 mt-1">{formatKnowledgeValue(item.value)}</Text>
-                      <SourceProvenance compact pages={item.pages} profile={modelProfile} />
                     </View>
                   </View>
                 </TouchableOpacity>

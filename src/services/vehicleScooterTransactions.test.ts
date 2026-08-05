@@ -9,6 +9,9 @@ import {
 
 function executorFor(database: DatabaseSync): VehicleScooterTransactionExecutor {
   return {
+    async getFirstAsync<T>(source: string, params: VehicleScooterSqlValue[]): Promise<T | null> {
+      return (database.prepare(source).get(...params) as T | undefined) ?? null;
+    },
     async runAsync(source: string, params: VehicleScooterSqlValue[]) {
       const result = database.prepare(source).run(...params);
       return { changes: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
@@ -39,7 +42,9 @@ describe('vehicle scooter identity transaction', () => {
         scooter_brand_id TEXT,
         scooter_model_id TEXT,
         scooter_version_id TEXT,
-        scooter_variant_id TEXT
+        scooter_variant_id TEXT,
+        maintenance_history_level TEXT NOT NULL DEFAULT 'not_asked',
+        service_history_setup_completed INTEGER NOT NULL DEFAULT 0
       );
       CREATE TABLE service_intervals (
         id INTEGER PRIMARY KEY,
@@ -52,8 +57,8 @@ describe('vehicle scooter identity transaction', () => {
       );
       CREATE TABLE service_logs (id INTEGER PRIMARY KEY, vehicle_id INTEGER NOT NULL, title TEXT NOT NULL);
       INSERT INTO vehicle_profile VALUES
-        (1, 'sym', 'first-model', 'first-version', 'first-variant'),
-        (2, 'sym', 'old-model', 'old-version', 'old-variant');
+        (1, 'sym', 'first-model', 'first-version', 'first-variant', 'detailed_records', 1),
+        (2, 'sym', 'old-model', 'old-version', 'old-variant', 'recent_memory', 1);
       INSERT INTO service_intervals VALUES
         (1, 1, 1111, 700, 1, 'first-manual', 1),
         (2, 2, 2222, 750, 1, 'old-manual', 1);
@@ -88,11 +93,35 @@ describe('vehicle scooter identity transaction', () => {
     assert.equal(first.scooter_model_id, 'first-model');
     assert.equal(target.scooter_model_id, selection.modelId);
     assert.equal(target.scooter_variant_id, selection.variantId);
+    assert.equal(target.maintenance_history_level, 'not_asked');
+    assert.equal(target.service_history_setup_completed, 0);
     assert.equal(targetInterval.last_service_odometer_km, 2222);
     assert.equal(targetInterval.user_interval_km, 750);
     assert.equal(targetInterval.user_override_active, 1);
     assert.equal(targetInterval.source_manual_id, 'joymax-manual');
     assert.equal((database.prepare('SELECT COUNT(*) AS count FROM service_logs').get() as { count: number }).count, 2);
+  });
+
+  it('does not reset completed history when the exact scooter identity is unchanged', async () => {
+    const sameSelection = {
+      brandId: 'sym',
+      modelId: 'old-model',
+      versionId: 'old-version',
+      variantId: 'old-variant',
+    };
+    await inTransaction(database, () => updateVehicleScooterIdentityInTransaction(
+      executor,
+      2,
+      sameSelection,
+      async () => undefined
+    ));
+    const target = database.prepare(
+      `SELECT maintenance_history_level AS level,
+              service_history_setup_completed AS completed
+       FROM vehicle_profile WHERE id = 2`
+    ).get() as { level: string; completed: number };
+    assert.equal(target.level, 'recent_memory');
+    assert.equal(target.completed, 1);
   });
 
   it('rolls back identity and maintenance together when reapplication fails', async () => {
