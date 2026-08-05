@@ -260,51 +260,8 @@ export default function DashboardScreen() {
             )}
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }} className="flex-grow">
-                <View className="w-full bg-surface-container-lowest border border-primary/20 rounded-xl p-5 mb-5">
-                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary font-bold">Active scooter</Text>
-                    <Text className="font-headline text-xl font-bold text-on-surface mt-1">
-                        {modelProfile ? `${modelProfile.brandName} ${modelProfile.modelName}` : 'Scooter not selected'}
-                    </Text>
-                    <Text className="font-body text-xs text-on-surface-variant mt-1">
-                        {modelProfile
-                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} · ${modelProfile.manualYears}`
-                            : 'Choose an exact manual in Vehicle Settings.'}
-                    </Text>
-                    {isInBreakIn ? (
-                        <TouchableOpacity
-                            accessibilityRole="button"
-                            className="bg-tertiary/10 border border-tertiary/25 rounded-lg p-3 mt-4 flex-row items-center gap-3"
-                            onPress={() => navigation.navigate('TechSpecs')}
-                        >
-                            <MaterialCommunityIcons name="engine-outline" size={20} color="#f2ca50" />
-                            <View className="flex-1">
-                                <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">Break-in guidance active</Text>
-                                <Text className="font-body text-xs text-on-surface-variant mt-1">Manual guidance extends to {breakInLimit?.toLocaleString()} km. Open Model Reference to review it.</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ) : null}
-                </View>
-
-                {nextItems.length > 0 ? (
-                    <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-6">
-                        <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-3">Next model services</Text>
-                        {nextItems.map(({ interval, progress }) => (
-                            <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
-                                <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
-                                <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
-                                    {progress.remainingKm === null
-                                        ? 'Not set'
-                                        : progress.remainingKm <= 0
-                                            ? `${Math.abs(progress.remainingKm).toLocaleString()} km over`
-                                            : `${progress.remainingKm.toLocaleString()} km`}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-                ) : null}
-
-                {/* Kinetic Gauge Section */}
-                <View className="w-full flex-col items-center mb-8">
+                {/* Kinetic Gauge Section — primary glanceable metric, kept at the top of Home */}
+                <View className="w-full flex-col items-center mb-6">
                     <View
                         className="relative items-center justify-end"
                         style={{ width: gaugeWidth, height: gaugeHeight }}
@@ -360,8 +317,51 @@ export default function DashboardScreen() {
                     >
                         {gaugeServiceLabel}
                     </Text>
-                    <View className="w-full h-[1px] bg-outline-variant/20" />
+                    <View className="w-full h-[1px] bg-outline-variant/20 mt-4" />
                 </View>
+
+                <View className="w-full bg-surface-container-lowest border border-primary/20 rounded-xl p-5 mb-5">
+                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary font-bold">Active scooter</Text>
+                    <Text className="font-headline text-xl font-bold text-on-surface mt-1">
+                        {modelProfile ? `${modelProfile.brandName} ${modelProfile.modelName}` : 'Scooter not selected'}
+                    </Text>
+                    <Text className="font-body text-xs text-on-surface-variant mt-1">
+                        {modelProfile
+                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} · ${modelProfile.manualYears}`
+                            : 'Choose an exact manual in Vehicle Settings.'}
+                    </Text>
+                    {isInBreakIn ? (
+                        <TouchableOpacity
+                            accessibilityRole="button"
+                            className="bg-tertiary/10 border border-tertiary/25 rounded-lg p-3 mt-4 flex-row items-center gap-3"
+                            onPress={() => navigation.navigate('TechSpecs')}
+                        >
+                            <MaterialCommunityIcons name="engine-outline" size={20} color="#f2ca50" />
+                            <View className="flex-1">
+                                <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">Break-in guidance active</Text>
+                                <Text className="font-body text-xs text-on-surface-variant mt-1">Manual guidance extends to {breakInLimit?.toLocaleString()} km. Open Model Reference to review it.</Text>
+                            </View>
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+
+                {nextItems.length > 0 ? (
+                    <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-6">
+                        <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-3">Next model services</Text>
+                        {nextItems.map(({ interval, progress }) => (
+                            <View key={interval.id} className="flex-row items-center justify-between gap-3 py-2 border-b border-outline-variant/10">
+                                <Text className="font-body text-sm text-on-surface flex-1">{interval.name}</Text>
+                                <Text className={`font-label text-xs font-bold ${progress.status === 'overdue' ? 'text-error' : 'text-primary'}`}>
+                                    {progress.remainingKm === null
+                                        ? 'Not set'
+                                        : progress.remainingKm <= 0
+                                            ? `${Math.abs(progress.remainingKm).toLocaleString()} km over`
+                                            : `${progress.remainingKm.toLocaleString()} km`}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : null}
 
                 {/* Check & Module Links */}
                 <TouchableOpacity 
