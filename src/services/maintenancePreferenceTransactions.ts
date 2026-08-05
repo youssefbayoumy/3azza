@@ -151,6 +151,30 @@ export async function setMaintenancePreferenceInTransaction(
   return row;
 }
 
+export async function setMaintenanceTrackedInTransaction(
+  transaction: MaintenanceRecordTransactionExecutor,
+  vehicleId: number,
+  profileId: string,
+  componentId: string,
+  action: MaintenanceAction,
+  tracked: boolean,
+  timestamp: string
+): Promise<void> {
+  const normalizedComponentId = componentId.trim();
+  if (!profileId.trim() || !normalizedComponentId || !action) {
+    throw new Error('Maintenance preference requires a component and action.');
+  }
+  await transaction.runAsync(
+    `INSERT INTO maintenance_preferences (
+       vehicle_id, profile_id, component_id, action, tracked, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(vehicle_id, profile_id, component_id, action) DO UPDATE SET
+       tracked = excluded.tracked,
+       updated_at = excluded.updated_at`,
+    [vehicleId, profileId, normalizedComponentId, action, tracked ? 1 : 0, timestamp, timestamp]
+  );
+}
+
 export async function restoreMaintenancePreferenceInTransaction(
   transaction: MaintenanceRecordTransactionExecutor,
   vehicleId: number,

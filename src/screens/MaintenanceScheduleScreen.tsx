@@ -18,6 +18,7 @@ import { formatScooterSelection, selectionFromProfile } from '../catalog/scooter
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
 import {
   compareMaintenanceTaskPriority,
+  isTaskTracked,
   projectMaintenanceTasks,
 } from '../maintenance/scheduler';
 import {
@@ -42,6 +43,7 @@ import {
   getMaintenancePreferences,
   getVehicleProfile,
   restoreMaintenancePreference,
+  setMaintenanceTracked,
 } from '../services/database';
 import type { VehicleProfile } from '../types/database.types';
 import { syncMaintenanceNotifications } from '../services/notifications';
@@ -292,6 +294,7 @@ export default function MaintenanceScheduleScreen() {
   const [vehicle, setVehicle] = useState<VehicleProfile | null>(null);
   const [maintenanceProfile, setMaintenanceProfile] = useState<ScooterMaintenanceProfile | null>(null);
   const [tasks, setTasks] = useState<MaintenanceTaskProjection[]>([]);
+  const [trackedKeys, setTrackedKeys] = useState<Set<string>>(new Set());
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [menuTask, setMenuTask] = useState<MaintenanceTaskProjection | null>(null);
   const [recordingTask, setRecordingTask] = useState<MaintenanceTaskProjection | null>(null);
@@ -317,17 +320,23 @@ export default function MaintenanceScheduleScreen() {
       setTasks([]);
       return;
     }
-    setTasks(projectMaintenanceTasks({
+    const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
+    const projected = projectMaintenanceTasks({
       profile: domainProfile,
       currentOdometerKm: profileData.current_mileage,
       vehicleId: profileData.id,
       now: new Date(),
       events,
-      preferences: maintenancePreferencesForScheduler(preferences),
+      preferences: schedulerPreferences,
       historyByAction: maintenanceHistoryByAction(historyStates),
       defaultHistoryKnowledge: 'unknown',
       vehicleInServiceDate: profileData.created_at.slice(0, 10),
-    }));
+    });
+    setTasks(projected);
+    const trackingContext = { preferences: schedulerPreferences, events, vehicleId: profileData.id };
+    setTrackedKeys(new Set(
+      projected.filter((task) => isTaskTracked(task, trackingContext)).map((task) => task.key)
+    ));
   }, []);
 
   const { error: loadError, loading, reload } = useFocusedLoader(
@@ -441,6 +450,46 @@ export default function MaintenanceScheduleScreen() {
     );
   }, [reload, remindersEnabled]);
 
+  const trackTasks = useCallback(async (tasksToTrack: MaintenanceTaskProjection[]) => {
+    try {
+      const seen = new Set<string>();
+      for (const task of tasksToTrack) {
+        const key = `${task.componentId}:${task.action}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await setMaintenanceTracked(task.componentId, task.action, true);
+      }
+      await reload();
+      await syncMaintenanceNotifications(remindersEnabled);
+    } catch (error) {
+      Alert.alert('Not added', error instanceof Error ? error.message : 'The service could not be added.');
+    }
+  }, [reload, remindersEnabled]);
+
+  const stopTrackingTask = useCallback((task: MaintenanceTaskProjection) => {
+    Alert.alert(
+      'Stop tracking?',
+      `${naturalMaintenanceActionLabel(task)} will be hidden from your plan and reminders. Your history is kept, and you can add it back anytime.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Stop tracking',
+          style: 'destructive',
+          onPress: () => void (async () => {
+            try {
+              setMenuTask(null);
+              await setMaintenanceTracked(task.componentId, task.action, false);
+              await reload();
+              await syncMaintenanceNotifications(remindersEnabled);
+            } catch (error) {
+              Alert.alert('Not changed', error instanceof Error ? error.message : 'Tracking was not changed.');
+            }
+          })(),
+        },
+      ]
+    );
+  }, [reload, remindersEnabled]);
+
   if (loading || loadError || !vehicle) {
     return (
       <ScreenLoadState
@@ -459,9 +508,15 @@ export default function MaintenanceScheduleScreen() {
     || vehicle.maintenance_history_level === 'not_asked'
     || vehicle.maintenance_history_level === 'skipped'
   );
-  const dueNow = deduplicateByGroup(tasks.filter(isDueNow));
-  const comingUp = deduplicateByGroup(tasks.filter(isComingUp));
-  const activeInitialTasks = tasks.filter((task) =>
+  const trackedTasks = tasks.filter((task) => trackedKeys.has(task.key));
+  const untrackedTasks = tasks.filter((task) =>
+    !trackedKeys.has(task.key)
+    && task.status !== 'historical_unverified'
+    && task.status !== 'not_applicable'
+  );
+  const dueNow = deduplicateByGroup(trackedTasks.filter(isDueNow));
+  const comingUp = deduplicateByGroup(trackedTasks.filter(isComingUp));
+  const activeInitialTasks = trackedTasks.filter((task) =>
     task.isOneTime
     && task.status !== 'historical_unverified'
     && task.status !== 'not_applicable'
@@ -501,7 +556,7 @@ export default function MaintenanceScheduleScreen() {
   };
 
   const renderComponentRow = (group: ComponentGroup, section: SectionId) => {
-    const visibleTasks = groupTasks(group, tasks).filter((task) =>
+    const visibleTasks = groupTasks(group, trackedTasks).filter((task) =>
       task.status !== 'historical_unverified' && task.status !== 'not_applicable'
     );
     if (visibleTasks.length === 0) return null;
@@ -549,7 +604,7 @@ export default function MaintenanceScheduleScreen() {
   };
 
   const renderSection = (id: SectionId, title: string) => {
-    const groups = COMPONENT_GROUPS.filter((group) => group.section === id && groupTasks(group, tasks).some((task) =>
+    const groups = COMPONENT_GROUPS.filter((group) => group.section === id && groupTasks(group, trackedTasks).some((task) =>
       task.status !== 'historical_unverified' && task.status !== 'not_applicable'
     ));
     if (groups.length === 0) return null;
@@ -616,6 +671,35 @@ export default function MaintenanceScheduleScreen() {
             {renderSection('wear', 'Wear and condition')}
             {renderSection('checks', 'General checks')}
 
+            {untrackedTasks.length > 0 ? (
+              <View className="mt-7">
+                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-1">Track more services</Text>
+                <Text className="font-body text-xs text-on-surface-variant mb-3">Add only what you maintain — the rest stays out of your plan. Logging a record adds its service automatically.</Text>
+                <View className="gap-2">
+                  {COMPONENT_GROUPS.filter((group) => groupTasks(group, untrackedTasks).length > 0).map((group) => (
+                    <View key={group.id} className="min-h-16 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 flex-row items-center gap-3">
+                      <View className="w-10 h-10 rounded-lg bg-surface-container-high items-center justify-center">
+                        <MaterialIcons name={group.icon} size={20} color="#8e9196" />
+                      </View>
+                      <View className="flex-1 min-w-0">
+                        <Text className="font-headline text-sm font-bold text-on-surface">{group.label}</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1">Not tracked</Text>
+                      </View>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Track ${group.label}`}
+                        className="min-h-10 rounded-lg bg-primary/15 border border-primary/30 px-3 flex-row items-center gap-1"
+                        onPress={() => void trackTasks(groupTasks(group, untrackedTasks))}
+                      >
+                        <MaterialIcons name="add" size={16} color="#a9c7ff" />
+                        <Text className="font-label text-xs font-bold text-primary">Track</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             <View className="mt-7">
               <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-3">Maintenance history</Text>
               <TouchableOpacity
@@ -673,6 +757,7 @@ export default function MaintenanceScheduleScreen() {
         onHistory={() => navigation.navigate('ServiceLogs')}
         onRecord={setRecordingTask}
         onRestore={restoreOriginalSchedule}
+        onStopTracking={stopTrackingTask}
         task={menuTask}
       />
     </AppScreen>

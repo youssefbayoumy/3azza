@@ -68,6 +68,7 @@ import {
 import {
   restoreMaintenancePreferenceInTransaction,
   setMaintenancePreferenceInTransaction,
+  setMaintenanceTrackedInTransaction,
   type SetMaintenancePreferenceInput,
 } from './maintenancePreferenceTransactions';
 import { applyMaintenanceStorageMigration } from './maintenanceStorageMigration';
@@ -950,8 +951,22 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
     await applyOdometerCorrectionMigration(database);
   }
 
+  if (version < 18) {
+    await addMaintenancePreferenceTracking(database);
+    version = 18;
+    await setSchemaVersion(database, version);
+  }
+
   if (version < CURRENT_SCHEMA_VERSION) {
     await setSchemaVersion(database, CURRENT_SCHEMA_VERSION);
+  }
+}
+
+// Opt-in service tracking: a nullable tri-state flag on maintenance_preferences
+// (NULL = unset/default, 1 = explicitly tracked, 0 = explicitly untracked).
+async function addMaintenancePreferenceTracking(database: SQLite.SQLiteDatabase): Promise<void> {
+  if (!(await columnExists(database, 'maintenance_preferences', 'tracked'))) {
+    await database.execAsync('ALTER TABLE maintenance_preferences ADD COLUMN tracked INTEGER;');
   }
 }
 
@@ -2431,6 +2446,33 @@ export async function setMaintenancePreference(
   return preference;
 }
 
+export async function setMaintenanceTracked(
+  componentId: string,
+  action: MaintenanceAction,
+  tracked: boolean
+): Promise<void> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    const profile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (!profile) throw new Error('A validated maintenance profile is required.');
+    await setMaintenanceTrackedInTransaction(
+      transaction,
+      vehicleId,
+      profile.id,
+      componentId,
+      action,
+      tracked,
+      new Date().toISOString()
+    );
+  });
+}
+
 export async function restoreMaintenancePreference(
   componentId: string,
   action: MaintenanceAction
@@ -2838,9 +2880,9 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
            user_interval_km, effective_interval_km, original_interval_km,
            original_interval_months, custom_interval_km, custom_interval_months,
            effective_interval_months, distance_enabled, time_enabled,
-           condition_based_default, custom_condition_reminder_enabled, interval_source,
+           condition_based_default, custom_condition_reminder_enabled, tracked, interval_source,
            longer_than_recommended_confirmed, reason, created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           row.id,
           row.vehicle_id,
@@ -2859,6 +2901,7 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           row.time_enabled ?? 0,
           row.condition_based_default ?? 0,
           row.custom_condition_reminder_enabled ?? 0,
+          row.tracked ?? null,
           row.interval_source,
           row.longer_than_recommended_confirmed,
           row.reason,

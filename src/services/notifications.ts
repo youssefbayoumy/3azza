@@ -15,7 +15,7 @@ import {
   type NotificationIntent,
 } from '../utils/notificationRouting';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
-import { projectMaintenanceTasks } from '../maintenance/scheduler';
+import { isTaskTracked, projectMaintenanceTasks } from '../maintenance/scheduler';
 import {
   maintenanceHistoryByAction,
   maintenancePreferencesForScheduler,
@@ -109,16 +109,22 @@ async function reconcileMaintenanceNotifications(enabled: boolean): Promise<Noti
       versionId: profile.scooter_version_id,
       variantId: profile.scooter_variant_id,
     } : null);
-    const tasks = profile && domainProfile ? projectMaintenanceTasks({
+    const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
+    const projectedTasks = profile && domainProfile ? projectMaintenanceTasks({
       profile: domainProfile,
       currentOdometerKm: profile.current_mileage,
       now: new Date(),
       events,
-      preferences: maintenancePreferencesForScheduler(preferences),
+      preferences: schedulerPreferences,
       historyByAction: maintenanceHistoryByAction(historyStates),
       defaultHistoryKnowledge: 'unknown',
       vehicleInServiceDate: profile.created_at.slice(0, 10),
     }) : [];
+    const tasks = projectedTasks.filter((task) => isTaskTracked(task, {
+      preferences: schedulerPreferences,
+      events,
+      vehicleId: profile?.id,
+    }));
     const plan = buildDomainMaintenanceReminderPlan(tasks, documents);
     for (const reminder of plan) {
       await Notifications.scheduleNotificationAsync({

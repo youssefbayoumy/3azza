@@ -282,6 +282,8 @@ export type VehicleMaintenancePreference = {
   timeEnabled?: boolean;
   conditionBasedDefault?: boolean;
   customConditionReminderEnabled?: boolean;
+  /** Opt-in tracking: null = default, true = explicitly tracked, false = explicitly hidden. */
+  tracked?: boolean | null;
   intervalSource: IntervalSource;
   reason?: string;
   changedAt: string;

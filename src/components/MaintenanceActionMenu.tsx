@@ -16,6 +16,7 @@ type MaintenanceActionMenuProps = {
   onHistory: () => void;
   onRecord: (task: MaintenanceTaskProjection) => void;
   onRestore: (task: MaintenanceTaskProjection) => void;
+  onStopTracking?: (task: MaintenanceTaskProjection) => void;
   task: MaintenanceTaskProjection | null;
 };
 
@@ -49,6 +50,7 @@ export default function MaintenanceActionMenu({
   onHistory,
   onRecord,
   onRestore,
+  onStopTracking,
   task,
 }: MaintenanceActionMenuProps) {
   if (!task) return null;
@@ -100,6 +102,14 @@ export default function MaintenanceActionMenu({
                 icon="restore"
                 label="Restore original schedule"
                 onPress={() => closeThen(() => onRestore(task))}
+              />
+            ) : null}
+            {onStopTracking && !historical && task.status !== 'not_applicable' ? (
+              <MenuRow
+                icon="remove-circle-outline"
+                label="Stop tracking this service"
+                onPress={() => closeThen(() => onStopTracking(task))}
+                tone="warning"
               />
             ) : null}
           </View>

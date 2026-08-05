@@ -41,6 +41,7 @@ export function maintenancePreferencesForScheduler(
     timeEnabled: row.time_enabled === 1,
     conditionBasedDefault: row.condition_based_default === 1,
     customConditionReminderEnabled: row.custom_condition_reminder_enabled === 1,
+    tracked: row.tracked == null ? null : row.tracked === 1,
     intervalSource: row.interval_source,
     changedAt: row.updated_at,
     longerThanRecommendedConfirmed: row.longer_than_recommended_confirmed === 1,

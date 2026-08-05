@@ -162,6 +162,7 @@ export interface MaintenancePreference {
   time_enabled?: number;
   condition_based_default?: number;
   custom_condition_reminder_enabled?: number;
+  tracked?: number | null;
   interval_source: MaintenanceIntervalSource;
   longer_than_recommended_confirmed: number;
   reason: string | null;

@@ -27,7 +27,7 @@ import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { getApplicableBreakInGuidance, getModelProfileForVehicle, getSelectedVariant } from '../modelData/modelKnowledge';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
-import { projectMaintenanceTasks } from '../maintenance/scheduler';
+import { isTaskTracked, projectMaintenanceTasks } from '../maintenance/scheduler';
 import { maintenanceComponentGroup, naturalMaintenanceActionLabel } from '../maintenance/presentation';
 import {
     maintenanceHistoryByAction,
@@ -305,17 +305,23 @@ export default function DashboardScreen() {
             versionId: profileData.scooter_version_id,
             variantId: profileData.scooter_variant_id,
         } : null);
-        setMaintenanceTasks(profileData && domainProfile ? projectMaintenanceTasks({
+        const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
+        const projectedTasks = profileData && domainProfile ? projectMaintenanceTasks({
             profile: domainProfile,
             currentOdometerKm: profileData.current_mileage,
             vehicleId: profileData.id,
             now: new Date(),
             events,
-            preferences: maintenancePreferencesForScheduler(preferences),
+            preferences: schedulerPreferences,
             historyByAction: maintenanceHistoryByAction(historyStates),
             defaultHistoryKnowledge: 'unknown',
             vehicleInServiceDate: profileData.created_at.slice(0, 10),
-        }) : []);
+        }) : [];
+        setMaintenanceTasks(projectedTasks.filter((task) => isTaskTracked(task, {
+            preferences: schedulerPreferences,
+            events,
+            vehicleId: profileData?.id,
+        })));
     }, []);
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadDashboard,

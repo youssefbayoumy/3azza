@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;
 
 /**
  * Installs the narrow database capability used by the dedicated odometer-correction
@@ -258,6 +258,7 @@ export const CURRENT_SCHEMA_SQL = `
     time_enabled INTEGER NOT NULL DEFAULT 0,
     condition_based_default INTEGER NOT NULL DEFAULT 0,
     custom_condition_reminder_enabled INTEGER NOT NULL DEFAULT 0,
+    tracked INTEGER,
     interval_source TEXT NOT NULL DEFAULT 'profile_default',
     longer_than_recommended_confirmed INTEGER NOT NULL DEFAULT 0,
     reason TEXT,

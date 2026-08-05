@@ -13,7 +13,7 @@ describe('fresh-install database schema', () => {
   it('creates the current multi-vehicle tables directly', () => {
     const database = createCurrentDatabase();
     try {
-      assert.equal(CURRENT_SCHEMA_VERSION, 17);
+      assert.equal(CURRENT_SCHEMA_VERSION, 18);
       const profileColumns = database.prepare('PRAGMA table_info(vehicle_profile)').all()
         .map((column) => (column as { name: string }).name);
       const expectedProfileColumns = [
@@ -116,6 +116,7 @@ describe('fresh-install database schema', () => {
         'time_enabled',
         'condition_based_default',
         'custom_condition_reminder_enabled',
+        'tracked',
       ]) assert.equal(preferenceColumns.has(name), true, `${name} should exist`);
 
       database.prepare(

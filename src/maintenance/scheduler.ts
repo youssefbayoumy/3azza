@@ -702,6 +702,44 @@ export function projectMaintenanceTasks(input: MaintenanceProjectionInput): Main
   return tasks.sort(compareMaintenanceTaskPriority);
 }
 
+/**
+ * Components tracked by default on a fresh vehicle. Everything else is opt-in:
+ * the user adds it explicitly, or it auto-tracks the first time a record is logged.
+ */
+export const DEFAULT_TRACKED_COMPONENT_IDS: ReadonlySet<string> = new Set(['engine-oil']);
+
+export type TaskTrackingContext = {
+  preferences?: VehicleMaintenancePreference[];
+  events: MaintenanceEvent[];
+  vehicleId?: number;
+};
+
+/**
+ * Opt-in service tracking. A task is surfaced (on the plan, on Home, and in
+ * reminders) only when tracked:
+ *  - an explicit "stop tracking" (tracked === false) always wins; otherwise
+ *  - engine oil is tracked by default, an explicit tracked === true, or any
+ *    logged event for the same component+action (auto-track on log).
+ */
+export function isTaskTracked(
+  task: Pick<MaintenanceTaskProjection, 'componentId' | 'action'>,
+  context: TaskTrackingContext
+): boolean {
+  const preference = (context.preferences ?? []).find((candidate) =>
+    candidate.componentId === task.componentId
+    && candidate.action === task.action
+    && (context.vehicleId === undefined || candidate.vehicleId === context.vehicleId)
+  );
+  if (preference?.tracked === false) return false;
+  if (preference?.tracked === true) return true;
+  if (DEFAULT_TRACKED_COMPONENT_IDS.has(task.componentId)) return true;
+  return context.events.some((event) =>
+    event.componentId === task.componentId
+    && event.action === task.action
+    && (context.vehicleId === undefined || event.vehicleId === context.vehicleId)
+  );
+}
+
 export function maintenanceAttentionCount(tasks: MaintenanceTaskProjection[]): number {
   return tasks.filter((task) => ['overdue', 'due', 'due_soon', 'condition_attention'].includes(task.status)).length;
 }
