@@ -150,12 +150,12 @@ export default function InsightsScreen() {
             <View className="flex-1 flex-col items-center h-full justify-end">
               <View className="w-full bg-secondary rounded-t-md" style={{ height: fuelHeight }} />
               <Text className="font-label text-xs mt-3 font-bold text-secondary uppercase tracking-widest">Fuel</Text>
-              <Text className="font-label text-xs text-secondary/50">{insights.monthFuelCost.toLocaleString()} EGP</Text>
+              <Text className="font-label text-xs text-muted">{insights.monthFuelCost.toLocaleString()} EGP</Text>
             </View>
             <View className="flex-1 flex-col items-center h-full justify-end">
               <View className="w-full rounded-t-md" style={{ height: maintenanceHeight, backgroundColor: AMBER }} />
               <Text className="font-label text-xs mt-3 font-bold uppercase tracking-widest" style={{ color: AMBER }}>Maint</Text>
-              <Text className="font-label text-xs text-secondary/50">{insights.monthMaintenanceCost.toLocaleString()} EGP</Text>
+              <Text className="font-label text-xs text-muted">{insights.monthMaintenanceCost.toLocaleString()} EGP</Text>
             </View>
           </View>
         </View>
@@ -165,11 +165,11 @@ export default function InsightsScreen() {
             <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-4">Lifetime Breakdown</Text>
             <View className="gap-4" style={{ flexDirection: stackSummaryCards ? 'column' : 'row' }}>
               <View>
-                <Text className="font-label text-xs text-secondary/50 uppercase">Fuel</Text>
+                <Text className="font-label text-xs text-muted uppercase">Fuel</Text>
                 <Text className="font-headline text-2xl font-bold text-on-surface">{insights.totalFuelCost.toLocaleString()} EGP</Text>
               </View>
               <View className={stackSummaryCards ? 'items-start' : 'items-end'}>
-                <Text className="font-label text-xs text-secondary/50 uppercase">Maintenance</Text>
+                <Text className="font-label text-xs text-muted uppercase">Maintenance</Text>
                 <Text className="font-headline text-2xl font-bold text-on-surface">{insights.totalMaintenanceCost.toLocaleString()} EGP</Text>
               </View>
             </View>
@@ -179,12 +179,12 @@ export default function InsightsScreen() {
             <TouchableOpacity onPress={() => navigation.navigate('Tabs', { screen: 'Vitals' })} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="build" size={24} color={insights.serviceWarningCount > 0 ? '#ffb4ab' : '#a9c7ff'} />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.serviceWarningCount}</Text>
-              <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Service Attention</Text>
+              <Text className="font-label text-xs text-muted uppercase tracking-widest mt-1">Service Attention</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Tabs', { screen: 'Vault' })} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="folder-special" size={24} color={insights.expiringDocumentCount > 0 ? '#ffb4ab' : '#a9c7ff'} />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.expiringDocumentCount}</Text>
-              <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Document Attention</Text>
+              <Text className="font-label text-xs text-muted uppercase tracking-widest mt-1">Document Attention</Text>
             </TouchableOpacity>
           </View>
 
@@ -192,19 +192,19 @@ export default function InsightsScreen() {
             <TouchableOpacity onPress={() => navigation.navigate('Tabs', { screen: 'Inventory' })} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="inventory-2" size={24} color="#a9c7ff" />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.inventoryCount}</Text>
-              <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Parts Tracked</Text>
+              <Text className="font-label text-xs text-muted uppercase tracking-widest mt-1">Parts Tracked</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('GasLog')} className="flex-1 bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="local-gas-station" size={24} color="#a9c7ff" />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.gasLogCount}</Text>
-              <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Fuel Logs</Text>
+              <Text className="font-label text-xs text-muted uppercase tracking-widest mt-1">Fuel Logs</Text>
             </TouchableOpacity>
           </View>
           <View>
             <TouchableOpacity onPress={() => navigation.navigate('ServiceLogs')} className="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10">
               <MaterialIcons name="build" size={24} color="#a9c7ff" />
               <Text className="font-headline text-3xl font-bold text-on-surface mt-4">{insights.serviceLogCount}</Text>
-              <Text className="font-label text-xs text-secondary/60 uppercase tracking-widest mt-1">Service Logs</Text>
+              <Text className="font-label text-xs text-muted uppercase tracking-widest mt-1">Service Logs</Text>
             </TouchableOpacity>
           </View>
         </View>

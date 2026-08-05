@@ -218,7 +218,7 @@ export default function OilChangeDetailsScreen() {
         <View className="gap-4">
           {modelProfile && oilFacts.map((item) => (
             <View key={item.id} className="bg-surface-container p-4 rounded-xl border-l-2 border-primary/40">
-              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">{item.label}</Text>
+              <Text className="font-label text-xs uppercase tracking-widest text-muted mb-1">{item.label}</Text>
               <Text className="font-headline text-lg font-medium text-on-surface">{formatKnowledgeValue(item.value)}</Text>
               {item.variantLabel ? <Text className="font-body text-xs text-tertiary mt-1">Applies to: {item.variantLabel}</Text> : null}
               <SourceProvenance compact pages={item.pages} profile={modelProfile} />
@@ -226,19 +226,19 @@ export default function OilChangeDetailsScreen() {
           ))}
           {modelProfile && oilFluidRecords.map((record) => (
             <View key={record.recordId} className="bg-surface-container p-4 rounded-xl border-l-2 border-primary/40">
-              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">{record.subject.replaceAll('_', ' ')}</Text>
+              <Text className="font-label text-xs uppercase tracking-widest text-muted mb-1">{record.subject.replaceAll('_', ' ')}</Text>
               <Text className="font-body text-sm text-on-surface-variant leading-5">{formatKnowledgeValue(record.value)}</Text>
               <SourceProvenance compact pages={record.pages} profile={modelProfile} />
             </View>
           ))}
           {modelProfile && oilFacts.length === 0 && oilFluidRecords.length === 0 ? (
             <View className="bg-surface-container p-4 rounded-xl border-l-2 border-secondary/40">
-              <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Oil specification / capacity</Text>
+              <Text className="font-label text-xs uppercase tracking-widest text-muted mb-1">Oil specification / capacity</Text>
               <Text className="font-headline text-base font-medium text-on-surface">Not specified in this manual.</Text>
             </View>
           ) : null}
           <View className="bg-surface-container p-4 rounded-xl">
-            <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mb-1">Planner interval {oilInterval?.recommendation_origin === 'user_override' ? '· User override' : ''}</Text>
+            <Text className="font-label text-xs uppercase tracking-widest text-muted mb-1">Planner interval {oilInterval?.recommendation_origin === 'user_override' ? '· User override' : ''}</Text>
             <Text className="font-headline text-xl font-medium text-on-surface">{intervalKm !== null ? `${intervalKm.toLocaleString()} KM` : 'Not set'}</Text>
           </View>
         </View>

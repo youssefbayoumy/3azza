@@ -260,7 +260,7 @@ export default function MaintenanceScheduleScreen() {
                 contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 24 }}
             >
                 <View className="mb-6 px-2">
-                    <Text className="font-label text-xs tracking-[0.2em] text-secondary/60 uppercase">Editable Intervals</Text>
+                    <Text className="font-label text-xs tracking-[0.2em] text-muted uppercase">Editable Intervals</Text>
                     <Text className="font-headline text-2xl font-bold text-on-surface tracking-tight mt-1 mb-2">Service Planner</Text>
                     <Text className="font-body text-xs text-on-surface-variant mb-2">
                         {scooterSelection ? formatScooterSelection(scooterSelection) : 'Scooter selection required'}
@@ -295,7 +295,7 @@ export default function MaintenanceScheduleScreen() {
                                         </View>
                                         <View className="flex-1 min-w-0">
                                             <Text className="font-headline text-lg font-bold text-on-surface">{item.name}</Text>
-                                            <Text className="font-label text-xs uppercase text-secondary/60 tracking-widest">
+                                            <Text className="font-label text-xs uppercase text-muted tracking-widest">
                                                 {item.interval_km ? `Every ${item.interval_km.toLocaleString()} KM` : 'Manual / no fixed distance'}
                                                 {item.recommended_interval_months ? ` · or ${item.recommended_interval_months} month${item.recommended_interval_months === 1 ? '' : 's'}` : ''}
                                             </Text>

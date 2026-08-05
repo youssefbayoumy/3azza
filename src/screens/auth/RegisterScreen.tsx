@@ -52,7 +52,7 @@ export default function RegisterScreen() {
 
             <View className="flex-col gap-6">
                 <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">Create PIN</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-3">Create PIN</Text>
                     <TextInput
                         className="bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-body text-xl tracking-widest border border-outline-variant/20"
                         placeholder="••••"
@@ -67,7 +67,7 @@ export default function RegisterScreen() {
                 </View>
 
                 <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">Confirm PIN</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-muted tracking-widest mb-3">Confirm PIN</Text>
                     <TextInput
                         className="bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-body text-xl tracking-widest border border-outline-variant/20"
                         placeholder="••••"
