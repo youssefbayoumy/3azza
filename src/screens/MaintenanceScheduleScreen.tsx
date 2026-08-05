@@ -172,14 +172,14 @@ export default function MaintenanceScheduleScreen() {
 
         if (intervalProgress.status === 'unknown') {
             return {
-                status: 'NOT SET',
+                status: 'NOT LOGGED YET',
                 color: 'text-secondary',
                 bgColor: 'bg-secondary/10',
                 borderColor: 'border-secondary/30',
                 progress: 0,
                 progressColor: '#8e9196',
-                remainingLabel: 'Add service history',
-                icon: 'help-outline',
+                remainingLabel: 'Log it',
+                icon: 'add-circle-outline',
                 dueReason: dueResult.reason,
             };
         }
