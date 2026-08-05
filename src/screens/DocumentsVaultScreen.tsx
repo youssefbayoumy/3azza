@@ -305,18 +305,18 @@ export default function DocumentsVaultScreen() {
 
                 <AppListContinuation visible={canLoadOlder} onPress={loadOlder} />
 
-                {/* System Stats Bar */}
-                <View className="mt-6 p-4 rounded-xl bg-surface-container-low border border-outline-variant/10 gap-4 sm:flex-row sm:items-center">
+                {/* Storage Info Bar */}
+                <View className="mt-6 p-4 rounded-xl bg-surface-container-low border border-outline-variant/10 gap-3 sm:flex-row sm:items-center">
                     <View className="flex-row items-center gap-3">
                         <View className="w-10 h-10 rounded-full bg-primary-container items-center justify-center">
-                            <MaterialIcons name="lock-open" size={18} color="#a9c7ff" />
+                            <MaterialIcons name="smartphone" size={18} color="#a9c7ff" />
                         </View>
                         <View>
-                            <Text className="font-label text-xs text-secondary/50 uppercase">Status</Text>
-                            <Text className="font-headline text-sm font-bold uppercase text-on-surface">Not encrypted</Text>
+                            <Text className="font-label text-xs text-secondary/50 uppercase">Storage</Text>
+                            <Text className="font-headline text-sm font-bold uppercase text-on-surface">Stored on this device</Text>
                         </View>
                     </View>
-                    <Text className="font-body text-xs text-on-surface-variant flex-1 leading-5">Photos stay unencrypted in app storage and are included in new self-contained JSON backups.</Text>
+                    <Text className="font-body text-xs text-on-surface-variant flex-1 leading-5">Your records and photos stay offline on this phone. The app PIN locks the screen but does not encrypt them, so any backups or exports you share are unencrypted too.</Text>
                 </View>
             </ScrollView>
 
