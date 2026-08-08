@@ -9,6 +9,7 @@ import {
 } from '../maintenance/presentation';
 import ProtectedModal from './ProtectedModal';
 import AppBottomSheet from './ui/AppBottomSheet';
+import { useTranslation } from '../i18n';
 
 type MaintenanceActionMenuProps = {
   onClose: () => void;
@@ -28,6 +29,7 @@ type MenuRowProps = {
 };
 
 function MenuRow({ icon, label, onPress, tone = 'default' }: MenuRowProps) {
+  const { isRTL } = useTranslation();
   return (
     <TouchableOpacity
       accessibilityLabel={label}
@@ -39,7 +41,7 @@ function MenuRow({ icon, label, onPress, tone = 'default' }: MenuRowProps) {
         <MaterialIcons name={icon} size={19} color={tone === 'warning' ? '#f59e0b' : '#a9c7ff'} />
       </View>
       <Text className="font-body text-sm font-semibold text-on-surface flex-1">{label}</Text>
-      <MaterialIcons name="chevron-right" size={20} color="#8e9196" />
+      <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color="#8e9196" />
     </TouchableOpacity>
   );
 }
@@ -53,6 +55,7 @@ export default function MaintenanceActionMenu({
   onStopTracking,
   task,
 }: MaintenanceActionMenuProps) {
+  const { t } = useTranslation();
   if (!task) return null;
 
   const historical = task.status === 'historical_unverified';
@@ -65,7 +68,7 @@ export default function MaintenanceActionMenu({
 
   return (
     <ProtectedModal
-      accessibilityLabel={`${naturalMaintenanceActionLabel(task)} actions`}
+      accessibilityLabel={t('maintenance.actionsA11y', { label: naturalMaintenanceActionLabel(task) })}
       animationType="fade"
       onRequestClose={onClose}
       transparent
@@ -84,15 +87,15 @@ export default function MaintenanceActionMenu({
             {customizable ? (
               <MenuRow
                 icon="notifications-active"
-                label="Customize reminder"
+                label={t('maintenance.customizeReminder')}
                 onPress={() => closeThen(() => onCustomize(task))}
               />
             ) : null}
-            <MenuRow icon="history" label="View history" onPress={() => closeThen(onHistory)} />
+            <MenuRow icon="history" label={t('maintenance.viewHistory')} onPress={() => closeThen(onHistory)} />
             {customizable ? (
               <MenuRow
                 icon={task.reminderDisabled ? 'notifications-active' : 'notifications-off'}
-                label={task.reminderDisabled ? 'Enable reminder' : 'Disable reminder'}
+                label={task.reminderDisabled ? t('maintenance.enableReminder') : t('maintenance.disableReminder')}
                 onPress={() => closeThen(() => onCustomize(task))}
                 tone={task.reminderDisabled ? 'default' : 'warning'}
               />
@@ -100,14 +103,14 @@ export default function MaintenanceActionMenu({
             {customizable && overrideBadge !== null ? (
               <MenuRow
                 icon="restore"
-                label="Restore original schedule"
+                label={t('maintenance.restoreSchedule')}
                 onPress={() => closeThen(() => onRestore(task))}
               />
             ) : null}
             {onStopTracking && !historical && task.status !== 'not_applicable' ? (
               <MenuRow
                 icon="remove-circle-outline"
-                label="Stop tracking this service"
+                label={t('maintenance.stopTracking')}
                 onPress={() => closeThen(() => onStopTracking(task))}
                 tone="warning"
               />
@@ -115,7 +118,7 @@ export default function MaintenanceActionMenu({
           </View>
           {historical ? (
             <Text className="font-body text-xs text-on-surface-variant mt-3 leading-5">
-              Past break-in milestones are kept in Maintenance history and cannot be turned into recurring reminders.
+              {t('maintenance.pastMilestoneHelp')}
             </Text>
           ) : null}
         </AppBottomSheet>

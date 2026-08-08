@@ -5,6 +5,7 @@ import AppPrimaryButton from './ui/AppPrimaryButton';
 import AppTextField from './ui/AppTextField';
 import { isPastOrTodayIsoDate, toIsoDate } from '../utils/dates';
 import { parseWholeNumberInput } from '../utils/recordValidation';
+import { formatNumber, useTranslation, type TranslationKey } from '../i18n';
 
 export type MaintenanceHistoryLevel =
   | 'detailed_records'
@@ -48,24 +49,24 @@ type BaselineState = {
   airFilterAction: 'clean' | 'replace';
 };
 
-const KNOWLEDGE_OPTIONS: { value: MaintenanceHistoryLevel; label: string; detail: string }[] = [
-  { value: 'detailed_records', label: 'I have detailed records', detail: 'Add exact recent maintenance now.' },
-  { value: 'recent_memory', label: 'I remember recent maintenance', detail: 'Add only the important work you know.' },
-  { value: 'little_or_none', label: 'I have little or no history', detail: 'Continue without made-up dates or mileage.' },
+const KNOWLEDGE_OPTIONS: { value: MaintenanceHistoryLevel; labelKey: TranslationKey; detailKey: TranslationKey }[] = [
+  { value: 'detailed_records', labelKey: 'history.knowledgeDetailed', detailKey: 'history.knowledgeDetailedBody' },
+  { value: 'recent_memory', labelKey: 'history.knowledgeRecent', detailKey: 'history.knowledgeRecentBody' },
+  { value: 'little_or_none', labelKey: 'history.knowledgeLittle', detailKey: 'history.knowledgeLittleBody' },
 ];
 
-const BASELINES: { key: MaintenanceHistoryBaselineKey; label: string }[] = [
-  { key: 'engine_oil', label: 'Last engine oil change' },
-  { key: 'transmission_oil', label: 'Last gear-oil change' },
-  { key: 'air_filter', label: 'Last air-filter service' },
-  { key: 'general_inspection', label: 'Last general workshop inspection' },
+const BASELINES: { key: MaintenanceHistoryBaselineKey; labelKey: TranslationKey }[] = [
+  { key: 'engine_oil', labelKey: 'history.engineOil' },
+  { key: 'transmission_oil', labelKey: 'history.gearOil' },
+  { key: 'air_filter', labelKey: 'history.airFilter' },
+  { key: 'general_inspection', labelKey: 'history.generalInspection' },
 ];
 
-const CHOICES: { value: HistoryBaselineChoice; label: string }[] = [
-  { value: 'exact', label: 'Exact record' },
-  { value: 'unknown', label: "I don't know" },
-  { value: 'never_done', label: 'Never done' },
-  { value: 'not_applicable', label: 'Not applicable' },
+const CHOICES: { value: HistoryBaselineChoice; labelKey: TranslationKey }[] = [
+  { value: 'exact', labelKey: 'history.exact' },
+  { value: 'unknown', labelKey: 'history.unknown' },
+  { value: 'never_done', labelKey: 'history.never' },
+  { value: 'not_applicable', labelKey: 'history.notApplicable' },
 ];
 
 function createBaselineState(currentOdometerKm: number): Record<MaintenanceHistoryBaselineKey, BaselineState> {
@@ -84,6 +85,7 @@ export default function MaintenanceHistoryOnboarding({
   onSkip,
   saving = false,
 }: Props) {
+  const { locale, t, tp } = useTranslation();
   const [stage, setStage] = useState<'knowledge' | 'baselines'>('knowledge');
   const [level, setLevel] = useState<MaintenanceHistoryLevel | null>(null);
   const [baselineState, setBaselineState] = useState(() => createBaselineState(currentOdometerKm));
@@ -99,7 +101,7 @@ export default function MaintenanceHistoryOnboarding({
 
   const continueFromKnowledge = async () => {
     if (!level) {
-      const message = 'Choose the option that best matches what you know.';
+      const message = t('history.chooseKnowledge');
       setErrors({ level: message });
       AccessibilityInfo.announceForAccessibility(message);
       return;
@@ -113,7 +115,7 @@ export default function MaintenanceHistoryOnboarding({
       return;
     }
     setStage('baselines');
-    AccessibilityInfo.announceForAccessibility('Add what you know. Enter only exact maintenance records you know.');
+    AccessibilityInfo.announceForAccessibility(t('history.addAnnouncement'));
   };
 
   const submitBaselines = async () => {
@@ -125,12 +127,12 @@ export default function MaintenanceHistoryOnboarding({
         return { key, choice: state.choice, mileageKm: null, serviceDate: null } as MaintenanceHistoryBaselineDraft;
       }
       const baselineErrors: string[] = [];
-      const mileageResult = parseWholeNumberInput(state.mileage, { label: 'Historical mileage', min: 0 });
+      const mileageResult = parseWholeNumberInput(state.mileage, { label: t('history.historicalMileage'), min: 0 });
       if (!mileageResult.ok) baselineErrors.push(mileageResult.message);
       else if (mileageResult.value > currentOdometerKm) {
-        baselineErrors.push(`Mileage cannot exceed ${currentOdometerKm.toLocaleString()} km.`);
+        baselineErrors.push(t('history.mileageMax', { km: formatNumber(currentOdometerKm, locale) }));
       }
-      if (!isPastOrTodayIsoDate(state.date)) baselineErrors.push('Enter a real date on or before today.');
+      if (!isPastOrTodayIsoDate(state.date)) baselineErrors.push(t('history.dateInvalid'));
       if (baselineErrors.length > 0) nextErrors[key] = baselineErrors.join(' ');
       return {
         key,
@@ -144,7 +146,7 @@ export default function MaintenanceHistoryOnboarding({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       AccessibilityInfo.announceForAccessibility(
-        `Please review the maintenance history fields. ${Object.values(nextErrors).join(' ')}`
+        t('history.reviewFields', { errors: Object.values(nextErrors).join(' ') })
       );
       return;
     }
@@ -165,19 +167,21 @@ export default function MaintenanceHistoryOnboarding({
           {stage === 'knowledge' ? (
             <>
               <Text accessibilityLiveRegion="polite" accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-6">
-                How much maintenance history do you know?
+                {t('history.knowledgeTitle')}
               </Text>
               <Text className="font-body text-sm text-on-surface-variant mt-3 leading-6">
-                This helps 3azza avoid false overdue reminders. You can add or change records later.
+                {t('history.knowledgeBody')}
               </Text>
 
               <View className="gap-3 mt-7">
                 {KNOWLEDGE_OPTIONS.map((option) => {
                   const selected = level === option.value;
+                  const label = t(option.labelKey);
+                  const detail = t(option.detailKey);
                   return (
                     <TouchableOpacity
                       key={option.value}
-                      accessibilityLabel={`${option.label}. ${option.detail}`}
+                      accessibilityLabel={`${label}. ${detail}`}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: selected }}
                       className={`min-h-16 rounded-xl border px-4 py-4 flex-row items-start gap-3 ${selected ? 'border-primary bg-primary/15' : 'border-outline-variant/20 bg-surface-container-low'}`}
@@ -188,8 +192,8 @@ export default function MaintenanceHistoryOnboarding({
                     >
                       <MaterialIcons color={selected ? '#a9c7ff' : '#8e9196'} name={selected ? 'radio-button-checked' : 'radio-button-unchecked'} size={22} />
                       <View className="flex-1">
-                        <Text className="font-headline text-base font-bold text-on-surface">{option.label}</Text>
-                        <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{option.detail}</Text>
+                        <Text className="font-headline text-base font-bold text-on-surface">{label}</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{detail}</Text>
                       </View>
                     </TouchableOpacity>
                   );
@@ -204,7 +208,7 @@ export default function MaintenanceHistoryOnboarding({
               {level === 'little_or_none' ? (
                 <AppTextField
                   containerClassName="mt-5"
-                  label="Known brake, tire, battery, engine, or mechanical issues (optional)"
+                  label={t('history.knownIssues')}
                   multiline
                   onChangeText={setKnownIssues}
                   style={{ minHeight: 96, textAlignVertical: 'top' }}
@@ -212,7 +216,7 @@ export default function MaintenanceHistoryOnboarding({
                 />
               ) : null}
 
-              <AppPrimaryButton className="mt-7" label={level === 'little_or_none' ? 'Continue' : 'Next'} loading={saving} onPress={() => void continueFromKnowledge()} />
+              <AppPrimaryButton className="mt-7" label={level === 'little_or_none' ? t('history.continue') : t('history.next')} loading={saving} onPress={() => void continueFromKnowledge()} />
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityState={{ disabled: saving }}
@@ -220,34 +224,35 @@ export default function MaintenanceHistoryOnboarding({
                 disabled={saving}
                 onPress={() => void onSkip()}
               >
-                <Text className="font-label text-sm font-bold text-on-surface-variant">Skip for now</Text>
+                <Text className="font-label text-sm font-bold text-on-surface-variant">{t('history.skip')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text accessibilityLiveRegion="polite" accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-6">Add what you know</Text>
+              <Text accessibilityLiveRegion="polite" accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-6">{t('history.addTitle')}</Text>
               <Text className="font-body text-sm text-on-surface-variant mt-3 leading-6">
-                Only exact entries create a countdown. Unknown answers stay honest and do not block setup.
+                {t('history.addBody')}
               </Text>
 
               <View className="gap-4 mt-7">
                 {BASELINES.map((baseline) => {
                   const state = baselineState[baseline.key];
+                  const baselineLabel = t(baseline.labelKey);
                   return (
                     <View key={baseline.key} className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-                      <Text className="font-headline text-base font-bold text-on-surface">{baseline.label}</Text>
+                      <Text className="font-headline text-base font-bold text-on-surface">{baselineLabel}</Text>
                       {baseline.key === 'air_filter' ? (
                         <View className="flex-row gap-2 mt-3">
                           {(['clean', 'replace'] as const).map((action) => (
                             <TouchableOpacity
                               key={action}
-                              accessibilityLabel={`${baseline.label}: ${action === 'clean' ? 'Cleaned' : 'Replaced'}`}
+                              accessibilityLabel={t('history.optionA11y', { label: baselineLabel, choice: action === 'clean' ? t('history.cleaned') : t('history.replaced') })}
                               accessibilityRole="radio"
                               accessibilityState={{ checked: state.airFilterAction === action }}
                               className={`min-h-11 flex-1 items-center justify-center rounded-lg border ${state.airFilterAction === action ? 'border-primary bg-primary/15' : 'border-outline-variant/20'}`}
                               onPress={() => updateBaseline(baseline.key, { airFilterAction: action })}
                             >
-                              <Text className={`font-body text-xs ${state.airFilterAction === action ? 'text-primary' : 'text-on-surface-variant'}`}>{action === 'clean' ? 'Cleaned' : 'Replaced'}</Text>
+                              <Text className={`font-body text-xs ${state.airFilterAction === action ? 'text-primary' : 'text-on-surface-variant'}`}>{action === 'clean' ? t('history.cleaned') : t('history.replaced')}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -255,16 +260,17 @@ export default function MaintenanceHistoryOnboarding({
                       <View className="flex-row flex-wrap gap-2 mt-3">
                         {CHOICES.map((choice) => {
                           const selected = state.choice === choice.value;
+                          const choiceLabel = t(choice.labelKey);
                           return (
                             <TouchableOpacity
                               key={choice.value}
-                              accessibilityLabel={`${baseline.label}: ${choice.label}`}
+                              accessibilityLabel={t('history.optionA11y', { label: baselineLabel, choice: choiceLabel })}
                               accessibilityRole="radio"
                               accessibilityState={{ checked: selected }}
                               className={`min-h-11 justify-center rounded-lg border px-3 ${selected ? 'border-primary bg-primary/15' : 'border-outline-variant/20 bg-surface-container-high'}`}
                               onPress={() => updateBaseline(baseline.key, { choice: choice.value })}
                             >
-                              <Text className={`font-body text-xs ${selected ? 'text-primary' : 'text-on-surface-variant'}`}>{choice.label}</Text>
+                              <Text className={`font-body text-xs ${selected ? 'text-primary' : 'text-on-surface-variant'}`}>{choiceLabel}</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -272,20 +278,20 @@ export default function MaintenanceHistoryOnboarding({
                       {state.choice === 'exact' ? (
                         <View className="flex-row gap-3 mt-4">
                           <AppTextField
-                            accessibilityLabel={`${baseline.label} mileage in kilometres`}
+                            accessibilityLabel={t('history.mileageA11y', { label: baselineLabel })}
                             containerClassName="flex-1"
                             keyboardType="number-pad"
-                            label="Mileage"
+                            label={t('history.mileage')}
                             onChangeText={(value) => updateBaseline(baseline.key, { mileage: value })}
                             value={state.mileage}
                           />
                           <AppTextField
-                            accessibilityLabel={`${baseline.label} date`}
+                            accessibilityLabel={t('history.dateA11y', { label: baselineLabel })}
                             autoCapitalize="none"
                             containerClassName="flex-1"
-                            label="Date"
+                            label={t('history.date')}
                             onChangeText={(value) => updateBaseline(baseline.key, { date: value })}
-                            placeholder="YYYY-MM-DD"
+                            placeholder={t('history.datePlaceholder')}
                             value={state.date}
                           />
                         </View>
@@ -302,15 +308,15 @@ export default function MaintenanceHistoryOnboarding({
 
               <AppTextField
                 containerClassName="mt-5"
-                label="Known brake, tire, battery, engine, or mechanical issues (optional)"
+                label={t('history.knownIssues')}
                 multiline
                 onChangeText={setKnownIssues}
                 style={{ minHeight: 96, textAlignVertical: 'top' }}
                 value={knownIssues}
               />
 
-              <Text className="font-body text-xs text-on-surface-variant mt-4">{exactCount} exact {exactCount === 1 ? 'record' : 'records'} ready to add</Text>
-              <AppPrimaryButton className="mt-4" label="Finish setup" loading={saving} onPress={() => void submitBaselines()} />
+              <Text className="font-body text-xs text-on-surface-variant mt-4">{tp('history.exactReady', exactCount)}</Text>
+              <AppPrimaryButton className="mt-4" label={t('history.finish')} loading={saving} onPress={() => void submitBaselines()} />
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityState={{ disabled: saving }}
@@ -318,10 +324,10 @@ export default function MaintenanceHistoryOnboarding({
                 disabled={saving}
                 onPress={() => {
                   setStage('knowledge');
-                  AccessibilityInfo.announceForAccessibility('How much maintenance history do you know?');
+                  AccessibilityInfo.announceForAccessibility(t('history.knowledgeTitle'));
                 }}
               >
-                <Text className="font-label text-sm font-bold text-on-surface-variant">Back</Text>
+                <Text className="font-label text-sm font-bold text-on-surface-variant">{t('history.back')}</Text>
               </TouchableOpacity>
             </>
           )}

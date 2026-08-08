@@ -36,19 +36,26 @@ import {
 import type {
     MaintenanceTaskProjection,
 } from '../maintenance/types';
+import { formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
 
 const HOME_COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
     'engine-oil': 'opacity',
-    'gear-oil': 'settings',
-    'air-filter': 'air',
+    'oil-filter-screen': 'filter-alt',
+    'transmission-oil': 'settings',
+    transmission: 'settings',
+    'air-cleaner-element': 'air',
+    'air-cleaner-system': 'air',
     'spark-plug': 'bolt',
-    cvt: 'settings-input-component',
-    brakes: 'do-not-disturb-on',
+    'drive-belt-rollers': 'settings-input-component',
+    'clutch-disk': 'settings-input-component',
+    'brake-pads': 'do-not-disturb-on',
+    'brake-fluid': 'do-not-disturb-on',
+    'brake-system': 'do-not-disturb-on',
     tires: 'trip-origin',
     battery: 'battery-charging-full',
-    steering: 'device-hub',
+    'steering-bearing-handles': 'device-hub',
+    'shock-absorbers': 'device-hub',
     suspension: 'device-hub',
-    'nuts-and-bolts': 'build',
     'main-side-stands': 'two-wheeler',
     'general-workshop-inspection': 'fact-check',
 };
@@ -73,25 +80,25 @@ function isHomePriority(task: MaintenanceTaskProjection): boolean {
 
 function homePriorityCopy(task: MaintenanceTaskProjection): string {
     if (task.status === 'condition_attention') {
-        if (task.conditionResult === 'replace_now') return 'Replace now';
-        if (task.conditionResult === 'replace_soon') return 'Replace soon';
-        if (task.conditionResult === 'service_soon') return 'Service soon';
-        if (task.conditionResult === 'cleaning_needed') return 'Cleaning needed';
-        if (task.conditionResult === 'unable_to_inspect') return 'Workshop inspection needed';
-        return 'Condition needs attention';
+        if (task.conditionResult === 'replace_now') return t('maintenance.statusReplaceNow');
+        if (task.conditionResult === 'replace_soon') return t('maintenance.statusReplaceSoon');
+        if (task.conditionResult === 'service_soon') return t('maintenance.statusServiceSoon');
+        if (task.conditionResult === 'cleaning_needed') return t('maintenance.statusCleaning');
+        if (task.conditionResult === 'unable_to_inspect') return t('dashboard.statusWorkshop');
+        return t('dashboard.statusCondition');
     }
-    if (task.status === 'history_unknown_recommend_service') return 'Last change unknown';
+    if (task.status === 'history_unknown_recommend_service') return t('maintenance.statusLastChange');
     if (task.remainingKm !== null) {
-        if (task.remainingKm < 0) return `${Math.abs(task.remainingKm).toLocaleString()} km overdue`;
-        if (task.remainingKm === 0) return 'Due now';
-        return `${task.remainingKm.toLocaleString()} km remaining`;
+        if (task.remainingKm < 0) return t('maintenance.overdueKm', { km: formatNumber(Math.abs(task.remainingKm)) });
+        if (task.remainingKm === 0) return t('maintenance.dueNow');
+        return t('maintenance.kmRemaining', { km: formatNumber(task.remainingKm) });
     }
     if (task.remainingDays !== null) {
-        if (task.remainingDays < 0) return `${Math.abs(task.remainingDays)} days overdue`;
-        if (task.remainingDays === 0) return 'Due today';
-        return `${task.remainingDays} days remaining`;
+        if (task.remainingDays < 0) return t('dashboard.daysOverdue', { days: formatNumber(Math.abs(task.remainingDays)) });
+        if (task.remainingDays === 0) return t('dashboard.statusDueToday');
+        return t('maintenance.daysRemaining', { days: formatNumber(task.remainingDays) });
     }
-    return task.status === 'due' ? 'Due now' : task.status === 'due_soon' ? 'Due soon' : 'Upcoming';
+    return task.status === 'due' ? t('maintenance.dueNow') : task.status === 'due_soon' ? t('maintenance.dueSoon') : t('maintenance.upcoming');
 }
 
 function homePriorityColor(task: MaintenanceTaskProjection): string {
@@ -105,6 +112,7 @@ export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavigationProp>();
     const { width: viewportWidth } = useWindowDimensions();
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
+    const { locale, isRTL, t: tr, tp } = useTranslation();
     const [profile, setProfile] = useState<VehicleProfile | null>(null);
     const [maintenanceTasks, setMaintenanceTasks] = useState<MaintenanceTaskProjection[]>([]);
 
@@ -139,7 +147,7 @@ export default function DashboardScreen() {
             setCorrectionFloor(await getOdometerCorrectionFloor());
         } catch (error) {
             console.error('Failed to read the odometer correction floor:', error);
-            setCorrectionError('Saved odometer baselines could not be checked. Close this dialog and try again.');
+            setCorrectionError(tr('dashboard.correctionFloorFailed'));
         }
     };
 
@@ -154,7 +162,7 @@ export default function DashboardScreen() {
             setIsCorrectionModalVisible(false);
         } catch (error) {
             console.error('Failed to correct odometer:', error);
-            setCorrectionError(error instanceof Error ? error.message : 'The odometer correction was not saved.');
+            setCorrectionError(localizeErrorMessage(error, tr('dashboard.correctionSaveFailed')));
         } finally {
             setSavingCorrection(false);
         }
@@ -162,30 +170,30 @@ export default function DashboardScreen() {
 
     const confirmCorrection = () => {
         if (!profile) return;
-        const parsed = parseWholeNumberInput(correctionValue, { label: 'Corrected odometer' });
+        const parsed = parseWholeNumberInput(correctionValue, { label: tr('dashboard.correctedLabel') });
         if (!parsed.ok) {
             setCorrectionError(parsed.message);
             return;
         }
         if (parsed.value >= profile.current_mileage) {
-            setCorrectionError(`Enter a value below the current ${profile.current_mileage.toLocaleString()} km reading.`);
+            setCorrectionError(tr('dashboard.belowCurrent', { km: formatNumber(profile.current_mileage, locale) }));
             return;
         }
         if (parsed.value < correctionFloor) {
-            setCorrectionError(`Saved records require at least ${correctionFloor.toLocaleString()} km.`);
+            setCorrectionError(tr('dashboard.recordsRequire', { km: formatNumber(correctionFloor, locale) }));
             return;
         }
         if (!correctionReason.trim()) {
-            setCorrectionError('Explain why this reading needs correction.');
+            setCorrectionError(tr('dashboard.reasonRequired'));
             return;
         }
         setCorrectionError('');
         Alert.alert(
-            'Confirm odometer correction',
-            `Change the current odometer from ${profile.current_mileage.toLocaleString()} km to ${parsed.value.toLocaleString()} km? Maintenance due values will be recalculated, but saved maintenance and fuel records will not be changed.`,
+            tr('dashboard.confirmCorrection'),
+            tr('dashboard.confirmCorrectionBody', { from: formatNumber(profile.current_mileage, locale), to: formatNumber(parsed.value, locale) }),
             [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Correct reading', onPress: () => void saveCorrection(parsed.value) },
+                { text: tr('common.cancel'), style: 'cancel' },
+                { text: tr('dashboard.correctReading'), onPress: () => void saveCorrection(parsed.value) },
             ]
         );
     };
@@ -202,7 +210,7 @@ export default function DashboardScreen() {
             setProfile(data);
         } catch (error) {
             console.error('Failed to confirm predicted odometer:', error);
-            Alert.alert('Odometer not updated', error instanceof Error ? error.message : 'Try again.');
+            Alert.alert(tr('dashboard.notUpdated'), localizeErrorMessage(error, tr('dashboard.tryAgain')));
         }
     };
 
@@ -221,7 +229,7 @@ export default function DashboardScreen() {
             setIsOdoModalVisible(false);
         } catch (error) {
             console.error('Failed to update odometer:', error);
-            setOdoError(error instanceof Error ? error.message : 'The odometer could not be updated.');
+            setOdoError(localizeErrorMessage(error, tr('dashboard.updateFailed')));
         } finally {
             setSavingOdometer(false);
         }
@@ -229,7 +237,7 @@ export default function DashboardScreen() {
 
     const handleSaveOdo = async () => {
         if (!profile) return;
-        const parsed = parseWholeNumberInput(newOdoValue, { label: 'Odometer reading' });
+        const parsed = parseWholeNumberInput(newOdoValue, { label: tr('dashboard.odometerReading') });
         if (!parsed.ok) {
             setOdoError(parsed.message);
             return;
@@ -241,7 +249,7 @@ export default function DashboardScreen() {
             minimum = await getMinimumOdometerReading();
         } catch (error) {
             console.error('Failed to validate odometer:', error);
-            setOdoError('The odometer could not be checked. Try again.');
+            setOdoError(tr('dashboard.checkFailed'));
             setSavingOdometer(false);
             return;
         }
@@ -266,17 +274,17 @@ export default function DashboardScreen() {
                 const newAverage = Math.max(0, Math.round(actualAdded / diffDays));
                     
                 Alert.alert(
-                    'Update Daily Average?',
-                    `Your actual mileage is different than expected. Since your last check, you've averaged ${newAverage} KM per day.\n\nDo you want to update your daily average to ${newAverage} KM for better future accuracy?`,
+                    tr('dashboard.updateAverageTitle'),
+                    tr('dashboard.updateAverageBody', { average: formatNumber(newAverage, locale) }),
                     [
                         {
-                            text: 'No, Just Keep ODO',
+                            text: tr('dashboard.keepOdo'),
                             onPress: async () => {
                                 await saveConfirmedOdometer(val);
                             }
                         },
                         {
-                            text: 'Yes, Update Average',
+                            text: tr('dashboard.updateAverage'),
                             onPress: async () => {
                                 await saveConfirmedOdometer(val, newAverage);
                             }
@@ -325,8 +333,8 @@ export default function DashboardScreen() {
     }, []);
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadDashboard,
-        'Your vehicle overview could not be loaded. Your records were not changed.',
-        'Failed to load dashboard:'
+        tr('dashboard.loadError'),
+        tr('dashboard.loadLog')
     );
 
     // ── Predictive Odometer Engine ──
@@ -392,10 +400,10 @@ export default function DashboardScreen() {
             ? '#f59e0b'
             : '#a9c7ff';
     const gaugeServiceLabel = !nextService
-        ? 'ADD SERVICE HISTORY TO CALIBRATE'
+        ? tr('dashboard.gaugeCalibrate')
         : (remainingToNext ?? 0) <= 0
-            ? `${Math.abs(remainingToNext ?? 0).toLocaleString()} KM OVER - ${homeGroup(nextService).label}`
-            : `${(remainingToNext ?? 0).toLocaleString()} KM TO ${homeGroup(nextService).label}`;
+            ? tr('dashboard.gaugeOver', { km: formatNumber(Math.abs(remainingToNext ?? 0), locale), service: homeGroup(nextService).label })
+            : tr('dashboard.gaugeTo', { km: formatNumber(remainingToNext ?? 0, locale), service: homeGroup(nextService).label });
     const warningsCount = new Set(maintenanceTasks
         .filter((task) => task.status === 'overdue'
             || task.status === 'due'
@@ -413,7 +421,7 @@ export default function DashboardScreen() {
     const breakInLimit = breakInLimits.length > 0 ? Math.max(...breakInLimits) : null;
     const isInBreakIn = breakInLimit !== null && mileage <= breakInLimit;
     if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title="DASHBOARD" />;
+        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title={tr('dashboard.title')} />;
     }
 
     return (
@@ -424,7 +432,7 @@ export default function DashboardScreen() {
                         <MaterialIcons name="two-wheeler" size={18} color="#a9c7ff" />
                     </View>
                 }
-                trailing={<AppIconButton accessibilityLabel="Open vehicle settings" icon="settings" onPress={() => navigation.navigate('VehicleSettings')} />}
+                trailing={<AppIconButton accessibilityLabel={tr('dashboard.openSettings')} icon="settings" onPress={() => navigation.navigate('VehicleSettings')} />}
             >
                 <Text className="font-headline text-2xl font-bold tracking-tighter text-slate-100">3AZZA</Text>
             </AppTopBar>
@@ -438,12 +446,12 @@ export default function DashboardScreen() {
                     <View className="flex-row items-center gap-3 flex-1 min-w-0 pr-2">
                         <MaterialIcons name="warning" size={20} color="#fff" />
                         <Text className="font-headline font-bold text-white text-sm tracking-wide">
-                            {warningsCount} {warningsCount === 1 ? 'Service' : 'Services'} Due
+                            {tp('dashboard.serviceDue', warningsCount)}
                         </Text>
                     </View>
                     <View className="flex-row items-center flex-shrink-0">
-                        <Text className="font-label text-xs text-error-container uppercase font-bold tracking-wider mr-1" numberOfLines={1}>View Schedule</Text>
-                        <MaterialIcons name="chevron-right" size={16} color="#ffeceb" />
+                        <Text className="font-label text-xs text-error-container uppercase font-bold tracking-wider mr-1" numberOfLines={1}>{tr('dashboard.viewSchedule')}</Text>
+                        <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={16} color="#ffeceb" />
                     </View>
                 </TouchableOpacity>
             )}
@@ -453,24 +461,24 @@ export default function DashboardScreen() {
                     <View className="flex-row items-center gap-2 mb-2">
                         <MaterialCommunityIcons name="auto-fix" size={16} color="#030f1c" />
                         <Text className="font-headline font-bold text-on-secondary-container text-xs">
-                            Predicted Mileage: {computedMileage.toLocaleString()} KM
+                            {tr('dashboard.predictedMileage', { km: formatNumber(computedMileage, locale) })}
                         </Text>
                     </View>
                     <Text className="font-body text-xs text-on-secondary-container/80 mb-3 ml-6">
-                        Automatically updated based on your {dailyAvg} KM daily avg. Is this accurate?
+                        {tr('dashboard.predictedBody', { daily: formatNumber(dailyAvg, locale) })}
                     </Text>
                     <View className="flex-row gap-2 ml-6">
                         <TouchableOpacity 
                             className="bg-on-secondary-container px-4 py-1.5 rounded-md"
                             onPress={confirmPredictedMileage}
                         >
-                            <Text className="font-label text-secondary-container text-xs font-bold uppercase tracking-widest">Yes, Confirm</Text>
+                            <Text className="font-label text-secondary-container text-xs font-bold uppercase tracking-widest">{tr('dashboard.confirmPrediction')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                             className="bg-secondary-container border border-on-secondary-container/30 px-4 py-1.5 rounded-md"
                             onPress={openOdoModal}
                         >
-                            <Text className="font-label text-on-secondary-container text-xs font-bold uppercase tracking-widest">No / Adjust</Text>
+                            <Text className="font-label text-on-secondary-container text-xs font-bold uppercase tracking-widest">{tr('dashboard.adjustPrediction')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -478,14 +486,14 @@ export default function DashboardScreen() {
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }} className="flex-grow">
                 <View className="w-full bg-surface-container-lowest border border-primary/20 rounded-xl p-5 mb-5">
-                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary font-bold">Active scooter</Text>
+                    <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary font-bold">{tr('dashboard.activeScooter')}</Text>
                     <Text className="font-headline text-xl font-bold text-on-surface mt-1">
-                        {modelProfile ? `${modelProfile.brandName} ${modelProfile.modelName}` : 'Scooter not selected'}
+                        {modelProfile ? `${modelProfile.brandName} ${modelProfile.modelName}` : tr('dashboard.scooterNotSelected')}
                     </Text>
                     <Text className="font-body text-xs text-on-surface-variant mt-1">
                         {modelProfile
-                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.manualVersion)} / ${modelProfile.manualYears}`
-                            : 'Choose an exact manual in Vehicle Settings.'}
+                            ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? tr('dashboard.variantNotSelected') : modelProfile.manualVersion)} / ${modelProfile.manualYears}`
+                            : tr('dashboard.chooseManual')}
                     </Text>
                     {isInBreakIn ? (
                         <TouchableOpacity
@@ -495,8 +503,8 @@ export default function DashboardScreen() {
                         >
                             <MaterialCommunityIcons name="engine-outline" size={20} color="#f2ca50" />
                             <View className="flex-1">
-                                <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">Break-in guidance active</Text>
-                                <Text className="font-body text-xs text-on-surface-variant mt-1">Break-in guidance extends to {breakInLimit?.toLocaleString()} km. Open Model Reference to review it.</Text>
+                                <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">{tr('dashboard.breakInActive')}</Text>
+                                <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('dashboard.breakInBody', { km: formatNumber(breakInLimit ?? 0, locale) })}</Text>
                             </View>
                         </TouchableOpacity>
                     ) : null}
@@ -505,9 +513,9 @@ export default function DashboardScreen() {
                 {homePriorities.length > 0 ? (
                     <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-4">
                         <View className="flex-row items-center justify-between gap-3 mb-2">
-                            <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em]">Maintenance priorities</Text>
+                            <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em]">{tr('dashboard.priorities')}</Text>
                             <TouchableOpacity accessibilityRole="button" className="min-h-11 justify-center" onPress={() => navigation.navigate('Maintenance')}>
-                                <Text className="font-label text-xs font-bold text-primary">View plan</Text>
+                                <Text className="font-label text-xs font-bold text-primary">{tr('dashboard.viewPlan')}</Text>
                             </TouchableOpacity>
                         </View>
                         {homePriorities.map(({ group, task }) => (
@@ -526,7 +534,7 @@ export default function DashboardScreen() {
                                 <Text className={`font-label text-xs font-bold text-right ${homePriorityColor(task)}`} numberOfLines={2}>
                                     {homePriorityCopy(task)}
                                 </Text>
-                                <MaterialIcons name="chevron-right" size={18} color="#8e9196" />
+                                <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={18} color="#8e9196" />
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -540,10 +548,10 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="playlist-add-check" size={22} color="#a9c7ff" />
                         <View className="flex-1">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Finish setting up maintenance history</Text>
-                            <Text className="font-body text-xs text-on-surface-variant mt-1">Add only the recent records you know.</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.finishHistory')}</Text>
+                            <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('dashboard.finishHistoryBody')}</Text>
                         </View>
-                        <MaterialIcons name="chevron-right" size={20} color="#a9c7ff" />
+                        <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color="#a9c7ff" />
                     </TouchableOpacity>
                 ) : null}
 
@@ -582,7 +590,7 @@ export default function DashboardScreen() {
                             className="items-center justify-end pb-1 z-10 px-4"
                             onPress={openOdoModal}
                             activeOpacity={0.7}
-                            accessibilityLabel={`Odometer ${mileage.toLocaleString()} kilometres. ${gaugeServiceLabel}. Edit odometer.`}
+                            accessibilityLabel={tr('dashboard.odometerA11y', { km: formatNumber(mileage, locale), service: gaugeServiceLabel })}
                             accessibilityRole="button"
                         >
                             <Text
@@ -590,10 +598,10 @@ export default function DashboardScreen() {
                                 maxFontSizeMultiplier={1.2}
                                 numberOfLines={1}
                             >
-                                {mileage.toLocaleString()}
+                                {formatNumber(mileage, locale)}
                             </Text>
                             <View className="flex-row items-center gap-1 mt-1">
-                                <Text className="font-label text-xs font-extrabold uppercase tracking-[0.2em] text-primary/70">Total ODO KM</Text>
+                                <Text className="font-label text-xs font-extrabold uppercase tracking-[0.2em] text-primary/70">{tr('dashboard.totalOdo')}</Text>
                                 <MaterialIcons name="edit" size={10} color="#a9c7ff" style={{ opacity: 0.7 }} />
                             </View>
                         </TouchableOpacity>
@@ -618,11 +626,11 @@ export default function DashboardScreen() {
                             <MaterialCommunityIcons name="shield-check" size={24} color="#10b981" />
                         </View>
                         <View className="flex-1 min-w-0">
-                            <Text className="font-headline text-lg font-bold text-on-surface">Pre-Ride Check</Text>
-                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">Complete your manual safety checklist</Text>
+                            <Text className="font-headline text-lg font-bold text-on-surface">{tr('dashboard.preRide')}</Text>
+                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">{tr('dashboard.preRideBody')}</Text>
                         </View>
                     </View>
-                    <MaterialIcons name="chevron-right" size={24} color="#64748b" style={{ flexShrink: 0 }} />
+                    <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={24} color="#64748b" style={{ flexShrink: 0 }} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -635,11 +643,11 @@ export default function DashboardScreen() {
                             <MaterialCommunityIcons name="heart-pulse" size={24} color="#a9c7ff" />
                         </View>
                         <View className="flex-1 min-w-0">
-                            <Text className="font-headline text-lg font-bold text-on-surface">Manual Readings</Text>
-                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">Record fluids, tires, battery & brakes</Text>
+                            <Text className="font-headline text-lg font-bold text-on-surface">{tr('dashboard.manualReadings')}</Text>
+                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">{tr('dashboard.manualReadingsBody')}</Text>
                         </View>
                     </View>
-                    <MaterialIcons name="chevron-right" size={24} color="#64748b" style={{ flexShrink: 0 }} />
+                    <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={24} color="#64748b" style={{ flexShrink: 0 }} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -652,11 +660,11 @@ export default function DashboardScreen() {
                             <MaterialIcons name="build" size={24} color="#d6e3ff" />
                         </View>
                         <View className="flex-1 min-w-0">
-                            <Text className="font-headline text-lg font-bold text-on-surface">Service Logs</Text>
-                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">Maintenance & servicing history</Text>
+                            <Text className="font-headline text-lg font-bold text-on-surface">{tr('dashboard.serviceLogs')}</Text>
+                            <Text className="font-body text-xs text-on-surface-variant/80 mt-1">{tr('dashboard.serviceLogsBody')}</Text>
                         </View>
                     </View>
-                    <MaterialIcons name="chevron-right" size={24} color="#64748b" style={{ flexShrink: 0 }} />
+                    <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={24} color="#64748b" style={{ flexShrink: 0 }} />
                 </TouchableOpacity>
 
                 {/* Features Links */}
@@ -667,8 +675,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="inventory-2" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Parts Inventory</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Manage Stock</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.parts')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.manageStock')}</Text>
                         </View>
                     </TouchableOpacity>
 
@@ -678,8 +686,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="folder-special" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Documents</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Local Photos</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.documents')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.localPhotos')}</Text>
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -691,8 +699,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="local-gas-station" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Fuel Log</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Track Spend</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.fuel')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.trackSpend')}</Text>
                         </View>
                     </TouchableOpacity>
 
@@ -702,8 +710,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="insights" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Insights</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Record Summary</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.insights')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.recordSummary')}</Text>
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -715,8 +723,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="precision-manufacturing" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Vehicle Reference</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Specs Not Set</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.reference')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.referenceBody')}</Text>
                         </View>
                     </TouchableOpacity>
 
@@ -726,8 +734,8 @@ export default function DashboardScreen() {
                     >
                         <MaterialIcons name="settings" size={28} color="#c6c6c6" />
                         <View className="flex-col mt-4">
-                            <Text className="font-headline text-sm font-bold text-on-surface">Settings</Text>
-                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">Backup & Alerts</Text>
+                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.settings')}</Text>
+                            <Text className="font-label text-xs uppercase font-extrabold tracking-widest text-[#d7e3f7]/40 mt-1">{tr('dashboard.backupAlerts')}</Text>
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -735,7 +743,7 @@ export default function DashboardScreen() {
 
             {/* Edit Odo Modal */}
             <ProtectedModal
-                accessibilityLabel="Update odometer dialog"
+                accessibilityLabel={tr('dashboard.updateDialog')}
                 visible={isOdoModalVisible}
                 transparent={true}
                 animationType="fade"
@@ -743,16 +751,16 @@ export default function DashboardScreen() {
             >
                 <View className="flex-1 bg-black/80 items-center justify-center px-6">
                     <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-                        <Text className="font-headline text-xl font-bold text-on-surface mb-2">Update Odometer</Text>
+                        <Text className="font-headline text-xl font-bold text-on-surface mb-2">{tr('dashboard.updateTitle')}</Text>
                         <Text className="font-body text-sm text-secondary/80 mb-6">
-                            Enter your dashboard&apos;s current reading. This drives the maintenance schedule.
+                            {tr('dashboard.updateBody')}
                         </Text>
                         
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">Current Mileage (KM)</Text>
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-2">{tr('dashboard.currentMileage')}</Text>
                         <TextInput 
-                            accessibilityLabel="Current odometer in kilometres"
+                            accessibilityLabel={tr('dashboard.currentOdoA11y')}
                             className={`bg-surface-container-highest flex-row items-center px-4 py-3 rounded-xl border text-on-surface font-body text-base ${odoError ? 'border-error mb-2' : 'border-outline-variant/10 mb-6'}`}
-                            placeholder="e.g. 15000"
+                            placeholder={tr('dashboard.odoExample')}
                             placeholderTextColor="#454747"
                             keyboardType="numeric"
                             value={newOdoValue}
@@ -769,16 +777,16 @@ export default function DashboardScreen() {
                             disabled={savingOdometer}
                             onPress={() => void openCorrectionModal()}
                         >
-                            <Text className="font-label text-sm font-bold text-primary">Correct a previously saved reading</Text>
+                            <Text className="font-label text-sm font-bold text-primary">{tr('dashboard.correctPrevious')}</Text>
                         </TouchableOpacity>
 
                         <View className="flex-row justify-end gap-3">
                             <TouchableOpacity onPress={() => setIsOdoModalVisible(false)} className="px-4 py-2 rounded-lg" disabled={savingOdometer} accessibilityRole="button">
-                                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{tr('common.cancel')}</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleSaveOdo} className="px-6 py-2 bg-primary rounded-lg shadow-lg min-w-24 items-center" disabled={savingOdometer} accessibilityLabel="Save odometer" accessibilityRole="button" accessibilityState={{ busy: savingOdometer, disabled: savingOdometer }}>
+                            <TouchableOpacity onPress={handleSaveOdo} className="px-6 py-2 bg-primary rounded-lg shadow-lg min-w-24 items-center" disabled={savingOdometer} accessibilityLabel={tr('dashboard.saveOdoA11y')} accessibilityRole="button" accessibilityState={{ busy: savingOdometer, disabled: savingOdometer }}>
                                 {savingOdometer ? <ActivityIndicator size="small" color="#081421" /> : (
-                                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Update</Text>
+                                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{tr('dashboard.update')}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -787,7 +795,7 @@ export default function DashboardScreen() {
             </ProtectedModal>
 
             <ProtectedModal
-                accessibilityLabel="Correct odometer reading dialog"
+                accessibilityLabel={tr('dashboard.correctDialog')}
                 visible={isCorrectionModalVisible}
                 transparent
                 animationType="fade"
@@ -795,17 +803,17 @@ export default function DashboardScreen() {
             >
                 <View className="flex-1 bg-black/80 items-center justify-center px-6">
                     <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-                        <Text className="font-headline text-xl font-bold text-on-surface">Correct odometer</Text>
+                        <Text className="font-headline text-xl font-bold text-on-surface">{tr('dashboard.correctTitle')}</Text>
                         <Text className="font-body text-sm text-on-surface-variant mt-2 leading-5">
-                            Use this only to fix a previously saved lifetime reading. Maintenance projections will refresh; saved history stays unchanged.
+                            {tr('dashboard.correctBody')}
                         </Text>
                         <Text className="font-body text-xs text-secondary mt-3">
-                            Lowest value allowed by saved records: {correctionFloor.toLocaleString()} km
+                            {tr('dashboard.lowestAllowed', { km: formatNumber(correctionFloor, locale) })}
                         </Text>
 
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-6 mb-2">Corrected odometer (KM)</Text>
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-6 mb-2">{tr('dashboard.correctedOdo')}</Text>
                         <TextInput
-                            accessibilityLabel="Corrected odometer in kilometres"
+                            accessibilityLabel={tr('dashboard.correctedOdoA11y')}
                             className={`min-h-12 bg-surface-container-highest px-4 py-3 rounded-xl border text-on-surface font-body text-base ${correctionError ? 'border-error' : 'border-outline-variant/10'}`}
                             keyboardType="number-pad"
                             value={correctionValue}
@@ -815,12 +823,12 @@ export default function DashboardScreen() {
                             }}
                         />
 
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-5 mb-2">Reason</Text>
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary mt-5 mb-2">{tr('dashboard.reason')}</Text>
                         <TextInput
-                            accessibilityLabel="Reason for odometer correction"
+                            accessibilityLabel={tr('dashboard.reasonA11y')}
                             className={`min-h-20 bg-surface-container-highest px-4 py-3 rounded-xl border text-on-surface font-body text-base ${correctionError ? 'border-error' : 'border-outline-variant/10'}`}
                             multiline
-                            placeholder="e.g. I entered an extra zero"
+                            placeholder={tr('dashboard.reasonExample')}
                             placeholderTextColor="#64748b"
                             style={{ textAlignVertical: 'top' }}
                             value={correctionReason}
@@ -838,7 +846,7 @@ export default function DashboardScreen() {
                                 disabled={savingCorrection}
                                 onPress={() => setIsCorrectionModalVisible(false)}
                             >
-                                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{tr('common.cancel')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 accessibilityRole="button"
@@ -848,7 +856,7 @@ export default function DashboardScreen() {
                                 onPress={confirmCorrection}
                             >
                                 {savingCorrection ? <ActivityIndicator size="small" color="#081421" /> : (
-                                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Review correction</Text>
+                                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{tr('dashboard.reviewCorrection')}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

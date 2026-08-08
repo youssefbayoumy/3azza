@@ -17,8 +17,15 @@ import {
 } from '../modelData/variantIdentification';
 import type { VariantIdentificationProfile } from '../modelData/types';
 import { getSelectableMaintenanceProfiles } from '../maintenance/profiles';
+import { useTranslation } from '../i18n';
 
 type CatalogSelectionKey = 'brandId' | 'modelId' | 'versionId';
+
+const FEATURE_LABEL_KEYS = {
+  displacementCc: 'scooter.displacement',
+  coolingSystem: 'scooter.cooling',
+  fuelSystem: 'scooter.fuelSystem',
+} as const;
 
 type Props = {
   value: GuidedScooterSelectionDraft;
@@ -26,18 +33,14 @@ type Props = {
   showErrors?: boolean;
 };
 
-const FEATURE_LABELS: Record<Exclude<IdentificationFeatureKey, 'modelCode'>, string> = {
-  displacementCc: 'Displacement',
-  coolingSystem: 'Cooling',
-  fuelSystem: 'Fuel system',
-};
-
 function CandidateSummary({ candidate }: { candidate: VariantIdentificationProfile }) {
+  const { t, tp } = useTranslation();
+  const featureLabel = (key: Exclude<IdentificationFeatureKey, 'modelCode'>) => t(FEATURE_LABEL_KEYS[key]);
   const confirmed = (['displacementCc', 'coolingSystem', 'fuelSystem'] as const)
     .flatMap((key) => {
       const feature = candidate[key];
       return feature.status === 'confirmed' && feature.value !== null
-        ? [`${FEATURE_LABELS[key]}: ${formatIdentificationFeatureValue(key, feature.value)}`]
+        ? [`${featureLabel(key)}: ${formatIdentificationFeatureValue(key, feature.value)}`]
         : [];
     });
   const unavailable = (['displacementCc', 'coolingSystem', 'fuelSystem'] as const)
@@ -46,14 +49,14 @@ function CandidateSummary({ candidate }: { candidate: VariantIdentificationProfi
   return (
     <View className="px-4 py-3 border-b border-outline-variant/10">
       <Text className="font-body text-sm font-bold text-on-surface">
-        {candidate.variantName ?? 'No separate exact variant required'}
+        {candidate.variantName ?? t('scooter.noSeparateVariant')}
       </Text>
       {confirmed.length > 0 ? (
         <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{confirmed.join(' - ')}</Text>
       ) : null}
       {unavailable > 0 ? (
         <Text className="font-body text-xs text-on-surface-variant/70 mt-1">
-          {unavailable} identifying detail{unavailable === 1 ? ' is' : 's are'} not available for this candidate.
+          {tp('scooter.detailsUnavailable', unavailable)}
         </Text>
       ) : null}
     </View>
@@ -71,41 +74,45 @@ function ConfirmationCard({
   modelName: string;
   years: string;
 }) {
+  const { t } = useTranslation();
+  const featureLabel = (key: Exclude<IdentificationFeatureKey, 'modelCode'>) => t(FEATURE_LABEL_KEYS[key]);
+  const variant = candidate.variantName ?? t('scooter.noSeparateVariant');
   return (
     <View
-      accessibilityLabel={`Exact scooter ready to confirm: ${brandName} ${modelName}, ${years}, ${candidate.variantName ?? 'no separate variant required'}`}
+      accessibilityLabel={t('scooter.confirmA11y', { brand: brandName, model: modelName, years, variant })}
       className="rounded-xl border border-primary/40 bg-primary/10 p-4"
     >
       <View className="flex-row items-center gap-2 mb-3">
         <MaterialIcons name="fact-check" size={21} color="#a9c7ff" />
-        <Text accessibilityRole="header" className="font-headline text-base font-bold text-primary">Confirm exact scooter</Text>
+        <Text accessibilityRole="header" className="font-headline text-base font-bold text-primary">{t('scooter.confirmTitle')}</Text>
       </View>
       <Text className="font-headline text-lg font-bold text-on-surface">{brandName} {modelName}</Text>
-      <Text className="font-body text-sm text-on-surface-variant mt-1">Model years / version: {years}</Text>
+      <Text className="font-body text-sm text-on-surface-variant mt-1">{t('scooter.modelYears', { years })}</Text>
       <Text className="font-body text-sm text-on-surface mt-2">
-        Exact variant / code: {candidate.variantName ?? 'No separate variant required'}
+        {t('scooter.exactVariant', { variant })}
       </Text>
       <View className="mt-3 gap-2">
         {(['displacementCc', 'coolingSystem', 'fuelSystem'] as const).map((key) => {
           const feature = candidate[key];
           const value = feature.status === 'confirmed' && feature.value !== null
             ? formatIdentificationFeatureValue(key, feature.value)
-            : 'Not available';
+            : t('scooter.notAvailable');
           return (
             <Text key={key} className="font-body text-xs text-on-surface-variant leading-5">
-              {FEATURE_LABELS[key]}: {value}
+              {featureLabel(key)}: {value}
             </Text>
           );
         })}
       </View>
       <Text className="font-body text-xs text-on-surface-variant/80 mt-4 leading-5">
-        Review this identity before continuing. The next screen action is the explicit confirmation that saves it.
+        {t('scooter.reviewIdentity')}
       </Text>
     </View>
   );
 }
 
 export default function ScooterSelectionFields({ onChange, showErrors = false, value }: Props) {
+  const { t, tp } = useTranslation();
   const [openField, setOpenField] = useState<CatalogSelectionKey | null>(null);
   const selection = value.selection;
   const brand = scooterCatalog.manufacturers.find((item) => item.id === selection.brandId);
@@ -130,24 +137,24 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
   const fields = [
     {
       key: 'brandId' as const,
-      label: 'Brand',
-      placeholder: 'Select brand',
+      label: t('scooter.brand'),
+      placeholder: t('scooter.selectBrand'),
       disabled: false,
       selectedName: brand?.name,
       options: availableBrands,
     },
     {
       key: 'modelId' as const,
-      label: 'Model family',
-      placeholder: brand ? 'Select model family' : 'Select a brand first',
+      label: t('scooter.modelFamily'),
+      placeholder: brand ? t('scooter.selectModel') : t('scooter.selectBrandFirst'),
       disabled: !brand,
       selectedName: model?.name,
       options: availableModels,
     },
     {
       key: 'versionId' as const,
-      label: 'Manual years / version',
-      placeholder: model ? 'Select manual years' : 'Select a model first',
+      label: t('scooter.manualYears'),
+      placeholder: model ? t('scooter.selectYears') : t('scooter.selectModelFirst'),
       disabled: !model,
       selectedName: version?.name,
       options: availableVersions,
@@ -174,7 +181,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
               </Text>
             </View>
             <TouchableOpacity
-              accessibilityLabel={`${field.label}: ${field.selectedName ?? field.placeholder}`}
+              accessibilityLabel={t('scooter.fieldA11y', { label: field.label, value: field.selectedName ?? field.placeholder })}
               accessibilityRole="button"
               accessibilityState={{ disabled: field.disabled, expanded: openField === field.key }}
               className={`min-h-14 px-4 py-3 rounded-xl border flex-row items-center justify-between ${
@@ -188,7 +195,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
               </Text>
               <MaterialIcons name={openField === field.key ? 'expand-less' : 'expand-more'} size={22} color="#a9c7ff" />
             </TouchableOpacity>
-            {missing ? <Text className="text-error font-body text-xs mt-1">{field.label} is required.</Text> : null}
+            {missing ? <Text className="text-error font-body text-xs mt-1">{t('scooter.required', { label: field.label })}</Text> : null}
             {openField === field.key ? (
               <View className="mt-2 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container-lowest">
                 {field.options.map((option) => (
@@ -217,13 +224,13 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
           >
             <Text accessibilityRole="header" className="font-headline text-base font-bold text-on-surface">
               {candidates.length === 0
-                ? 'No exact match found'
-                : `${candidates.length} supported candidate${candidates.length === 1 ? '' : 's'}`}
+                ? t('scooter.noMatch')
+                : tp('scooter.candidate', candidates.length)}
             </Text>
             <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">
               {candidates.length === 0
-                ? 'These answers do not match a supported scooter. Change an earlier answer; nothing saved has been changed.'
-                : 'Only supported scooters matching your answers remain. Missing details are never used to guess.'}
+                ? t('scooter.noMatchBody')
+                : t('scooter.candidatesBody')}
             </Text>
             {candidates.length > 0 ? (
               <View className="mt-3 rounded-lg overflow-hidden border border-outline-variant/15">
@@ -235,7 +242,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
           {question ? (
             <View className="rounded-xl border border-primary/25 bg-surface-container-high p-4">
               <Text accessibilityRole="header" className="font-label text-xs uppercase font-bold text-primary tracking-widest">
-                Next useful question
+                {t('scooter.nextQuestion')}
               </Text>
               <Text className="font-headline text-lg font-bold text-on-surface mt-2">{question.prompt}</Text>
               <Text className="font-body text-xs text-on-surface-variant mt-2 leading-5">{question.help}</Text>
@@ -245,12 +252,12 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
                     key={option.value}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: value.answers[question.key] === option.value }}
-                    accessibilityLabel={`${option.label}. ${option.remainingCandidateCount} candidate${option.remainingCandidateCount === 1 ? '' : 's'} would remain.`}
+                    accessibilityLabel={tp('scooter.wouldRemain', option.remainingCandidateCount, { label: option.label })}
                     className="min-h-12 px-4 py-3 rounded-lg border border-outline-variant/25 bg-surface-container-lowest flex-row items-center justify-between gap-3"
                     onPress={() => onChange(answerIdentificationQuestion(value, question.key, option.value))}
                   >
                     <Text className="font-body text-sm text-on-surface flex-1">{option.label}</Text>
-                    <Text className="font-label text-xs text-on-surface-variant">{option.remainingCandidateCount} left</Text>
+                    <Text className="font-label text-xs text-on-surface-variant">{t('scooter.left', { count: option.remainingCandidateCount })}</Text>
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity
@@ -258,7 +265,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
                   className="min-h-12 px-4 py-3 rounded-lg border border-primary/30 items-center justify-center"
                   onPress={() => onChange(markIdentificationUnsure(value, question.key))}
                 >
-                  <Text className="font-label text-sm font-bold text-primary">I&apos;m not sure</Text>
+                  <Text className="font-label text-sm font-bold text-primary">{t('scooter.unsure')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -266,9 +273,9 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
 
           {!question && candidates.length > 1 ? (
             <View accessibilityLiveRegion="polite" className="rounded-xl border border-outline-variant/30 bg-surface-container-high p-4">
-              <Text accessibilityRole="header" className="font-headline text-base font-bold text-on-surface">More information is needed</Text>
+              <Text accessibilityRole="header" className="font-headline text-base font-bold text-on-surface">{t('scooter.moreNeeded')}</Text>
               <Text className="font-body text-sm text-on-surface-variant mt-2 leading-5">
-                The remaining supported candidates are still ambiguous. Review earlier answers or find the exact model / engine code before saving; 3azza will not choose one for you.
+                {t('scooter.moreNeededBody')}
               </Text>
             </View>
           ) : null}
@@ -284,7 +291,7 @@ export default function ScooterSelectionFields({ onChange, showErrors = false, v
 
           {showErrors && !confirmable ? (
             <Text accessibilityLiveRegion="polite" className="text-error font-body text-xs">
-              Confirm one exact supported scooter before continuing. Your saved vehicle is unchanged.
+              {t('scooter.confirmRequired')}
             </Text>
           ) : null}
         </View>

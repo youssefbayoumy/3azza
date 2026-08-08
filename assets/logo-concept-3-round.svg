@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="react-blue" x1="30" y1="20" x2="70" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#05458F"/>
+      <stop offset="0.52" stop-color="#2794F7"/>
+      <stop offset="1" stop-color="#42BAFD"/>
+    </linearGradient>
+    <filter id="blue-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.8"/>
+    </filter>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="#081421"/>
+  <g transform="translate(100,0) scale(-1,1)">
+    <path d="M34 24 C45 24, 52 28, 52 36 C52 41, 49 44, 44 45 C50 46, 65 49, 65 65 C65 79, 51 85, 32 80"
+          stroke="#05458F" stroke-opacity="0.16" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#blue-glow)"/>
+    <path d="M34 24 C45 24, 52 28, 52 36 C52 41, 49 44, 44 45 C50 46, 65 49, 65 65 C65 79, 51 85, 32 80"
+          stroke="url(#react-blue)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

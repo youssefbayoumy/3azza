@@ -1,3 +1,5 @@
+import { formatDate, t } from '../i18n/core';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function toIsoDate(date: Date): string {
@@ -60,11 +62,6 @@ export function isExpiringSoon(value?: string | null, thresholdDays = 30, now = 
 
 export function formatDateLabel(value?: string | null): string {
   const date = parseIsoDate(value);
-  if (!date) return 'No expiry';
-
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  if (!date) return t('dates.noExpiry');
+  return formatDate(date);
 }

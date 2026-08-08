@@ -1,4 +1,5 @@
 import type { OdometerEvent } from '../types/database.types';
+import { formatNumber } from '../i18n/core';
 import type { MaintenanceRecordTransactionExecutor } from './maintenanceRecordTransactions';
 
 export type CorrectOdometerReadingInput = {
@@ -70,7 +71,7 @@ export async function correctOdometerReadingInTransaction(
 
   const floor = await getOdometerCorrectionFloorInTransaction(transaction, vehicleId);
   if (input.correctedMileageKm < floor) {
-    throw new Error(`Corrected odometer cannot be below the confirmed ${floor.toLocaleString()} km baseline.`);
+    throw new Error(`Corrected odometer cannot be below the confirmed ${formatNumber(floor)} km baseline.`);
   }
 
   await transaction.runAsync(

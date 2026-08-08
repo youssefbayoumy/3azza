@@ -17,8 +17,10 @@ import {
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { isMaintenanceProfileSelectable } from '../maintenance/profiles';
+import { localizeErrorMessage, useTranslation } from '../i18n';
 
 export default function MaintenanceHistorySetupScreen() {
+  const { isRTL, t } = useTranslation();
   const navigation = useNavigation<MainStackNavigationProp>();
   const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
   const [odometerKm, setOdometerKm] = useState<number | null>(null);
@@ -27,7 +29,7 @@ export default function MaintenanceHistorySetupScreen() {
 
   const load = useCallback(async (isCurrent: () => boolean) => {
     const vehicle = await getVehicleProfile();
-    if (!vehicle) throw new Error('The active vehicle could not be found.');
+    if (!vehicle) throw new Error(t('history.activeVehicleMissing'));
     if (isCurrent()) {
       setOdometerKm(vehicle.current_mileage);
       setHasSupportedProfile(isMaintenanceProfileSelectable({
@@ -37,11 +39,11 @@ export default function MaintenanceHistorySetupScreen() {
         variantId: vehicle.scooter_variant_id,
       }));
     }
-  }, []);
+  }, [t]);
   const { error, loading, reload } = useFocusedLoader(
     load,
-    'Maintenance history setup could not be loaded.',
-    'Failed to load maintenance history setup:'
+    t('history.setupLoadError'),
+    t('history.setupLoadLog')
   );
 
   const finish = async (operation: () => Promise<void>) => {
@@ -52,8 +54,8 @@ export default function MaintenanceHistorySetupScreen() {
       navigation.goBack();
     } catch (saveError) {
       Alert.alert(
-        'History setup not saved',
-        saveError instanceof Error ? saveError.message : 'Your existing records were not changed.'
+        t('history.setupSaveFailed'),
+        localizeErrorMessage(saveError, t('history.existingUnchanged'))
       );
     } finally {
       setSaving(false);
@@ -67,7 +69,7 @@ export default function MaintenanceHistorySetupScreen() {
         loading={loading}
         onBack={() => navigation.goBack()}
         onRetry={reload}
-        title="MAINTENANCE HISTORY"
+        title={t('history.screenTitle')}
       />
     );
   }
@@ -76,27 +78,27 @@ export default function MaintenanceHistorySetupScreen() {
     return (
       <AppScreen edges={['top', 'bottom', 'left', 'right']}>
         <AppTopBar
-          leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+          leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
           tone="subtle"
         >
-          <Text className="font-headline text-sm font-bold text-on-surface">Maintenance history</Text>
+          <Text className="font-headline text-sm font-bold text-on-surface">{t('history.screenTitle')}</Text>
         </AppTopBar>
         <View className="flex-1 px-6 pt-10">
           <View className="rounded-2xl border border-amber-500/35 bg-amber-500/10 p-5">
             <MaterialIcons color="#f59e0b" name="info-outline" size={26} />
             <Text accessibilityRole="header" className="font-headline text-xl font-bold text-on-surface mt-4">
-              Exact history setup is unavailable
+              {t('history.unavailable')}
             </Text>
             <Text className="font-body text-sm text-on-surface-variant mt-2 leading-6">
-              This guided setup is available only for a supported exact scooter. You can still review existing records or add other workshop and repair work.
+              {t('history.unavailableBody')}
             </Text>
             <TouchableOpacity
-              accessibilityLabel="Open maintenance history"
+              accessibilityLabel={t('history.open')}
               accessibilityRole="button"
               className="min-h-12 rounded-xl bg-primary items-center justify-center px-4 mt-5"
               onPress={() => navigation.replace('ServiceLogs')}
             >
-              <Text className="font-label text-sm font-bold text-on-primary">Open maintenance history</Text>
+              <Text className="font-label text-sm font-bold text-on-primary">{t('history.open')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -107,10 +109,10 @@ export default function MaintenanceHistorySetupScreen() {
   return (
     <AppScreen edges={['top', 'bottom', 'left', 'right']}>
       <AppTopBar
-        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+        leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
         tone="subtle"
       >
-        <Text className="font-headline text-sm font-bold text-on-surface">Maintenance history</Text>
+        <Text className="font-headline text-sm font-bold text-on-surface">{t('history.screenTitle')}</Text>
       </AppTopBar>
       <MaintenanceHistoryOnboarding
         currentOdometerKm={odometerKm}

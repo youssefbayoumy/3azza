@@ -40,24 +40,25 @@ import {
 } from '../maintenance/presentation';
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
+import { formatKilometres, formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
 
 function statusLabel(task: MaintenanceTaskProjection): string {
-  if (task.reminderDisabled) return 'Disabled by you';
-  if (task.status === 'overdue') return 'Overdue';
-  if (task.status === 'due') return 'Due now';
-  if (task.status === 'due_soon') return 'Due soon';
-  if (task.status === 'history_unknown_recommend_service' || task.status === 'unknown') return 'Last change unknown';
-  if (task.status === 'history_unknown_request_record') return 'Last check unknown';
-  if (task.status === 'historical_unverified') return 'Past milestone';
-  if (task.status === 'not_applicable') return 'Not applicable';
+  if (task.reminderDisabled) return t('oil.disabled');
+  if (task.status === 'overdue') return t('maintenance.overdue');
+  if (task.status === 'due') return t('maintenance.dueNow');
+  if (task.status === 'due_soon') return t('maintenance.dueSoon');
+  if (task.status === 'history_unknown_recommend_service' || task.status === 'unknown') return t('maintenance.statusLastChange');
+  if (task.status === 'history_unknown_request_record') return t('oil.lastCheckUnknown');
+  if (task.status === 'historical_unverified') return t('oil.pastMilestone');
+  if (task.status === 'not_applicable') return t('maintenance.statusNotApplicable');
   if (task.status === 'condition_attention') {
-    if (task.conditionResult === 'replace_now') return 'Replace now';
-    if (task.conditionResult === 'replace_soon') return 'Replace soon';
-    if (task.conditionResult === 'service_soon') return 'Service soon';
-    return 'Needs attention';
+    if (task.conditionResult === 'replace_now') return t('maintenance.statusReplaceNow');
+    if (task.conditionResult === 'replace_soon') return t('maintenance.statusReplaceSoon');
+    if (task.conditionResult === 'service_soon') return t('maintenance.statusServiceSoon');
+    return t('maintenance.needsAttention');
   }
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return 'By condition';
-  return 'Upcoming';
+  if (task.status === 'no_fixed_interval' || task.status === 'informational') return t('oil.byCondition');
+  return t('maintenance.upcoming');
 }
 
 function statusColor(task: MaintenanceTaskProjection): string {
@@ -72,11 +73,12 @@ function duplicateSummary(error: unknown): string | null {
     ? (error as Error & { duplicates: unknown[] }).duplicates.length
     : 1;
   return count === 1
-    ? 'A matching oil-maintenance record already exists for this date and mileage.'
-    : `${count} matching oil-maintenance records already exist for this date and mileage.`;
+    ? t('oil.duplicateOne')
+    : t('oil.duplicateMany', { count });
 }
 
 export default function OilChangeDetailsScreen() {
+  const { locale, isRTL, t: tr } = useTranslation();
   const navigation = useNavigation<MainStackNavigationProp>();
   const remindersEnabled = useAppStore((state) => state.maintenanceReminders);
   const [vehicle, setVehicle] = useState<VehicleProfile | null>(null);
@@ -117,8 +119,8 @@ export default function OilChangeDetailsScreen() {
 
   const { error, loading, reload } = useFocusedLoader(
     loadData,
-    'Oil-change details could not be loaded. Your records were not changed.',
-    'Failed to load oil-change details:'
+    tr('oil.loadError'),
+    tr('oil.loadLog')
   );
 
   const recurringReplacement = oilTasks.find((task) =>
@@ -186,48 +188,48 @@ export default function OilChangeDetailsScreen() {
       const duplicate = duplicateSummary(error);
       if (duplicate && !allowDuplicate) {
         setSavingRecord(false);
-        Alert.alert('Matching record found', duplicate, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save anyway', onPress: () => void persistOilRecord(task, draft, true) },
+        Alert.alert(tr('oil.matchFound'), duplicate, [
+          { text: tr('common.cancel'), style: 'cancel' },
+          { text: tr('logs.saveAnyway'), onPress: () => void persistOilRecord(task, draft, true) },
         ]);
         return;
       }
       console.error('Failed to record oil maintenance:', error);
-      Alert.alert('Not saved', error instanceof Error ? error.message : 'The oil-maintenance record was not changed.');
+      Alert.alert(tr('oil.notSaved'), localizeErrorMessage(error, tr('oil.notChanged')));
     } finally {
       setSavingRecord(false);
     }
-  }, [refreshAfterChange, savingRecord, vehicle]);
+  }, [refreshAfterChange, savingRecord, tr, vehicle]);
 
   const restoreOriginalSchedule = useCallback((task: MaintenanceTaskProjection) => {
     Alert.alert(
-      'Restore original schedule?',
-      `This removes only your reminder override for ${naturalMaintenanceActionLabel(task).toLowerCase()}. Maintenance history is preserved.`,
+      tr('oil.restoreTitle'),
+      tr('oil.restoreBody', { action: naturalMaintenanceActionLabel(task).toLocaleLowerCase() }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: tr('oil.restore'),
           onPress: () => void (async () => {
             try {
               await restoreMaintenancePreference(task.componentId, task.action);
               await refreshAfterChange();
             } catch (error) {
-              Alert.alert('Not restored', error instanceof Error ? error.message : 'The original schedule was not restored.');
+              Alert.alert(tr('oil.notRestored'), localizeErrorMessage(error, tr('oil.notRestoredBody')));
             }
           })(),
         },
       ]
     );
-  }, [refreshAfterChange]);
+  }, [refreshAfterChange, tr]);
 
   if (loading || error || !vehicle) {
     return (
       <ScreenLoadState
-        error={error ?? (!loading ? 'The active vehicle is unavailable.' : null)}
+        error={error ?? (!loading ? tr('oil.vehicleUnavailable') : null)}
         loading={loading}
         onBack={() => navigation.goBack()}
         onRetry={reload}
-        title="ENGINE OIL"
+        title={tr('oil.title')}
       />
     );
   }
@@ -245,19 +247,19 @@ export default function OilChangeDetailsScreen() {
   return (
     <AppScreen>
       <AppTopBar
-        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
-        trailing={<AppIconButton accessibilityLabel="Open maintenance history" icon="history" onPress={() => navigation.navigate('ServiceLogs')} />}
+        leading={<AppIconButton accessibilityLabel={tr('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
+        trailing={<AppIconButton accessibilityLabel={tr('history.open')} icon="history" onPress={() => navigation.navigate('ServiceLogs')} />}
       >
-        <Text className="font-headline uppercase tracking-widest text-sm text-primary">ENGINE OIL</Text>
+        <Text className="font-headline uppercase tracking-widest text-sm text-primary">{tr('oil.title')}</Text>
       </AppTopBar>
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}>
-        <Text accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface">Engine oil</Text>
-        <Text className="font-body text-sm text-on-surface-variant mt-2">Current odometer: {vehicle.current_mileage.toLocaleString()} km</Text>
+        <Text accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface">{tr('oil.heading')}</Text>
+        <Text className="font-body text-sm text-on-surface-variant mt-2">{tr('oil.currentOdometer', { km: formatNumber(vehicle.current_mileage, locale) })}</Text>
 
         <View className="rounded-xl border border-primary/25 bg-surface-container-lowest p-5 mt-6">
           <View className="flex-row items-center justify-between gap-3">
-            <Text className="font-headline text-lg font-bold text-on-surface">Oil replacement</Text>
+            <Text className="font-headline text-lg font-bold text-on-surface">{tr('oil.replacement')}</Text>
             <View className="flex-row items-center gap-2">
               {recurringReplacement && maintenanceOverrideBadge(recurringReplacement) ? (
                 <View className="rounded-full bg-primary/12 px-2 py-1">
@@ -271,7 +273,7 @@ export default function OilChangeDetailsScreen() {
               ) : null}
               {recurringReplacement ? (
                 <TouchableOpacity
-                  accessibilityLabel="Open oil change actions"
+                  accessibilityLabel={tr('oil.openActions')}
                   accessibilityRole="button"
                   className="h-11 w-11 items-center justify-center rounded-lg"
                   onPress={() => setMenuTask(recurringReplacement)}
@@ -282,30 +284,30 @@ export default function OilChangeDetailsScreen() {
             </View>
           </View>
           <Text className="font-headline text-2xl font-bold text-primary mt-4">
-            {recurringReplacement ? maintenanceScheduleText(recurringReplacement) : 'No fixed reminder'}
+            {recurringReplacement ? maintenanceScheduleText(recurringReplacement) : tr('oil.noReminder')}
           </Text>
           {historyUnknown ? (
             <Text className="font-body text-sm text-on-surface-variant mt-3 leading-6">
-              Last change unknown. Enter previous maintenance or consider servicing it now.
+              {tr('oil.historyUnknownBody')}
             </Text>
           ) : (
             <View className="mt-4 gap-2">
               <View className="flex-row justify-between gap-3">
-                <Text className="font-body text-sm text-on-surface-variant">Last changed</Text>
-                <Text className="font-body text-sm font-semibold text-on-surface">{lastChanged === null || lastChanged === undefined ? 'Not recorded' : `${lastChanged.toLocaleString()} km`}</Text>
+                <Text className="font-body text-sm text-on-surface-variant">{tr('oil.lastChanged')}</Text>
+                <Text className="font-body text-sm font-semibold text-on-surface">{lastChanged === null || lastChanged === undefined ? tr('common.notRecorded') : formatKilometres(lastChanged, locale)}</Text>
               </View>
               <View className="flex-row justify-between gap-3">
-                <Text className="font-body text-sm text-on-surface-variant">Next due</Text>
-                <Text className="font-body text-sm font-semibold text-on-surface">{nextDue === null || nextDue === undefined ? 'Add history to calculate' : `${nextDue.toLocaleString()} km`}</Text>
+                <Text className="font-body text-sm text-on-surface-variant">{tr('oil.nextDue')}</Text>
+                <Text className="font-body text-sm font-semibold text-on-surface">{nextDue === null || nextDue === undefined ? tr('oil.addHistory') : formatKilometres(nextDue, locale)}</Text>
               </View>
               <View className="flex-row justify-between gap-3">
-                <Text className="font-body text-sm text-on-surface-variant">Remaining</Text>
+                <Text className="font-body text-sm text-on-surface-variant">{tr('oil.remaining')}</Text>
                 <Text className={`font-body text-sm font-semibold ${remaining !== null && remaining !== undefined && remaining <= 0 ? 'text-error' : 'text-primary'}`}>
                   {remaining === null || remaining === undefined
-                    ? 'Not calculated'
+                    ? tr('oil.notCalculated')
                     : remaining <= 0
-                      ? `${Math.abs(remaining).toLocaleString()} km overdue`
-                      : `${remaining.toLocaleString()} km`}
+                      ? tr('maintenance.overdueKm', { km: formatNumber(Math.abs(remaining), locale) })
+                      : formatKilometres(remaining, locale)}
                 </Text>
               </View>
             </View>
@@ -325,7 +327,7 @@ export default function OilChangeDetailsScreen() {
                 className="min-h-12 rounded-lg border border-outline-variant/25 items-center justify-center px-4"
                 onPress={() => navigation.navigate('ServiceLogs')}
               >
-                <Text className="font-label text-sm font-bold text-secondary">History</Text>
+                <Text className="font-label text-sm font-bold text-secondary">{tr('oil.history')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -333,7 +335,7 @@ export default function OilChangeDetailsScreen() {
 
         {otherOilTasks.length > 0 ? (
           <View className="mt-7">
-            <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-3">Additional oil checks</Text>
+            <Text className="font-label text-xs uppercase tracking-widest text-secondary mb-3">{tr('oil.additionalChecks')}</Text>
             <View className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest overflow-hidden">
               {otherOilTasks.map((task) => (
                 <MaintenanceActionRow key={task.key} onPress={setMenuTask} task={task} />
@@ -343,9 +345,9 @@ export default function OilChangeDetailsScreen() {
         ) : null}
 
         <View className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-5 mt-7">
-          <Text className="font-headline text-base font-bold text-on-surface">Before servicing</Text>
+          <Text className="font-headline text-base font-bold text-on-surface">{tr('oil.beforeServicing')}</Text>
           <Text className="font-body text-xs text-on-surface-variant leading-5 mt-2">
-            Use the oil specification for your exact scooter and ask a qualified workshop when the procedure is outside your experience. You can save brand, type, viscosity, provider, cost, and mechanic notes with each oil change.
+            {tr('oil.beforeServicingBody')}
           </Text>
         </View>
       </ScrollView>
@@ -361,8 +363,8 @@ export default function OilChangeDetailsScreen() {
         onClose={() => !savingRecord && setRecordingTask(null)}
         onSubmit={(draft) => recordingTask ? persistRecord(recordingTask, draft) : undefined}
         saving={savingRecord}
-        submitLabel="Save maintenance"
-        title={recordingTask ? naturalRecordActionLabel(recordingTask) : 'Engine-oil record'}
+        submitLabel={tr('record.saveMaintenance')}
+        title={recordingTask ? naturalRecordActionLabel(recordingTask) : tr('oil.recordTitle')}
         visible={recordingTask !== null}
       />
       <MaintenanceActionMenu

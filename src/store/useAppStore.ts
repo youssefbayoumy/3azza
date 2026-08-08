@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
 import { mergeWithLockedSession } from '../utils/appLock';
+import type { AppLocale } from '../i18n/core';
+import { setActiveLocale } from '../i18n/localeState';
+import { normalizePersistedLocale } from '../i18n/persistence';
 
 // ── Secure Storage Adapter for Zustand ──
 const secureStorage: StateStorage = {
@@ -40,9 +43,11 @@ interface AppState {
   garageMode: boolean;
   maintenanceReminders: boolean;
   backupReminder: boolean;
+  locale: AppLocale;
   setGarageMode: (enabled: boolean) => void;
   setMaintenanceReminders: (enabled: boolean) => void;
   setBackupReminder: (enabled: boolean) => void;
+  setLocale: (locale: AppLocale) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -65,9 +70,14 @@ export const useAppStore = create<AppState>()(
       garageMode: true,
       maintenanceReminders: false,
       backupReminder: false,
+      locale: 'en',
       setGarageMode: (enabled) => set({ garageMode: enabled }),
       setMaintenanceReminders: (enabled) => set({ maintenanceReminders: enabled }),
       setBackupReminder: (enabled) => set({ backupReminder: enabled }),
+      setLocale: (locale) => {
+        setActiveLocale(locale);
+        set({ locale });
+      },
     }),
     {
       name: '3azza-secure-store',
@@ -76,8 +86,12 @@ export const useAppStore = create<AppState>()(
         ...state,
         isAuthenticated: false,
       }),
-      merge: (persistedState, currentState) =>
-        mergeWithLockedSession(persistedState, currentState),
+      merge: (persistedState, currentState) => {
+        const merged = mergeWithLockedSession(persistedState, currentState);
+        const locale = normalizePersistedLocale(merged.locale);
+        setActiveLocale(locale);
+        return { ...merged, locale };
+      },
     }
   )
 );

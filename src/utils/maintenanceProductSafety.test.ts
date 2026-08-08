@@ -12,6 +12,7 @@ import type {
   MaintenanceTaskProjection,
   TaskStatus,
 } from '../maintenance/types';
+import { en } from '../i18n/core';
 
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -331,9 +332,12 @@ describe('production maintenance UI safety', () => {
   });
 
   it('keeps one compact history-setup entry point on each current-priority surface', () => {
-    for (const relativePath of ['screens/DashboardScreen.tsx', 'screens/MaintenanceScheduleScreen.tsx']) {
+    for (const [relativePath, translationKey] of [
+      ['screens/DashboardScreen.tsx', 'dashboard.finishHistory'],
+      ['screens/MaintenanceScheduleScreen.tsx', 'plan.finishHistory'],
+    ] as const) {
       const { source } = sourceFile(relativePath);
-      const copyCount = [...source.matchAll(/Finish setting up (?:your )?maintenance history/gi)].length;
+      const copyCount = [...source.matchAll(new RegExp(`['"]${translationKey.replaceAll('.', '\\.')}['"]`, 'g'))].length;
       const routeCount = [...source.matchAll(/navigate\('MaintenanceHistorySetup'\)/g)].length;
       assert.equal(copyCount, 1, `${relativePath} must render the setup reminder once`);
       assert.equal(routeCount, 1, `${relativePath} must expose one setup entry point`);
@@ -342,18 +346,19 @@ describe('production maintenance UI safety', () => {
 
   it('offers the compact owner-knowledge and high-value baseline choices', () => {
     const { source } = sourceFile('components/MaintenanceHistoryOnboarding.tsx');
-    for (const expected of [
-      'I have detailed records',
-      'I remember recent maintenance',
-      'I have little or no history',
-      'Skip for now',
-      'Last engine oil change',
-      'Last gear-oil change',
-      'Last air-filter service',
-      'Last general workshop inspection',
-      "I don't know",
+    for (const key of [
+      'history.knowledgeDetailed',
+      'history.knowledgeRecent',
+      'history.knowledgeLittle',
+      'history.skip',
+      'history.engineOil',
+      'history.gearOil',
+      'history.airFilter',
+      'history.generalInspection',
+      'history.unknown',
     ]) {
-      assert.ok(source.includes(expected), `missing onboarding copy: ${expected}`);
+      assert.ok(source.includes(`'${key}'`), `missing onboarding translation key: ${key}`);
+      assert.ok(en[key as keyof typeof en], `missing English resource: ${key}`);
     }
     assert.doesNotMatch(source, /approximate/i);
   });
@@ -363,7 +368,7 @@ describe('production maintenance UI safety', () => {
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
 
     assert.match(setup, /isMaintenanceProfileSelectable\s*\(/);
-    assert.match(setup, /Exact history setup is unavailable/);
+    assert.match(setup, /history\.unavailable/);
     assert.match(setup, /if \(!hasSupportedProfile\)/);
     assert.match(maintenance, /const setupNeeded = selectable && \(/);
   });
@@ -372,8 +377,8 @@ describe('production maintenance UI safety', () => {
     const { source } = sourceFile('components/MaintenanceHistoryOnboarding.tsx');
 
     assert.match(source, /AccessibilityInfo\.announceForAccessibility/);
-    assert.match(source, /accessibilityLabel=\{`\$\{baseline\.label\}: \$\{choice\.label\}`\}/);
-    assert.match(source, /accessibilityLabel=\{`\$\{baseline\.label\} mileage in kilometres`\}/);
+    assert.match(source, /accessibilityLabel=\{t\('history\.optionA11y'/);
+    assert.match(source, /accessibilityLabel=\{t\('history\.mileageA11y'/);
     assert.match(source, /accessibilityRole="alert"/);
   });
 
@@ -382,7 +387,7 @@ describe('production maintenance UI safety', () => {
     const form = sourceFile('components/MaintenanceRecordForm.tsx').source;
 
     assert.match(logs, /affectedActionLabels\s*\(/);
-    assert.match(logs, /Maintenance reminders for these actions will be recalculated\./);
+    assert.match(logs, /logs\.deleteBody/);
     assert.match(logs, /advisoryText=\{editor\?\.group \? editAdvisory\(editor\.group\) : undefined\}/);
     assert.match(form, /advisoryText\?: string;/);
   });
@@ -394,12 +399,12 @@ describe('production maintenance UI safety', () => {
 
     assert.doesNotMatch(oil, /(?:600|800|1000)\s*km/i);
     assert.doesNotMatch(`${oil}\n${scheduler}`, /OIL_INTERVAL_PRESETS|intervalPresets/i);
-    assert.match(customization, /Distance interval \(km\)/);
-    assert.match(customization, /Time interval \(months\)/);
-    assert.match(customization, /Restore original schedule/);
-    assert.match(customization, /Custom reminder set by you/);
-    assert.match(customization, /User-created reminder/);
-    assert.match(customization, /Reminder disabled by you/);
+    assert.match(customization, /reminder\.distanceLabel/);
+    assert.match(customization, /reminder\.timeLabel/);
+    assert.match(customization, /maintenance\.restoreSchedule/);
+    assert.match(customization, /reminder\.customByYou/);
+    assert.match(customization, /reminder\.userCreated/);
+    assert.match(customization, /reminder\.disabledByYou/);
   });
 
   it('keeps reminder controls behind compact action rows and an action-specific menu', () => {
@@ -413,19 +418,19 @@ describe('production maintenance UI safety', () => {
     assert.match(oil, /maintenanceScheduleText\(recurringReplacement\)/);
     assert.match(row, /onPress=\{\(\) => onPress\(task\)\}/);
     assert.match(menu, /naturalMaintenanceActionLabel\(task\)/);
-    assert.match(menu, /Customize reminder/);
-    assert.match(menu, /View history/);
-    assert.match(menu, /Enable reminder/);
-    assert.match(menu, /Disable reminder/);
-    assert.match(menu, /Restore original schedule/);
+    assert.match(menu, /maintenance\.customizeReminder/);
+    assert.match(menu, /maintenance\.viewHistory/);
+    assert.match(menu, /maintenance\.enableReminder/);
+    assert.match(menu, /maintenance\.disableReminder/);
+    assert.match(menu, /maintenance\.restoreSchedule/);
     assert.doesNotMatch(maintenance, />Customize reminder</);
     assert.doesNotMatch(oil, />Customize reminder</);
   });
 
   it('renders the three component-owned sections without per-action classification', () => {
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
-    for (const heading of ['Scheduled maintenance', 'Wear and condition', 'General checks']) {
-      assert.equal([...maintenance.matchAll(new RegExp(`'${heading}'`, 'g'))].length, 1, heading);
+    for (const key of ['maintenance.section.scheduled', 'maintenance.section.wear', 'maintenance.section.checks']) {
+      assert.equal([...maintenance.matchAll(new RegExp(`'${key.replaceAll('.', '\\.')}''?`, 'g'))].length, 1, key);
     }
     assert.doesNotMatch(maintenance, /'Scheduled changes'|'Checks and servicing'|'Wear items'/);
     assert.match(maintenance, /const definition = maintenanceComponentGroup\(task\.componentId\)/);
@@ -443,19 +448,19 @@ describe('production maintenance UI safety', () => {
     assert.match(oil, /task\.status !== 'historical_unverified'/);
     assert.match(menu, /const historical = task\.status === 'historical_unverified'/);
     assert.match(menu, /\{customizable \? \(/);
-    assert.match(customization, /cannot be customized into recurring reminders/);
+    assert.match(customization, /reminder\.pastCannotCustomize/);
   });
 
   it('keeps every customization mode accessible after the hierarchy pass', () => {
     const customization = sourceFile('screens/MaintenanceReminderCustomizationScreen.tsx').source;
-    for (const expected of [
-      'Distance reminder',
-      'Time reminder',
-      'Add a personal reminder',
-      'Reminder enabled',
-      'Restore original schedule',
+    for (const key of [
+      'reminder.distance',
+      'reminder.time',
+      'reminder.personal',
+      'reminder.enabled',
+      'maintenance.restoreSchedule',
     ]) {
-      assert.ok(customization.includes(expected), `missing customization control: ${expected}`);
+      assert.ok(customization.includes(`'${key}'`), `missing customization control key: ${key}`);
     }
   });
 });

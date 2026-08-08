@@ -15,10 +15,7 @@ import AppTopBar from '../components/ui/AppTopBar';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
-import {
-  maintenanceComponentGroup,
-  naturalMaintenanceActionLabel,
-} from '../maintenance/presentation';
+import { naturalMaintenanceActionLabel } from '../maintenance/presentation';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
 import type { InspectionResult, MaintenanceAction, ScooterMaintenanceProfile } from '../maintenance/types';
 import type { ServiceLogsNavigationProp } from '../navigation/types';
@@ -35,6 +32,7 @@ import {
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import type { ServiceLog, VehicleProfile } from '../types/database.types';
+import { formatDate, formatEgp, formatKilometres, localizeErrorMessage, t, useTranslation, type TranslationKey } from '../i18n';
 
 const CURATED_RULE_IDS = [
   'engine-oil.replace.recurring-1000km',
@@ -52,8 +50,12 @@ const GENERAL_INSPECTION_OPTION: MaintenanceRecordActionOption = {
   ruleId: 'general-workshop-inspection',
   componentId: 'general-workshop-inspection',
   action: 'inspect',
-  label: 'General workshop inspection',
+  label: '',
 };
+
+function generalInspectionOption(): MaintenanceRecordActionOption {
+  return { ...GENERAL_INSPECTION_OPTION, label: t('logs.generalInspection') };
+}
 
 type TimelineGroup = {
   key: string;
@@ -86,22 +88,35 @@ function safeStoredText(value: string | null | undefined, fallback: string): str
   return !text || looksInternal(text) ? fallback : text;
 }
 
+const LEGACY_APP_SERVICE_LABELS: Record<string, TranslationKey> = {
+  'Oil Change': 'wizard.oilChange',
+  'Gearbox Oil Change': 'wizard.gearOil',
+  'Air Filter': 'wizard.airFilter',
+  'Brake Pads': 'wizard.brakePads',
+  Cleaning: 'wizard.cleaning',
+  'CVT & Pull Rollers': 'wizard.cvt',
+  Carburetor: 'wizard.carburetor',
+};
+
+function legacyServiceLabel(value: string | null | undefined, fallback: string): string {
+  const text = value?.trim();
+  const key = text ? LEGACY_APP_SERVICE_LABELS[text] : undefined;
+  return key ? t(key) : safeStoredText(value, fallback);
+}
+
 function logActionLabel(log: ServiceLog): string {
   if (!log.maintenance_component_id || !log.maintenance_action) {
-    return safeStoredText(log.title, 'Older maintenance record');
+    return legacyServiceLabel(log.title, t('logs.olderRecord'));
   }
-  const component = maintenanceComponentGroup(log.maintenance_component_id);
-  const action = naturalMaintenanceActionLabel({
+  return naturalMaintenanceActionLabel({
     componentId: log.maintenance_component_id,
     action: log.maintenance_action as MaintenanceAction,
   });
-  if (component.key === 'engine-oil' || component.key === 'gear-oil' || component.key === 'air-filter') return action;
-  return `${component.label} - ${action.toLowerCase()}`;
 }
 
 function displayTitle(group: TimelineGroup): string {
   if (group.primary.service_package_title) {
-    return safeStoredText(group.primary.service_package_title, 'Workshop maintenance');
+    return safeStoredText(group.primary.service_package_title, t('logs.workshopMaintenance'));
   }
   return logActionLabel(group.primary);
 }
@@ -113,9 +128,9 @@ function affectedActionLabels(group: TimelineGroup): string[] {
 function editAdvisory(group: TimelineGroup): string {
   const actions = affectedActionLabels(group);
   const scope = actions.length > 1
-    ? `Changes apply to all ${actions.length} actions in this package.`
-    : 'Changes apply to this maintenance action.';
-  return `${scope} Changing its actions, date, or mileage may recalculate maintenance reminders.`;
+    ? t('logs.editScopeMultiple', { count: actions.length })
+    : t('logs.editScopeOne');
+  return `${scope} ${t('logs.editReminderNotice')}`;
 }
 
 function optionForRule(
@@ -134,12 +149,12 @@ function optionForRule(
 }
 
 function curatedActionOptions(profile: ScooterMaintenanceProfile | null): MaintenanceRecordActionOption[] {
-  if (!profile) return [GENERAL_INSPECTION_OPTION];
+  if (!profile) return [generalInspectionOption()];
   return [
     ...CURATED_RULE_IDS.map((ruleId) => optionForRule(profile, ruleId)).filter(
       (option): option is MaintenanceRecordActionOption => option !== null
     ),
-    GENERAL_INSPECTION_OPTION,
+    generalInspectionOption(),
   ];
 }
 
@@ -151,7 +166,7 @@ function optionForStoredLog(
   if (
     log.maintenance_component_id === GENERAL_INSPECTION_OPTION.componentId
     && log.maintenance_action === GENERAL_INSPECTION_OPTION.action
-  ) return GENERAL_INSPECTION_OPTION;
+  ) return generalInspectionOption();
   if (log.maintenance_rule_id && profile) {
     const profileOption = optionForRule(profile, log.maintenance_rule_id);
     if (profileOption) return profileOption;
@@ -273,6 +288,7 @@ function recordInput(
 }
 
 export default function ServiceLogsScreen() {
+  const { locale, isRTL, t: tr } = useTranslation();
   const navigation = useNavigation<ServiceLogsNavigationProp>();
   const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
   const [logs, setLogs] = useState<ServiceLog[]>([]);
@@ -285,7 +301,7 @@ export default function ServiceLogsScreen() {
 
   const load = useCallback(async (isCurrent: () => boolean) => {
     const [records, activeVehicle] = await Promise.all([getServiceLogs({ limit }), getVehicleProfile()]);
-    if (!activeVehicle) throw new Error('The active vehicle could not be found.');
+    if (!activeVehicle) throw new Error(tr('history.activeVehicleMissing'));
     if (!isCurrent()) return;
     setLogs(records);
     setVehicle(activeVehicle);
@@ -295,11 +311,11 @@ export default function ServiceLogsScreen() {
       versionId: activeVehicle.scooter_version_id,
       variantId: activeVehicle.scooter_variant_id,
     }));
-  }, [limit]);
+  }, [limit, tr]);
   const { error, loading, reload } = useFocusedLoader(
     load,
-    'Maintenance history could not be loaded. Your records were not changed.',
-    'Failed to load maintenance history:'
+    tr('logs.loadError'),
+    tr('logs.loadLog')
   );
 
   const baseOptions = useMemo(() => curatedActionOptions(profile), [profile]);
@@ -323,17 +339,17 @@ export default function ServiceLogsScreen() {
     } catch (saveError) {
       if (saveError instanceof MaintenanceDuplicateError && !allowDuplicate) {
         Alert.alert(
-          'Possible duplicate',
-          'A record for the same action, date, and mileage already exists. Save another copy only if both records are intentional.',
+          tr('logs.duplicateTitle'),
+          tr('logs.duplicateBody'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Save anyway', onPress: () => void persist(draft, true) },
+            { text: tr('common.cancel'), style: 'cancel' },
+            { text: tr('logs.saveAnyway'), onPress: () => void persist(draft, true) },
           ]
         );
       } else {
         Alert.alert(
-          'Maintenance not saved',
-          saveError instanceof Error ? saveError.message : 'Your existing records were not changed.'
+          tr('logs.saveFailed'),
+          localizeErrorMessage(saveError, tr('history.existingUnchanged'))
         );
       }
     } finally {
@@ -344,15 +360,15 @@ export default function ServiceLogsScreen() {
   const confirmDelete = (group: TimelineGroup) => {
     const actions = affectedActionLabels(group);
     const affected = actions.length === 1
-      ? `Action: ${actions[0]}.`
-      : `Actions: ${actions.join(', ')}.`;
+      ? tr('logs.action', { actions: actions[0] })
+      : tr('logs.actions', { actions: actions.join(', ') });
     Alert.alert(
-      'Delete maintenance record?',
-      `Delete "${displayTitle(group)}"?\n\n${affected}\n\nMaintenance reminders for these actions will be recalculated.`,
+      tr('logs.deleteTitle'),
+      tr('logs.deleteBody', { title: displayTitle(group), affected }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: tr('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -360,7 +376,7 @@ export default function ServiceLogsScreen() {
               await reload();
               await syncMaintenanceNotifications(maintenanceReminders);
             } catch (deleteError) {
-              Alert.alert('Record not deleted', deleteError instanceof Error ? deleteError.message : 'Try again.');
+              Alert.alert(tr('logs.deleteFailed'), localizeErrorMessage(deleteError, tr('dashboard.tryAgain')));
             }
           },
         },
@@ -369,23 +385,23 @@ export default function ServiceLogsScreen() {
   };
 
   if (loading || error || !vehicle) {
-    return <ScreenLoadState error={error} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="MAINTENANCE HISTORY" />;
+    return <ScreenLoadState error={error} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={tr('history.screenTitle')} />;
   }
 
   return (
     <AppScreen edges={['top', 'bottom', 'left', 'right']}>
       <AppTopBar
-        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+        leading={<AppIconButton accessibilityLabel={tr('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
         tone="subtle"
       >
-        <Text className="font-headline text-sm font-bold text-on-surface">Maintenance history</Text>
+        <Text className="font-headline text-sm font-bold text-on-surface">{tr('history.screenTitle')}</Text>
       </AppTopBar>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 36 }}>
         <ActiveVehicleChip />
-        <Text accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-3">Maintenance history</Text>
+        <Text accessibilityRole="header" className="font-headline text-3xl font-bold text-on-surface mt-3">{tr('history.screenTitle')}</Text>
         <Text className="font-body text-sm text-on-surface-variant mt-2">
-          {groups.length === 0 ? 'No maintenance recorded yet.' : `Latest maintenance record: ${displayTitle(groups[0])}`}
+          {groups.length === 0 ? tr('logs.empty') : tr('logs.latest', { title: displayTitle(groups[0]) })}
         </Text>
 
         <View className="flex-row gap-3 mt-6">
@@ -394,14 +410,14 @@ export default function ServiceLogsScreen() {
             className="min-h-12 flex-1 rounded-xl bg-primary items-center justify-center px-3"
             onPress={() => setEditor({ mode: 'maintenance', group: null })}
           >
-            <Text className="font-label text-sm font-bold text-on-primary">Add maintenance</Text>
+            <Text className="font-label text-sm font-bold text-on-primary">{tr('logs.addMaintenance')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             className="min-h-12 flex-1 rounded-xl border border-outline-variant/30 bg-surface-container-low items-center justify-center px-3"
             onPress={() => setEditor({ mode: 'other', group: null })}
           >
-            <Text className="font-label text-sm font-bold text-on-surface">Other work</Text>
+            <Text className="font-label text-sm font-bold text-on-surface">{tr('logs.otherWork')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -420,11 +436,11 @@ export default function ServiceLogsScreen() {
                   <View className="flex-1">
                     <Text className="font-headline text-base font-bold text-on-surface">{displayTitle(group)}</Text>
                     <Text className="font-body text-xs text-on-surface-variant mt-1">
-                      {primary.maintenance_date_confidence === 'unknown' || !primary.date ? 'Date unknown' : primary.date}
+                      {primary.maintenance_date_confidence === 'unknown' || !primary.date ? tr('logs.dateUnknown') : formatDate(new Date(`${primary.date}T12:00:00`), locale)}
                       {' - '}
                       {primary.maintenance_mileage_confidence === 'unknown' || primary.sets_odometer_baseline === 0
-                        ? 'Mileage unknown'
-                        : `${primary.mileage.toLocaleString()} km`}
+                        ? tr('logs.mileageUnknown')
+                        : formatKilometres(primary.mileage, locale)}
                     </Text>
                   </View>
                 </View>
@@ -440,26 +456,26 @@ export default function ServiceLogsScreen() {
                   </View>
                 ) : null}
 
-                {primary.service_provider ? <Text className="font-body text-xs text-on-surface-variant mt-3">Workshop: {primary.service_provider}</Text> : null}
+                {primary.service_provider ? <Text className="font-body text-xs text-on-surface-variant mt-3">{tr('logs.workshop', { name: primary.service_provider })}</Text> : null}
                 {safeNotes ? <Text className="font-body text-xs text-on-surface-variant mt-2">{safeNotes}</Text> : null}
-                {primary.cost !== null ? <Text className="font-label text-xs text-primary mt-2">{primary.cost.toLocaleString()} EGP</Text> : null}
+                {primary.cost !== null ? <Text className="font-label text-xs text-primary mt-2">{formatEgp(primary.cost, locale)}</Text> : null}
 
                 <View className="flex-row gap-2 mt-4">
                   <TouchableOpacity
-                    accessibilityLabel={`Edit ${displayTitle(group)}`}
+                    accessibilityLabel={tr('logs.editA11y', { title: displayTitle(group) })}
                     accessibilityRole="button"
                     className="min-h-11 flex-1 rounded-lg bg-surface-container-high items-center justify-center"
                     onPress={() => setEditor({ mode: primary.maintenance_component_id || primary.maintenance_rule_id ? 'maintenance' : 'other', group })}
                   >
-                    <Text className="font-label text-xs font-bold text-on-surface">Edit</Text>
+                    <Text className="font-label text-xs font-bold text-on-surface">{tr('common.edit')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    accessibilityLabel={`Delete ${displayTitle(group)}`}
+                    accessibilityLabel={tr('logs.deleteA11y', { title: displayTitle(group) })}
                     accessibilityRole="button"
                     className="min-h-11 flex-1 rounded-lg border border-error/30 items-center justify-center"
                     onPress={() => confirmDelete(group)}
                   >
-                    <Text className="font-label text-xs font-bold text-error">Delete</Text>
+                    <Text className="font-label text-xs font-bold text-error">{tr('common.delete')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -478,8 +494,8 @@ export default function ServiceLogsScreen() {
         onClose={closeEditor}
         onSubmit={persist}
         saving={saving}
-        submitLabel={editor?.group ? 'Save changes' : editor?.mode === 'other' ? 'Save other work' : 'Save maintenance'}
-        title={editor?.group ? 'Edit maintenance record' : editor?.mode === 'other' ? 'Other work' : 'Add maintenance'}
+        submitLabel={editor?.group ? tr('logs.saveChanges') : editor?.mode === 'other' ? tr('logs.saveOther') : tr('record.saveMaintenance')}
+        title={editor?.group ? tr('logs.editRecord') : editor?.mode === 'other' ? tr('logs.otherWork') : tr('logs.addMaintenance')}
         visible={editor !== null}
       />
     </AppScreen>

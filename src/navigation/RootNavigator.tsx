@@ -10,10 +10,12 @@ import { useAppStore } from '../store/useAppStore';
 import { hasRegisteredPin } from '../services/auth';
 import { getAppLockEntryMode, shouldLockOnAppStateChange } from '../utils/appLock';
 import type { RootStackParamList } from './types';
+import { useTranslation } from '../i18n';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function AppLockGate() {
+    const { t } = useTranslation();
     const [registeredPin, setRegisteredPin] = useState<boolean | null>(null);
     const [checkFailed, setCheckFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -44,12 +46,12 @@ function AppLockGate() {
     if (checkFailed) {
         return (
             <View className="flex-1 bg-background items-center justify-center px-8">
-                <Text className="font-headline text-xl font-bold text-on-surface text-center">App lock unavailable</Text>
+                <Text className="font-headline text-xl font-bold text-on-surface text-center">{t('lock.unavailable')}</Text>
                 <Text className="font-body text-sm text-on-surface-variant text-center mt-3 mb-6">
-                    3azza could not safely check the PIN stored on this device.
+                    {t('lock.unavailableBody')}
                 </Text>
                 <TouchableOpacity className="bg-primary rounded-xl px-8 py-4" onPress={retry}>
-                    <Text className="font-label font-bold uppercase tracking-wider text-[#081421]">Try Again</Text>
+                    <Text className="font-label font-bold uppercase tracking-wider text-[#081421]">{t('lock.tryAgain')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -59,7 +61,7 @@ function AppLockGate() {
         return (
             <View className="flex-1 bg-background items-center justify-center px-8">
                 <ActivityIndicator size="large" color="#a9c7ff" />
-                <Text className="font-body text-sm text-on-surface-variant mt-4">Checking app lock...</Text>
+                <Text className="font-body text-sm text-on-surface-variant mt-4">{t('lock.checking')}</Text>
             </View>
         );
     }

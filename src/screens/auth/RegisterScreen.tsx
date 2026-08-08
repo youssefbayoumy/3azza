@@ -4,8 +4,10 @@ import { useAppStore } from '../../store/useAppStore';
 import { createPin } from '../../services/auth';
 import { isValidPin, normalizePinInput } from '../../utils/appLock';
 import AppFormScreen from '../../components/ui/AppFormScreen';
+import { localizeErrorMessage, useTranslation } from '../../i18n';
 
 export default function RegisterScreen() {
+    const { t } = useTranslation();
     const login = useAppStore((s) => s.login);
     const setAppLockEnabled = useAppStore((s) => s.setAppLockEnabled);
 
@@ -15,23 +17,23 @@ export default function RegisterScreen() {
 
     const handleRegister = async () => {
         if (!isValidPin(pin)) {
-            Alert.alert('Invalid PIN', 'PIN must contain exactly 4 digits.');
+            Alert.alert(t('lock.invalidTitle'), t('lock.invalidBody'));
             return;
         }
         if (pin !== confirmPin) {
-            Alert.alert('PIN Mismatch', 'The PINs you entered do not match.');
+            Alert.alert(t('lock.mismatchTitle'), t('lock.mismatchBody'));
             return;
         }
 
         setSaving(true);
         try {
             await createPin(pin);
-            Alert.alert('App lock ready', 'Your app-lock PIN was created.', [
-                { text: 'Continue', onPress: () => login() }
+            Alert.alert(t('lock.readyTitle'), t('lock.readyBody'), [
+                { text: t('lock.continue'), onPress: () => login() }
             ]);
         } catch (err) {
             console.error('Create PIN error:', err);
-            Alert.alert('PIN not created', err instanceof Error ? err.message : 'Failed to save the app-lock PIN.');
+            Alert.alert(t('lock.createFailedTitle'), localizeErrorMessage(err, t('lock.createFailedBody')));
         } finally {
             setSaving(false);
         }
@@ -45,14 +47,14 @@ export default function RegisterScreen() {
     return (
         <AppFormScreen>
             <View className="mb-12 items-center">
-                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Create App Lock</Text>
-                <Text className="font-body text-on-surface-variant/80 text-center">Optionally create a 4-digit PIN to lock access to 3azza on this device.</Text>
-                <Text className="font-body text-xs text-on-surface-variant/70 text-center mt-3">The PIN does not encrypt the database, document photos, backups, or CSV exports.</Text>
+                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">{t('lock.createTitle')}</Text>
+                <Text className="font-body text-on-surface-variant/80 text-center">{t('lock.createBody')}</Text>
+                <Text className="font-body text-xs text-on-surface-variant/70 text-center mt-3">{t('lock.encryptionNotice')}</Text>
             </View>
 
             <View className="flex-col gap-6">
                 <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">Create PIN</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">{t('lock.createPin')}</Text>
                     <TextInput
                         className="bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-body text-xl tracking-widest border border-outline-variant/20"
                         placeholder="••••"
@@ -62,12 +64,12 @@ export default function RegisterScreen() {
                         maxLength={4}
                         value={pin}
                         onChangeText={(value) => setPin(normalizePinInput(value))}
-                        accessibilityLabel="Create 4-digit app-lock PIN"
+                        accessibilityLabel={t('lock.createPinA11y')}
                     />
                 </View>
 
                 <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">Confirm PIN</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">{t('lock.confirmPin')}</Text>
                     <TextInput
                         className="bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-body text-xl tracking-widest border border-outline-variant/20"
                         placeholder="••••"
@@ -77,7 +79,7 @@ export default function RegisterScreen() {
                         maxLength={4}
                         value={confirmPin}
                         onChangeText={(value) => setConfirmPin(normalizePinInput(value))}
-                        accessibilityLabel="Confirm 4-digit app-lock PIN"
+                        accessibilityLabel={t('lock.confirmPinA11y')}
                     />
                 </View>
 
@@ -88,7 +90,7 @@ export default function RegisterScreen() {
                     activeOpacity={0.85}
                     accessibilityRole="button"
                 >
-                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Create PIN</Text>
+                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">{t('lock.createPin')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     className="py-3 items-center"
@@ -96,9 +98,9 @@ export default function RegisterScreen() {
                     disabled={saving}
                     accessibilityRole="button"
                 >
-                    <Text className="font-label text-sm font-bold text-primary uppercase tracking-wider">Skip for Now</Text>
+                    <Text className="font-label text-sm font-bold text-primary uppercase tracking-wider">{t('lock.skip')}</Text>
                 </TouchableOpacity>
-                <Text className="font-body text-xs text-on-surface-variant/70 text-center -mt-3">You can enable an app PIN later in Settings.</Text>
+                <Text className="font-body text-xs text-on-surface-variant/70 text-center -mt-3">{t('lock.later')}</Text>
             </View>
         </AppFormScreen>
     );

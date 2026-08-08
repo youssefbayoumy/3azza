@@ -22,6 +22,7 @@ import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { parseDecimalNumberInput, parseWholeNumberInput } from '../utils/recordValidation';
+import { formatDate, formatEgp, formatKilometres, formatLitres, formatNumber, localizeErrorMessage, useTranslation } from '../i18n';
 
 const EMPTY_GAS_METRICS: GasLogMetrics = {
     recordCount: 0,
@@ -33,6 +34,7 @@ const EMPTY_GAS_METRICS: GasLogMetrics = {
 };
 
 export default function GasLogScreen() {
+    const { locale, isRTL, t, tp } = useTranslation();
     const navigation = useNavigation<MainStackNavigationProp>();
     const [logs, setLogs] = useState<GasLog[]>([]);
     const [metrics, setMetrics] = useState<GasLogMetrics>(EMPTY_GAS_METRICS);
@@ -64,8 +66,8 @@ export default function GasLogScreen() {
 
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadLogs,
-        'Fuel history could not be loaded. Your fuel records were not changed.',
-        'Failed to load fuel logs:'
+        t('fuel.loadError'),
+        t('fuel.loadLog')
     );
 
     // Computed stats
@@ -75,18 +77,13 @@ export default function GasLogScreen() {
         ? metrics.averageKmPerLiter * profile.tank_capacity_liters
         : null;
 
-    const formatDate = (iso: string) => {
-        const d = new Date(`${iso}T12:00:00`);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
-
     const handleAdd = async () => {
-        const litersResult = parseDecimalNumberInput(formLiters, { label: 'Fuel amount' });
-        const costResult = parseDecimalNumberInput(formCost, { label: 'Fuel cost' });
-        const odometerResult = parseWholeNumberInput(formOdometer, { label: 'Odometer' });
+        const litersResult = parseDecimalNumberInput(formLiters, { label: t('fuel.amount') });
+        const costResult = parseDecimalNumberInput(formCost, { label: t('fuel.cost') });
+        const odometerResult = parseWholeNumberInput(formOdometer, { label: t('fuel.odometer') });
         const inputError = [litersResult, costResult, odometerResult].find((result) => !result.ok);
         if (inputError && !inputError.ok) {
-            Alert.alert('Invalid fuel entry', inputError.message);
+            Alert.alert(t('fuel.invalidTitle'), inputError.message);
             return;
         }
         if (!litersResult.ok || !costResult.ok || !odometerResult.ok) return;
@@ -104,7 +101,7 @@ export default function GasLogScreen() {
         });
 
         if (validationMessage) {
-            Alert.alert('Invalid fuel entry', validationMessage);
+            Alert.alert(t('fuel.invalidTitle'), validationMessage);
             return;
         }
 
@@ -128,8 +125,8 @@ export default function GasLogScreen() {
             await reload();
         } catch (error) {
             Alert.alert(
-                'Fuel entry not saved',
-                error instanceof Error ? error.message : 'The fuel entry could not be saved. Try again.'
+                t('fuel.saveFailedTitle'),
+                localizeErrorMessage(error, t('fuel.saveFailedBody'))
             );
         } finally {
             setSaving(false);
@@ -148,10 +145,10 @@ export default function GasLogScreen() {
     };
 
     const handleDelete = (id: number) => {
-        Alert.alert('Delete Entry', 'Remove this fuel log entry?', [
-            { text: 'Cancel', style: 'cancel' },
+        Alert.alert(t('fuel.deleteTitle'), t('fuel.deleteBody'), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Delete',
+                text: t('common.delete'),
                 style: 'destructive',
                 onPress: async () => {
                     try {
@@ -159,7 +156,7 @@ export default function GasLogScreen() {
                         await reload();
                     } catch (error) {
                         console.error('Failed to delete fuel log:', error);
-                        Alert.alert('Fuel entry not deleted', 'The fuel entry is still saved. Try again.');
+                        Alert.alert(t('fuel.deleteFailedTitle'), t('fuel.deleteFailedBody'));
                     }
                 },
             },
@@ -167,7 +164,7 @@ export default function GasLogScreen() {
     };
 
     if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="FUEL LOG" />;
+        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={t('fuel.title')} />;
     }
 
     return (
@@ -175,10 +172,10 @@ export default function GasLogScreen() {
             <AppTopBar
                 align="center"
                 tone="subtle"
-                leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" className="-ml-2" onPress={() => navigation.goBack()} />}
-                trailing={<AppIconButton accessibilityLabel="Open vehicle settings" icon="settings" className="-mr-2" onPress={() => navigation.navigate('VehicleSettings')} />}
+                leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} className="-ml-2" onPress={() => navigation.goBack()} />}
+                trailing={<AppIconButton accessibilityLabel={t('insights.openSettings')} icon="settings" className="-mr-2" onPress={() => navigation.navigate('VehicleSettings')} />}
             >
-                <Text className="font-headline uppercase text-xl font-bold text-[#C0C0C0] tracking-widest" numberOfLines={1}>FUEL LOG</Text>
+                <Text className="font-headline uppercase text-xl font-bold text-[#C0C0C0] tracking-widest" numberOfLines={1}>{t('fuel.title')}</Text>
             </AppTopBar>
 
             <ScrollView
@@ -188,67 +185,67 @@ export default function GasLogScreen() {
 
                 {/* Main Readout Module */}
                 <View className="mb-12 items-center">
-                    <Text className="font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary opacity-60 mb-2">Latest measured efficiency</Text>
+                    <Text className="font-label text-xs font-bold uppercase tracking-[0.3em] text-secondary opacity-60 mb-2">{t('fuel.latestEfficiency')}</Text>
                     <View className="flex-row items-baseline justify-center">
                         <Text className="font-headline text-6xl font-bold text-primary tracking-tighter" numberOfLines={1} maxFontSizeMultiplier={1.2}>
-                            {metrics.latestKmPerLiter === null ? '—' : metrics.latestKmPerLiter.toFixed(1)}
+                            {metrics.latestKmPerLiter === null ? '—' : formatNumber(Number(metrics.latestKmPerLiter.toFixed(1)), locale)}
                         </Text>
                         <Text className="text-2xl font-light opacity-80 font-label tracking-normal text-primary ml-2">KM/L</Text>
                     </View>
                     <Text className="font-body text-xs text-on-surface-variant/70 text-center mt-2 px-2">
                         {metrics.segmentCount > 0
-                            ? `Based on ${metrics.segmentCount} complete full-tank ${metrics.segmentCount === 1 ? 'segment' : 'segments'}.`
-                            : 'Log two full-tank fills to calculate consumption. Partial fills are included only between those endpoints.'}
+                            ? tp('fuel.completeSegment', metrics.segmentCount)
+                            : t('fuel.needTwoFills')}
                     </Text>
                     <View className="mt-4 px-4 py-3 rounded-xl bg-surface-container-low border border-primary/15 items-center">
-                        <Text className="font-label text-xs uppercase tracking-widest text-secondary/50">Estimated full-tank range</Text>
+                        <Text className="font-label text-xs uppercase tracking-widest text-secondary/50">{t('fuel.estimatedRange')}</Text>
                         <Text className="font-headline text-xl font-bold text-on-surface mt-1">
-                            {estimatedRangeKm === null ? 'Not available' : `~${Math.round(estimatedRangeKm).toLocaleString()} KM`}
+                            {estimatedRangeKm === null ? t('fuel.notAvailable') : `~${formatKilometres(Math.round(estimatedRangeKm), locale)}`}
                         </Text>
                         {profile?.tank_capacity_liters === null || profile?.tank_capacity_liters === undefined ? (
                             <TouchableOpacity onPress={() => navigation.navigate('VehicleSettings')} className="mt-2">
-                                <Text className="font-label text-xs uppercase font-bold tracking-widest text-primary">Set tank capacity in vehicle settings</Text>
+                                <Text className="font-label text-xs uppercase font-bold tracking-widest text-primary">{t('fuel.setCapacity')}</Text>
                             </TouchableOpacity>
                         ) : (
-                            <Text className="font-body text-xs text-secondary/60 mt-1">Using your saved {profile.tank_capacity_liters.toLocaleString()} L capacity.</Text>
+                            <Text className="font-body text-xs text-secondary/60 mt-1">{t('fuel.usingCapacity', { capacity: formatNumber(profile.tank_capacity_liters, locale) })}</Text>
                         )}
                     </View>
                     <View className="mt-4 flex-row justify-center items-center gap-4">
                         <View className="items-center">
-                            <Text className="font-label text-xs uppercase tracking-widest text-secondary opacity-40">Recorded fuel</Text>
-                            <Text className="font-headline text-lg text-on-surface">{metrics.totalLiters > 0 ? `${metrics.totalLiters.toLocaleString()} L` : '—'}</Text>
+                            <Text className="font-label text-xs uppercase tracking-widest text-secondary opacity-40">{t('fuel.recordedFuel')}</Text>
+                            <Text className="font-headline text-lg text-on-surface">{metrics.totalLiters > 0 ? formatLitres(metrics.totalLiters, locale) : '—'}</Text>
                         </View>
                         <View className="w-px h-8 bg-outline-variant opacity-30" />
                         <View className="items-center">
-                            <Text className="font-label text-xs uppercase tracking-widest text-secondary opacity-40">Recorded Cost</Text>
-                            <Text className="font-headline text-lg text-on-surface">{metrics.totalCost > 0 ? `${metrics.totalCost.toLocaleString()} EGP` : '—'}</Text>
+                            <Text className="font-label text-xs uppercase tracking-widest text-secondary opacity-40">{t('fuel.recordedCost')}</Text>
+                            <Text className="font-headline text-lg text-on-surface">{metrics.totalCost > 0 ? formatEgp(metrics.totalCost, locale) : '—'}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* List Header */}
                 <View className="flex-row justify-between items-end mb-6">
-                    <Text className="font-headline text-xl font-bold tracking-tight text-secondary">Fuel History</Text>
-                    <Text className="font-label text-xs uppercase font-bold text-primary tracking-widest">{metrics.recordCount} {metrics.recordCount === 1 ? 'Entry' : 'Entries'}</Text>
+                    <Text className="font-headline text-xl font-bold tracking-tight text-secondary">{t('fuel.history')}</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-primary tracking-widest">{tp('fuel.entry', metrics.recordCount)}</Text>
                 </View>
 
                 <TouchableOpacity
                     className="mb-6 py-3.5 px-4 rounded-xl bg-secondary flex-row items-center justify-center gap-2"
-                    accessibilityLabel="Add fuel log"
+                    accessibilityLabel={t('fuel.add')}
                     accessibilityRole="button"
                     activeOpacity={0.8}
                     onPress={openAddModal}
                 >
                     <MaterialIcons name="add" size={20} color="#2f3131" />
-                    <Text className="font-label text-xs font-bold uppercase tracking-wider text-[#2f3131]">Add fuel log</Text>
+                    <Text className="font-label text-xs font-bold uppercase tracking-wider text-[#2f3131]">{t('fuel.add')}</Text>
                 </TouchableOpacity>
 
                 {/* Empty State */}
                 {logs.length === 0 && (
                     <EmptyState
                         icon="local-gas-station"
-                        message="Use Add fuel log to record your first fill-up"
-                        title="No fuel logs yet"
+                        message={t('fuel.emptyBody')}
+                        title={t('fuel.emptyTitle')}
                     />
                 )}
 
@@ -266,23 +263,23 @@ export default function GasLogScreen() {
                             >
                                 <View className="flex-col gap-1 flex-1 min-w-0">
                                     <View className="flex-row flex-wrap items-center gap-2">
-                                        <Text className="font-label text-xs font-bold text-secondary opacity-40 uppercase tracking-widest flex-shrink">{formatDate(entry.logged_on)}</Text>
-                                        <StatusBadge label={entry.is_full_tank === 1 ? 'Full tank' : 'Partial fill'} tone={entry.is_full_tank === 1 ? 'success' : 'info'} />
+                                        <Text className="font-label text-xs font-bold text-secondary opacity-40 uppercase tracking-widest flex-shrink">{formatDate(new Date(`${entry.logged_on}T12:00:00`), locale)}</Text>
+                                        <StatusBadge label={entry.is_full_tank === 1 ? t('fuel.fullTank') : t('fuel.partialFill')} tone={entry.is_full_tank === 1 ? 'success' : 'info'} />
                                     </View>
                                     <View className="flex-row items-center gap-2">
                                         <MaterialIcons name="speed" size={16} color="#a9c7ff" />
-                                        <Text className="font-headline text-lg font-medium text-on-surface">{entry.odometer_km.toLocaleString()} KM</Text>
+                                        <Text className="font-headline text-lg font-medium text-on-surface">{formatKilometres(entry.odometer_km, locale)}</Text>
                                     </View>
                                 </View>
                                 <View className="items-end flex-shrink-0">
                                     <View className="flex-row items-baseline">
-                                        <Text className="font-headline text-2xl font-bold text-primary">{entry.liters}</Text>
+                                        <Text className="font-headline text-2xl font-bold text-primary">{formatNumber(entry.liters, locale)}</Text>
                                         <Text className="font-label text-xs uppercase opacity-60 text-primary ml-1">L</Text>
                                     </View>
                                     {entry.station ? (
                                         <Text className="font-label text-xs text-secondary opacity-30 uppercase tracking-tighter" numberOfLines={1}>{entry.station}</Text>
                                     ) : (
-                                        <Text className="font-label text-xs text-secondary opacity-30 uppercase tracking-tighter">{entry.cost > 0 ? `${entry.cost} EGP` : ''}</Text>
+                                        <Text className="font-label text-xs text-secondary opacity-30 uppercase tracking-tighter">{entry.cost > 0 ? formatEgp(entry.cost, locale) : ''}</Text>
                                     )}
                                 </View>
                             </TouchableOpacity>
@@ -294,26 +291,26 @@ export default function GasLogScreen() {
 
             {/* Add Entry Modal */}
             <ProtectedModal
-                accessibilityLabel="New fuel log dialog"
+                accessibilityLabel={t('fuel.dialog')}
                 visible={modalVisible}
                 animationType="slide"
                 transparent
                 onRequestClose={() => !saving && setModalVisible(false)}
             >
-                <AppBottomSheet title="New Fuel Log" onClose={() => setModalVisible(false)} closeDisabled={saving}>
+                <AppBottomSheet title={t('fuel.new')} onClose={() => setModalVisible(false)} closeDisabled={saving}>
                         <View className="flex-col gap-4 mb-6">
-                            <AppTextField label="Liters *" placeholder="e.g. 45.5" keyboardType="decimal-pad" value={formLiters} onChangeText={setFormLiters} />
-                            <AppTextField label="Cost *" placeholder="e.g. 350" keyboardType="decimal-pad" value={formCost} onChangeText={setFormCost} />
-                            <AppTextField label="Odometer (KM) *" placeholder="e.g. 10250" keyboardType="number-pad" value={formOdometer} onChangeText={setFormOdometer} />
+                            <AppTextField label={t('fuel.litresRequired')} placeholder={t('fuel.exampleLitres')} keyboardType="decimal-pad" value={formLiters} onChangeText={setFormLiters} />
+                            <AppTextField label={t('fuel.costRequired')} placeholder={t('fuel.exampleCost')} keyboardType="decimal-pad" value={formCost} onChangeText={setFormCost} />
+                            <AppTextField label={t('fuel.odometerRequired')} placeholder={t('fuel.exampleOdometer')} keyboardType="number-pad" value={formOdometer} onChangeText={setFormOdometer} />
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Fill date *</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('fuel.fillDateRequired')}</Text>
                                 <TouchableOpacity
                                     onPress={() => setShowDatePicker(true)}
                                     className="bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between"
                                     accessibilityRole="button"
-                                    accessibilityLabel="Fuel fill date"
+                                    accessibilityLabel={t('fuel.fillDateA11y')}
                                 >
-                                    <Text className="text-on-surface font-body">{formatDate(toIsoDate(formDate))}</Text>
+                                    <Text className="text-on-surface font-body">{formatDate(formDate, locale)}</Text>
                                     <MaterialIcons name="calendar-today" size={18} color="#a9c7ff" />
                                 </TouchableOpacity>
                                 {showDatePicker && (
@@ -322,20 +319,20 @@ export default function GasLogScreen() {
                             </View>
                             <View className="bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between">
                                 <View className="flex-1 pr-4">
-                                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">Filled to full?</Text>
-                                    <Text className="font-body text-xs text-on-surface-variant mt-1">Enable only when the tank was filled completely.</Text>
+                                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">{t('fuel.filledToFull')}</Text>
+                                    <Text className="font-body text-xs text-on-surface-variant mt-1">{t('fuel.filledToFullBody')}</Text>
                                 </View>
                                 <Switch
-                                    accessibilityLabel="Filled tank completely"
+                                    accessibilityLabel={t('fuel.filledCompletelyA11y')}
                                     value={formIsFullTank}
                                     onValueChange={setFormIsFullTank}
                                     trackColor={{ false: '#1f2b39', true: 'rgba(169, 199, 255, 0.2)' }}
                                     thumbColor={formIsFullTank ? '#c6c6c6' : '#8e9196'}
                                 />
                             </View>
-                            <AppTextField label="Station (optional)" placeholder="e.g. Misr Petroleum" value={formStation} onChangeText={setFormStation} />
+                            <AppTextField label={t('fuel.stationOptional')} placeholder={t('fuel.stationExample')} value={formStation} onChangeText={setFormStation} />
                         </View>
-                        <AppPrimaryButton label="Log Fill-Up" loading={saving} onPress={handleAdd} />
+                        <AppPrimaryButton label={t('fuel.logFill')} loading={saving} onPress={handleAdd} />
                 </AppBottomSheet>
             </ProtectedModal>
         </AppScreen>

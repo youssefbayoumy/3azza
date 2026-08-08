@@ -8,6 +8,7 @@ import AppTextField from './ui/AppTextField';
 import { isPastOrTodayIsoDate, toIsoDate } from '../utils/dates';
 import { parseDecimalNumberInput, parseWholeNumberInput } from '../utils/recordValidation';
 import type { InspectionResult, MaintenanceAction } from '../maintenance/types';
+import { formatNumber, useTranslation, type TranslationKey } from '../i18n';
 
 export type MaintenanceRecordActionOption = {
   ruleId: string;
@@ -49,21 +50,21 @@ type Props = {
   onSubmit: (draft: MaintenanceRecordDraft) => Promise<void> | void;
 };
 
-const CONDITION_RESULTS: { value: InspectionResult; label: string }[] = [
-  { value: 'healthy', label: 'Healthy' },
-  { value: 'cleaning_needed', label: 'Cleaning needed' },
-  { value: 'monitor', label: 'Monitor' },
-  { value: 'service_soon', label: 'Service soon' },
-  { value: 'replace_soon', label: 'Replace soon' },
-  { value: 'replace_now', label: 'Replace now' },
-  { value: 'unable_to_inspect', label: 'Unable to inspect' },
+const CONDITION_RESULTS: { value: InspectionResult; labelKey: TranslationKey }[] = [
+  { value: 'healthy', labelKey: 'record.healthy' },
+  { value: 'cleaning_needed', labelKey: 'record.cleaningNeeded' },
+  { value: 'monitor', labelKey: 'record.monitor' },
+  { value: 'service_soon', labelKey: 'record.serviceSoon' },
+  { value: 'replace_soon', labelKey: 'record.replaceSoon' },
+  { value: 'replace_now', labelKey: 'record.replaceNow' },
+  { value: 'unable_to_inspect', labelKey: 'record.unableInspect' },
 ];
 
-const OIL_TYPES: { value: NonNullable<MaintenanceRecordDraft['oilType']>; label: string }[] = [
-  { value: 'mineral', label: 'Mineral' },
-  { value: 'semi_synthetic', label: 'Semi-synthetic' },
-  { value: 'synthetic', label: 'Synthetic' },
-  { value: 'other', label: 'Other' },
+const OIL_TYPES: { value: NonNullable<MaintenanceRecordDraft['oilType']>; labelKey: TranslationKey }[] = [
+  { value: 'mineral', labelKey: 'record.mineral' },
+  { value: 'semi_synthetic', labelKey: 'record.semiSynthetic' },
+  { value: 'synthetic', labelKey: 'record.synthetic' },
+  { value: 'other', labelKey: 'record.other' },
 ];
 
 function defaultSelectedActions(
@@ -84,10 +85,13 @@ export default function MaintenanceRecordForm({
   onClose,
   onSubmit,
   saving = false,
-  submitLabel = 'Save maintenance',
-  title: formTitle = 'Maintenance record',
+  submitLabel,
+  title: formTitleProp,
   visible,
 }: Props) {
+  const { locale, t } = useTranslation();
+  const formTitle = formTitleProp ?? t('record.formTitle');
+  const resolvedSubmitLabel = submitLabel ?? t('record.saveMaintenance');
   const [recordTitle, setRecordTitle] = useState('');
   const [mileage, setMileage] = useState(String(currentOdometerKm));
   const [mileageUnknown, setMileageUnknown] = useState(false);
@@ -144,41 +148,41 @@ export default function MaintenanceRecordForm({
   const validate = (): MaintenanceRecordDraft | null => {
     const nextErrors: Record<string, string> = {};
     const trimmedTitle = recordTitle.trim();
-    if (!trimmedTitle) nextErrors.title = 'Enter a useful record title.';
+    if (!trimmedTitle) nextErrors.title = t('record.titleRequired');
     if (selectedActions.length === 0 && actionOptions.length > 0) {
-      nextErrors.actions = 'Select at least one completed action.';
+      nextErrors.actions = t('record.actionRequired');
     }
 
     let mileageKm: number | null = null;
     if (!mileageUnknown) {
-      const result = parseWholeNumberInput(mileage, { label: 'Mileage when performed', min: 0 });
+      const result = parseWholeNumberInput(mileage, { label: t('record.mileageWhenPerformed'), min: 0 });
       if (!result.ok) nextErrors.mileage = result.message;
       else if (result.value > currentOdometerKm) {
-        nextErrors.mileage = `Mileage cannot exceed the current odometer (${currentOdometerKm.toLocaleString()} km).`;
+        nextErrors.mileage = t('record.mileageMax', { km: formatNumber(currentOdometerKm, locale) });
       } else mileageKm = result.value;
     }
 
     let serviceDate: string | null = null;
     if (!dateUnknown) {
-      if (!isPastOrTodayIsoDate(date)) nextErrors.date = 'Enter a real date on or before today (YYYY-MM-DD).';
+      if (!isPastOrTodayIsoDate(date)) nextErrors.date = t('record.dateInvalid');
       else serviceDate = date;
     }
 
     if (mileageUnknown && dateUnknown) {
-      nextErrors.mileage = 'Keep either the mileage or date so this record can be placed in history.';
-      nextErrors.date = 'Keep either the date or mileage so this record can be placed in history.';
+      nextErrors.mileage = t('record.keepMileage');
+      nextErrors.date = t('record.keepDate');
     }
 
     let parsedCost: number | null = null;
     if (cost.trim()) {
-      const result = parseDecimalNumberInput(cost, { label: 'Cost', min: 0 });
+      const result = parseDecimalNumberInput(cost, { label: t('record.cost'), min: 0 });
       if (!result.ok) nextErrors.cost = result.message;
       else parsedCost = result.value;
     }
 
     for (const option of selectedActions) {
       if (option.requiresConditionResult && !conditionResults[option.ruleId]) {
-        nextErrors[`condition:${option.ruleId}`] = `Select the result for ${option.label}.`;
+        nextErrors[`condition:${option.ruleId}`] = t('record.resultRequired', { label: option.label });
       }
     }
 
@@ -230,7 +234,7 @@ export default function MaintenanceRecordForm({
               {actionOptions.length > 0 ? (
                 <View>
                   <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">
-                    {allowMultipleActions ? 'Actions completed' : 'Component and action'}
+                    {allowMultipleActions ? t('record.actionsCompleted') : t('record.componentAction')}
                   </Text>
                   <View className="gap-2">
                     {actionOptions.map((option) => {
@@ -263,15 +267,15 @@ export default function MaintenanceRecordForm({
 
               <AppTextField
                 error={errors.title}
-                label="Record title"
+                label={t('record.title')}
                 onChangeText={setRecordTitle}
-                placeholder={allowMultipleActions ? 'e.g. 10,000 km workshop service' : 'e.g. Engine oil change'}
+                placeholder={allowMultipleActions ? t('record.multiExample') : t('record.singleExample')}
                 value={recordTitle}
               />
 
               <View>
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">Mileage when performed</Text>
+                  <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">{t('record.mileageWhenPerformed')}</Text>
                   <TouchableOpacity
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: mileageUnknown }}
@@ -282,7 +286,7 @@ export default function MaintenanceRecordForm({
                     }}
                   >
                     <MaterialIcons color="#a9c7ff" name={mileageUnknown ? 'check-box' : 'check-box-outline-blank'} size={20} />
-                    <Text className="font-body text-xs text-primary">Unknown</Text>
+                    <Text className="font-body text-xs text-primary">{t('common.unknown')}</Text>
                   </TouchableOpacity>
                 </View>
                 <AppTextField
@@ -292,15 +296,15 @@ export default function MaintenanceRecordForm({
                   keyboardType="number-pad"
                   label=""
                   onChangeText={setMileage}
-                  placeholder={currentOdometerKm.toLocaleString()}
+                  placeholder={formatNumber(currentOdometerKm, locale)}
                   value={mileage}
                 />
-                <Text className="font-body text-xs text-on-surface-variant mt-2">Current odometer: {currentOdometerKm.toLocaleString()} km</Text>
+                <Text className="font-body text-xs text-on-surface-variant mt-2">{t('record.currentOdometerValue', { km: formatNumber(currentOdometerKm, locale) })}</Text>
               </View>
 
               <View>
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">Date when performed</Text>
+                  <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">{t('record.dateWhenPerformed')}</Text>
                   <TouchableOpacity
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: dateUnknown }}
@@ -311,7 +315,7 @@ export default function MaintenanceRecordForm({
                     }}
                   >
                     <MaterialIcons color="#a9c7ff" name={dateUnknown ? 'check-box' : 'check-box-outline-blank'} size={20} />
-                    <Text className="font-body text-xs text-primary">Unknown</Text>
+                    <Text className="font-body text-xs text-primary">{t('common.unknown')}</Text>
                   </TouchableOpacity>
                 </View>
                 <AppTextField
@@ -321,7 +325,7 @@ export default function MaintenanceRecordForm({
                   error={errors.date}
                   label=""
                   onChangeText={setDate}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('history.datePlaceholder')}
                   value={date}
                 />
               </View>
@@ -329,7 +333,7 @@ export default function MaintenanceRecordForm({
               {selectedActions.filter((option) => option.requiresConditionResult).map((option) => (
                 <View key={`condition:${option.ruleId}`}>
                   <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">
-                    {option.label} result
+                    {t('record.result', { label: option.label })}
                   </Text>
                   <View className="flex-row flex-wrap gap-2">
                     {CONDITION_RESULTS.map((result) => {
@@ -345,7 +349,7 @@ export default function MaintenanceRecordForm({
                             setErrors((current) => ({ ...current, [`condition:${option.ruleId}`]: '' }));
                           }}
                         >
-                          <Text className={`font-body text-xs ${selected ? 'text-primary' : 'text-on-surface-variant'}`}>{result.label}</Text>
+                          <Text className={`font-body text-xs ${selected ? 'text-primary' : 'text-on-surface-variant'}`}>{t(result.labelKey)}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -356,19 +360,19 @@ export default function MaintenanceRecordForm({
                 </View>
               ))}
 
-              <AppTextField label="Workshop or service provider (optional)" onChangeText={setServiceProvider} value={serviceProvider} />
-              <AppTextField error={errors.cost} keyboardType="decimal-pad" label="Cost in EGP (optional)" onChangeText={setCost} value={cost} />
-              <AppTextField label="Notes (optional)" multiline onChangeText={setNotes} style={{ minHeight: 84, textAlignVertical: 'top' }} value={notes} />
+              <AppTextField label={t('record.provider')} onChangeText={setServiceProvider} value={serviceProvider} />
+              <AppTextField error={errors.cost} keyboardType="decimal-pad" label={t('record.costOptional')} onChangeText={setCost} value={cost} />
+              <AppTextField label={t('record.notesOptional')} multiline onChangeText={setNotes} style={{ minHeight: 84, textAlignVertical: 'top' }} value={notes} />
 
               {containsOilReplacement ? (
                 <View className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 gap-4">
                   <View>
-                    <Text className="font-headline text-base font-bold text-on-surface">Oil details (optional)</Text>
-                    <Text className="font-body text-xs text-on-surface-variant mt-1">Oil details do not change your reminder interval.</Text>
+                    <Text className="font-headline text-base font-bold text-on-surface">{t('record.oilDetailsOptional')}</Text>
+                    <Text className="font-body text-xs text-on-surface-variant mt-1">{t('record.oilReminderNotice')}</Text>
                   </View>
-                  <AppTextField label="Oil brand" onChangeText={setOilBrand} value={oilBrand} />
+                  <AppTextField label={t('record.oilBrand')} onChangeText={setOilBrand} value={oilBrand} />
                   <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Oil type</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('record.oilType')}</Text>
                     <View className="flex-row flex-wrap gap-2">
                       {OIL_TYPES.map((option) => (
                         <TouchableOpacity
@@ -378,17 +382,17 @@ export default function MaintenanceRecordForm({
                           className={`min-h-11 justify-center rounded-lg border px-3 ${oilType === option.value ? 'border-primary bg-primary/15' : 'border-outline-variant/20 bg-surface-container-high'}`}
                           onPress={() => setOilType((current) => current === option.value ? null : option.value)}
                         >
-                          <Text className={`font-body text-xs ${oilType === option.value ? 'text-primary' : 'text-on-surface-variant'}`}>{option.label}</Text>
+                          <Text className={`font-body text-xs ${oilType === option.value ? 'text-primary' : 'text-on-surface-variant'}`}>{t(option.labelKey)}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </View>
-                  <AppTextField autoCapitalize="characters" label="Viscosity" onChangeText={setOilViscosity} placeholder="e.g. 10W-40" value={oilViscosity} />
-                  <AppTextField label="Mechanic recommendation" multiline onChangeText={setMechanicRecommendation} value={mechanicRecommendation} />
+                  <AppTextField autoCapitalize="characters" label={t('record.viscosity')} onChangeText={setOilViscosity} placeholder={t('record.viscosityExample')} value={oilViscosity} />
+                  <AppTextField label={t('record.mechanicRecommendation')} multiline onChangeText={setMechanicRecommendation} value={mechanicRecommendation} />
                 </View>
               ) : null}
 
-              <AppPrimaryButton disabled={saving} label={submitLabel} loading={saving} onPress={() => void submit()} />
+              <AppPrimaryButton disabled={saving} label={resolvedSubmitLabel} loading={saving} onPress={() => void submit()} />
             </View>
           </ScrollView>
         </AppBottomSheet>

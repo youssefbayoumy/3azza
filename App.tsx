@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { Manrope_400Regular, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
+import { Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold } from '@expo-google-fonts/cairo';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
 import './global.css';
@@ -20,6 +21,8 @@ import {
   type ReceivedNotificationIntent,
 } from './src/services/notifications';
 import { navigateToNotificationIntent, navigationRef } from './src/navigation/navigationRef';
+import { configureLayoutDirection, useTranslation } from './src/i18n';
+import { setActiveLocale } from './src/i18n/localeState';
 
 // Ignore noisy Reanimated strict mode warnings from third-party libraries (e.g., bottom-tabs)
 LogBox.ignoreLogs([
@@ -33,6 +36,7 @@ configureNotificationBehavior();
 type DatabaseStartupState = 'initializing' | 'ready' | 'error';
 
 export default function App() {
+  const { t } = useTranslation();
   const [fontsLoaded, fontError] = useFonts({
     SpaceGrotesk: SpaceGrotesk_400Regular,
     SpaceGrotesk_400Regular,
@@ -47,6 +51,9 @@ export default function App() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
+    Cairo_400Regular,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
   });
 
   const [databaseState, setDatabaseState] = useState<DatabaseStartupState>('initializing');
@@ -58,6 +65,7 @@ export default function App() {
   const maintenanceReminders = useAppStore((s) => s.maintenanceReminders);
   const backupReminder = useAppStore((s) => s.backupReminder);
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const locale = useAppStore((s) => s.locale);
 
   // Wait for Zustand to rehydrate from SecureStore
   useEffect(() => {
@@ -65,6 +73,15 @@ export default function App() {
     setStoreReady(useAppStore.persist.hasHydrated());
     return unsub;
   }, []);
+
+  // `forceRTL` is intentionally persisted by React Native and becomes fully
+  // active on the next launch. The language picker tells the user when that is needed.
+  useEffect(() => {
+    if (storeReady) {
+      setActiveLocale(locale);
+      configureLayoutDirection(locale);
+    }
+  }, [locale, storeReady]);
 
   // Initialise the SQLite database (creates tables on first launch)
   useEffect(() => {
@@ -173,17 +190,17 @@ export default function App() {
       <SafeAreaProvider>
         <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.recoveryScreen}>
           <StatusBar style="light" backgroundColor="#081421" translucent={false} />
-          <Text accessibilityRole="header" style={styles.recoveryTitle}>Local records unavailable</Text>
+          <Text accessibilityRole="header" style={styles.recoveryTitle}>{t('recovery.title')}</Text>
           <Text style={styles.recoveryMessage}>
-            3azza could not safely open its local database. Your records were not loaded or changed.
+            {t('recovery.body')}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Retry opening local records"
+            accessibilityLabel={t('recovery.retryA11y')}
             onPress={() => setDatabaseRetry((attempt) => attempt + 1)}
             style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
           >
-            <Text style={styles.retryButtonText}>RETRY</Text>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </Pressable>
         </SafeAreaView>
       </SafeAreaProvider>

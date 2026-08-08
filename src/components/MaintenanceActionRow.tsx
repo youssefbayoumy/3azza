@@ -2,10 +2,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text, TouchableOpacity, View } from 'react-native';
 import {
   maintenanceOverrideBadge,
+  maintenanceBaseActionLabel,
   maintenanceScheduleText,
   naturalMaintenanceActionLabel,
 } from '../maintenance/presentation';
 import type { MaintenanceTaskProjection } from '../maintenance/types';
+import { formatNumber, t } from '../i18n/core';
 
 type MaintenanceActionRowProps = {
   onPress: (task: MaintenanceTaskProjection) => void;
@@ -13,34 +15,34 @@ type MaintenanceActionRowProps = {
 };
 
 function compactStatus(task: MaintenanceTaskProjection): string {
-  if (task.reminderDisabled) return 'Reminder disabled';
+  if (task.reminderDisabled) return t('maintenance.reminderDisabled');
   if (task.status === 'overdue') return task.remainingKm !== null
-    ? `${Math.abs(task.remainingKm).toLocaleString()} km overdue`
-    : 'Overdue';
-  if (task.status === 'due') return 'Due now';
-  if (task.status === 'due_soon') return 'Due soon';
-  if (task.conditionResult === 'cleaning_needed') return 'Latest condition: cleaning needed';
-  if (task.conditionResult === 'healthy') return 'Latest condition: healthy';
-  if (task.conditionResult === 'monitor') return 'Latest condition: monitor';
-  if (task.conditionResult === 'replace_soon') return 'Latest condition: replace soon';
-  if (task.conditionResult === 'replace_now') return 'Latest condition: replace now';
-  if (task.status === 'condition_attention') return 'Needs attention';
+    ? t('maintenance.overdueKm', { km: formatNumber(Math.abs(task.remainingKm)) })
+    : t('maintenance.overdue');
+  if (task.status === 'due') return t('maintenance.dueNow');
+  if (task.status === 'due_soon') return t('maintenance.dueSoon');
+  if (task.conditionResult === 'cleaning_needed') return t('maintenance.cleaningNeeded');
+  if (task.conditionResult === 'healthy') return t('maintenance.healthy');
+  if (task.conditionResult === 'monitor') return t('maintenance.monitor');
+  if (task.conditionResult === 'replace_soon') return t('maintenance.replaceSoon');
+  if (task.conditionResult === 'replace_now') return t('maintenance.replaceNow');
+  if (task.status === 'condition_attention') return t('maintenance.needsAttention');
   if (task.status === 'history_unknown_recommend_service') return task.action === 'replace'
-    ? 'Last replacement unknown'
-    : 'Last service unknown';
+    ? t('maintenance.lastReplacementUnknown')
+    : t('maintenance.lastServiceUnknown');
   if (task.status === 'history_unknown_request_record' || task.status === 'unknown') {
     return task.action === 'inspect' || task.action === 'condition_check' || task.action === 'test'
-      ? 'Last inspection unknown'
-      : 'Last action unknown';
+      ? t('maintenance.lastInspectionUnknown')
+      : t('maintenance.lastActionUnknown');
   }
-  const lastAction = task.action === 'replace' ? 'replacement'
-    : task.action === 'inspect' || task.action === 'condition_check' || task.action === 'test' ? 'inspection'
-      : task.action.replace('_', ' ');
-  if (task.lastPerformedAtKm !== null) return `Last ${lastAction} at ${task.lastPerformedAtKm.toLocaleString()} km`;
-  if (task.lastPerformedOn !== null) return `Last ${lastAction} on ${task.lastPerformedOn}`;
-  if (task.remainingKm !== null) return `${task.remainingKm.toLocaleString()} km remaining`;
-  if (task.remainingDays !== null) return `${task.remainingDays} days remaining`;
-  return task.status === 'no_fixed_interval' || task.status === 'informational' ? 'Check by condition' : 'Upcoming';
+  const lastAction = task.action === 'replace' ? t('maintenance.actionReplacement')
+    : task.action === 'inspect' || task.action === 'condition_check' || task.action === 'test' ? t('maintenance.actionInspection')
+      : maintenanceBaseActionLabel(task.action);
+  if (task.lastPerformedAtKm !== null) return t('maintenance.lastAtKm', { action: lastAction, km: formatNumber(task.lastPerformedAtKm) });
+  if (task.lastPerformedOn !== null) return t('maintenance.lastOn', { action: lastAction, date: task.lastPerformedOn });
+  if (task.remainingKm !== null) return t('maintenance.kmRemaining', { km: formatNumber(task.remainingKm) });
+  if (task.remainingDays !== null) return t('maintenance.daysRemaining', { days: formatNumber(task.remainingDays) });
+  return task.status === 'no_fixed_interval' || task.status === 'informational' ? t('maintenance.checkCondition') : t('maintenance.upcoming');
 }
 
 function statusColor(task: MaintenanceTaskProjection): string {
@@ -50,16 +52,16 @@ function statusColor(task: MaintenanceTaskProjection): string {
 }
 
 function technicianLabel(task: MaintenanceTaskProjection): string {
-  if (task.technicianLevel === 'workshop_required') return 'Workshop required';
-  if (task.technicianLevel === 'workshop_recommended') return 'Workshop';
-  return 'Owner-checkable';
+  if (task.technicianLevel === 'workshop_required') return t('maintenance.workshopRequired');
+  if (task.technicianLevel === 'workshop_recommended') return t('maintenance.workshop');
+  return t('maintenance.ownerCheckable');
 }
 
 export default function MaintenanceActionRow({ onPress, task }: MaintenanceActionRowProps) {
   const overrideBadge = maintenanceOverrideBadge(task);
   return (
     <TouchableOpacity
-      accessibilityLabel={`Open ${naturalMaintenanceActionLabel(task)} actions`}
+      accessibilityLabel={t('maintenance.openActions', { label: naturalMaintenanceActionLabel(task) })}
       accessibilityRole="button"
       className="min-h-14 flex-row items-center gap-3 border-b border-outline-variant/10 px-3 py-2.5 last:border-b-0"
       onPress={() => onPress(task)}

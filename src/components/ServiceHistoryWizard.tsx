@@ -18,6 +18,8 @@ import {
 import type { ServiceInterval } from '../types/database.types';
 import { isPastOrTodayIsoDate, toIsoDate } from '../utils/dates';
 import { parseWholeNumberInput } from '../utils/recordValidation';
+import { formatKilometres, formatNumber, localizeErrorMessage, t, useTranslation, type TranslationKey } from '../i18n';
+import { maintenanceComponentGroup } from '../maintenance/presentation';
 
 type WizardChoice = 'just_done' | 'a_while_ago' | 'dont_know' | null;
 
@@ -45,6 +47,16 @@ const INTERVAL_ICONS: Record<string, { lib: 'MaterialIcons' | 'MaterialCommunity
     'Carburetor': { lib: 'MaterialCommunityIcons', name: 'tools' },
 };
 
+const LEGACY_INTERVAL_LABELS: Record<string, TranslationKey> = {
+    'Oil Change': 'wizard.oilChange', 'Gearbox Oil Change': 'wizard.gearOil', 'Air Filter': 'wizard.airFilter',
+    'Brake Pads': 'wizard.brakePads', Cleaning: 'wizard.cleaning', 'CVT & Pull Rollers': 'wizard.cvt', Carburetor: 'wizard.carburetor',
+};
+
+function intervalLabel(interval: ServiceInterval): string {
+    if (interval.canonical_task_id) return maintenanceComponentGroup(interval.canonical_task_id).label;
+    return LEGACY_INTERVAL_LABELS[interval.name] ? t(LEGACY_INTERVAL_LABELS[interval.name]) : interval.name;
+}
+
 function getIcon(name: string, color: string, size = 22) {
     const info = INTERVAL_ICONS[name];
     if (!info) return <MaterialIcons name="build-circle" size={size} color={color} />;
@@ -71,6 +83,7 @@ function categoryForInterval(interval: ServiceInterval): string {
 }
 
 export default function ServiceHistoryWizard({ visible, intervals, currentOdometer, onFinish }: Props) {
+    const { locale, t: tr } = useTranslation();
     const insets = useSafeAreaInsets();
     const [currentStep, setCurrentStep] = useState(0);
     const [steps, setSteps] = useState<StepState[]>(() => createSteps(intervals));
@@ -102,14 +115,14 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
 
         if (stepState.inputMode === 'date') {
             if (!isPastOrTodayIsoDate(stepState.dateInput)) {
-                setInputError('Enter a valid date on or before today (YYYY-MM-DD).');
+                setInputError(tr('wizard.invalidDate'));
                 return false;
             }
             return true;
         }
 
         const result = parseWholeNumberInput(stepState.kmInput, {
-            label: 'Service odometer',
+            label: tr('wizard.serviceOdometer'),
             min: 0,
         });
         if (!result.ok) {
@@ -117,7 +130,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
             return false;
         }
         if (result.value > currentOdometer) {
-            setInputError(`Cannot exceed current odometer (${currentOdometer.toLocaleString()} KM).`);
+            setInputError(tr('wizard.odometerMax', { km: formatNumber(currentOdometer, locale) }));
             return false;
         }
         return true;
@@ -133,7 +146,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
 
             const isDateOnly = step.choice === 'a_while_ago' && step.inputMode === 'date';
             entries.push({
-                title: `${serviceInterval.name} — History Setup`,
+                title: tr('wizard.recordTitle', { service: intervalLabel(serviceInterval) }),
                 date: isDateOnly ? step.dateInput : today,
                 mileage: isDateOnly
                     ? 0
@@ -142,8 +155,8 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                         : Number(step.kmInput),
                 category: categoryForInterval(serviceInterval),
                 notes: isDateOnly
-                    ? 'Date-only history — entered during Service History Setup'
-                    : 'Entered during Service History Setup',
+                    ? tr('wizard.noteDate')
+                    : tr('wizard.note'),
                 cost: null,
                 serviceIntervalId: serviceInterval.id,
                 setsOdometerBaseline: !isDateOnly,
@@ -161,8 +174,8 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
             onFinish();
         } catch (error) {
             Alert.alert(
-                'History setup not saved',
-                error instanceof Error ? error.message : 'Your history was not changed. Try again.'
+                tr('wizard.saveFailed'),
+                localizeErrorMessage(error, tr('wizard.saveFailedBody'))
             );
         } finally {
             setSaving(false);
@@ -197,20 +210,20 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                     <View className="flex-row items-center justify-between mb-2">
                         <View className="flex-row items-center gap-2">
                             <MaterialIcons name="history" size={20} color="#a9c7ff" />
-                            <Text className="font-bold text-xs uppercase tracking-[0.2em] text-primary">History Setup</Text>
+                            <Text className="font-bold text-xs uppercase tracking-[0.2em] text-primary">{tr('wizard.setup')}</Text>
                         </View>
                         <TouchableOpacity onPress={() => void handleFinish(true)} activeOpacity={0.7} disabled={saving}>
                             <View className="px-3 py-1.5 rounded-full border border-white/10">
-                                <Text className="text-xs text-white/50 uppercase font-bold">Skip All</Text>
+                                <Text className="text-xs text-white/50 uppercase font-bold">{tr('wizard.skipAll')}</Text>
                             </View>
                         </TouchableOpacity>
                     </View>
-                    <Text className="text-2xl font-bold text-white mt-1">When was this last done?</Text>
+                    <Text className="text-2xl font-bold text-white mt-1">{tr('wizard.when')}</Text>
                     <Text className="text-xs text-white/60 mt-2 leading-5">
-                        Odometer entries start mileage counters. Date-only entries are saved as history without starting a counter.
+                        {tr('wizard.body')}
                     </Text>
                     <Text className="text-xs text-white/40 mt-3 uppercase tracking-widest">
-                        Step {currentStep + 1} of {intervals.length}
+                        {tr('wizard.step', { current: formatNumber(currentStep + 1, locale), total: formatNumber(intervals.length, locale) })}
                     </Text>
                 </View>
 
@@ -220,9 +233,9 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                             {getIcon(interval.name, '#a9c7ff')}
                         </View>
                         <View className="flex-1">
-                            <Text className="text-xl font-bold text-white">{interval.name}</Text>
+                            <Text className="text-xl font-bold text-white">{intervalLabel(interval)}</Text>
                             <Text className="text-xs uppercase text-white/40">
-                                Current template: {interval.interval_km ? `${interval.interval_km.toLocaleString()} KM` : 'As needed'}
+                                {tr('wizard.currentTemplate', { schedule: interval.interval_km ? formatKilometres(interval.interval_km, locale) : tr('wizard.asNeeded') })}
                             </Text>
                         </View>
                     </View>
@@ -231,7 +244,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                         <TouchableOpacity onPress={() => updateStep({ choice: 'just_done' })}>
                             <View className={`flex-row items-center gap-3 p-4 rounded-xl border ${stepState.choice === 'just_done' ? 'bg-primary/20 border-primary' : 'bg-white/5 border-white/10'}`}>
                                 <MaterialIcons name="check-circle" size={22} color={stepState.choice === 'just_done' ? '#a9c7ff' : '#454747'} />
-                                <Text className="text-white font-bold">I just did it</Text>
+                                <Text className="text-white font-bold">{tr('wizard.justDone')}</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -239,7 +252,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                             <TouchableOpacity onPress={() => updateStep({ choice: 'a_while_ago' })}>
                                 <View className="flex-row items-center gap-3 p-4">
                                     <MaterialIcons name="history" size={22} color={stepState.choice === 'a_while_ago' ? '#a9c7ff' : '#454747'} />
-                                    <Text className="text-white font-bold">A while ago</Text>
+                                    <Text className="text-white font-bold">{tr('wizard.whileAgo')}</Text>
                                 </View>
                             </TouchableOpacity>
                             {stepState.choice === 'a_while_ago' && (
@@ -249,18 +262,18 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                                             className={`flex-1 py-2 rounded-lg items-center border ${stepState.inputMode === 'km' ? 'bg-primary/20 border-primary' : 'border-white/10'}`}
                                             onPress={() => updateStep({ inputMode: 'km' })}
                                         >
-                                            <Text className="text-white text-xs font-bold uppercase">By odometer</Text>
+                                            <Text className="text-white text-xs font-bold uppercase">{tr('wizard.byOdometer')}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             className={`flex-1 py-2 rounded-lg items-center border ${stepState.inputMode === 'date' ? 'bg-primary/20 border-primary' : 'border-white/10'}`}
                                             onPress={() => updateStep({ inputMode: 'date' })}
                                         >
-                                            <Text className="text-white text-xs font-bold uppercase">By date</Text>
+                                            <Text className="text-white text-xs font-bold uppercase">{tr('wizard.byDate')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                     <TextInput
                                         className={`bg-white/5 px-4 py-3 rounded-xl text-white ${inputError ? 'border border-error' : ''}`}
-                                        placeholder={stepState.inputMode === 'km' ? 'Enter KM' : 'YYYY-MM-DD'}
+                                        placeholder={stepState.inputMode === 'km' ? tr('wizard.enterKm') : tr('history.datePlaceholder')}
                                         placeholderTextColor="#717373"
                                         keyboardType={stepState.inputMode === 'km' ? 'number-pad' : 'default'}
                                         value={stepState.inputMode === 'km' ? stepState.kmInput : stepState.dateInput}
@@ -276,7 +289,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                         <TouchableOpacity onPress={() => updateStep({ choice: 'dont_know' })}>
                             <View className={`flex-row items-center gap-3 p-4 rounded-xl border ${stepState.choice === 'dont_know' ? 'bg-error/20 border-error/50' : 'bg-white/5 border-white/10'}`}>
                                 <MaterialIcons name="help-outline" size={22} color={stepState.choice === 'dont_know' ? '#ffb4ab' : '#454747'} />
-                                <Text className="text-white font-bold">I don&apos;t know</Text>
+                                <Text className="text-white font-bold">{tr('wizard.dontKnow')}</Text>
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -290,7 +303,7 @@ export default function ServiceHistoryWizard({ visible, intervals, currentOdomet
                         <View className={`w-full h-14 rounded-xl items-center justify-center ${stepState.choice !== null ? 'bg-primary' : 'bg-white/10'}`}>
                             {saving ? <ActivityIndicator color="#081421" /> : (
                                 <Text className="font-bold text-[#081421] uppercase tracking-widest">
-                                    {isLastStep ? 'Finish' : 'Next'}
+                                    {isLastStep ? tr('wizard.finish') : tr('history.next')}
                                 </Text>
                             )}
                         </View>

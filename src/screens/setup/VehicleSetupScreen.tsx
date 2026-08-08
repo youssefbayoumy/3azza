@@ -20,6 +20,7 @@ import {
     type GuidedScooterSelectionDraft,
 } from '../../catalog/guidedScooterIdentification';
 import { getMaintenanceProfileForSelection } from '../../maintenance/profiles';
+import { localizeErrorMessage, useTranslation } from '../../i18n';
 
 type SetupFormData = {
     mileage: string;
@@ -27,6 +28,7 @@ type SetupFormData = {
 };
 
 export default function VehicleSetupScreen() {
+    const { t, isRTL } = useTranslation();
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
@@ -61,13 +63,13 @@ export default function VehicleSetupScreen() {
         const resolvedSelection = resolveScooterSelection(selectionDraft.selection);
         if (!resolvedSelection || !isScooterSelectionComplete(selectionDraft.selection)) {
             setShowSelectionErrors(true);
-            Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before continuing.');
+            Alert.alert(t('settings.selectScooter'), t('setup.selectBody'));
             return;
         }
-        const mileageResult = parseWholeNumberInput(data.mileage, { label: 'Current odometer' });
-        const dailyAverageResult = parseWholeNumberInput(data.dailyAvg, { label: 'Daily average' });
+        const mileageResult = parseWholeNumberInput(data.mileage, { label: t('setup.currentOdometer') });
+        const dailyAverageResult = parseWholeNumberInput(data.dailyAvg, { label: t('setup.dailyAverage') });
         if (!mileageResult.ok || !dailyAverageResult.ok) {
-            Alert.alert('Invalid vehicle details', 'Enter the odometer and daily average as non-negative whole numbers.');
+            Alert.alert(t('setup.invalidTitle'), t('setup.invalidBody'));
             return;
         }
         
@@ -86,7 +88,7 @@ export default function VehicleSetupScreen() {
             }
         } catch (err) {
             console.error('Setup error:', err);
-            Alert.alert('Error', 'Failed to save vehicle profile.');
+            Alert.alert(t('documents.saveErrorTitle'), t('setup.saveFailed'));
         } finally {
             setSaving(false);
         }
@@ -101,8 +103,8 @@ export default function VehicleSetupScreen() {
         } catch (error) {
             console.error('Maintenance history setup error:', error);
             Alert.alert(
-                'History setup not saved',
-                error instanceof Error ? error.message : 'Your vehicle is saved. Try the history step again.'
+                t('history.setupSaveFailed'),
+                localizeErrorMessage(error, t('setup.historySavedRetry'))
             );
         } finally {
             setSaving(false);
@@ -128,9 +130,9 @@ export default function VehicleSetupScreen() {
                 <View className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mb-6">
                     <MaterialCommunityIcons name="car-cog" size={40} color="#a9c7ff" />
                 </View>
-                <Text className="font-headline text-3xl font-bold text-on-surface mb-2">Set Up Your Vehicle</Text>
-                <Text className="font-body text-on-surface-variant/80 text-center px-4">
-                    Select the exact scooter manual first, then enter its current odometer and typical daily distance.
+                <Text className={`font-headline text-3xl font-bold text-on-surface mb-2 ${isRTL ? 'font-body' : ''}`}>{t('setup.title')}</Text>
+                <Text className={`font-body text-on-surface-variant/80 text-center px-4 ${isRTL ? 'font-body' : ''}`}>
+                    {t('setup.body')}
                 </Text>
             </View>
 
@@ -138,8 +140,8 @@ export default function VehicleSetupScreen() {
                 <View className="flex-row items-center gap-3 mb-5">
                     <MaterialCommunityIcons name="book-open-page-variant" size={22} color="#a9c7ff" />
                     <View className="flex-1">
-                        <Text className="font-headline text-lg font-bold text-on-surface">Choose Your Scooter</Text>
-                        <Text className="font-body text-xs text-on-surface-variant mt-1">Models and versions come from the installed manual catalog.</Text>
+                        <Text className={`font-headline text-lg font-bold text-on-surface ${isRTL ? 'font-body' : ''}`}>{t('setup.chooseScooter')}</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1">{t('setup.catalogBody')}</Text>
                     </View>
                 </View>
                 <ScooterSelectionFields
@@ -153,21 +155,21 @@ export default function VehicleSetupScreen() {
             </View>
 
             <View className="flex-col gap-2 mb-8">
-                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">Current Odometer (KM)</Text>
+                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">{t('setup.currentOdometer')}</Text>
                 
                 <Controller
                     control={control}
                     rules={{
-                        required: 'Mileage is required',
-                        pattern: { value: /^[0-9]+$/, message: 'Must be a valid number' },
-                        min: { value: 0, message: 'Cannot be negative' }
+                        required: t('setup.mileageRequired'),
+                        pattern: { value: /^[0-9]+$/, message: t('setup.validNumber') },
+                        min: { value: 0, message: t('setup.nonNegative') }
                     }}
                     name="mileage"
                     render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
-                            accessibilityLabel="Current odometer in kilometres"
+                            accessibilityLabel={t('setup.odometerA11y')}
                             className={`bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-headline text-2xl tracking-wider border ${errors.mileage ? 'border-error' : 'border-outline-variant/30'}`}
-                            placeholder="e.g. 45000"
+                            placeholder={t('setup.odometerExample')}
                             placeholderTextColor="#64748b"
                             keyboardType="number-pad"
                             onBlur={onBlur}
@@ -182,21 +184,21 @@ export default function VehicleSetupScreen() {
             </View>
 
             <View className="flex-col gap-2 mb-8">
-                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">Daily Drive Average (KM)</Text>
+                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">{t('setup.dailyAverage')}</Text>
                 
                 <Controller
                     control={control}
                     rules={{
-                        required: 'Average is required',
-                        pattern: { value: /^[0-9]+$/, message: 'Must be a valid number' },
-                        min: { value: 0, message: 'Cannot be negative' }
+                        required: t('setup.averageRequired'),
+                        pattern: { value: /^[0-9]+$/, message: t('setup.validNumber') },
+                        min: { value: 0, message: t('setup.nonNegative') }
                     }}
                     name="dailyAvg"
                     render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
-                            accessibilityLabel="Daily driving average in kilometres"
+                            accessibilityLabel={t('setup.averageA11y')}
                             className={`bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-headline text-2xl tracking-wider border ${errors.dailyAvg ? 'border-error' : 'border-outline-variant/30'}`}
-                            placeholder="e.g. 30"
+                            placeholder={t('setup.averageExample')}
                             placeholderTextColor="#64748b"
                             keyboardType="number-pad"
                             onBlur={onBlur}
@@ -212,7 +214,7 @@ export default function VehicleSetupScreen() {
 
             <TouchableOpacity
                 className="bg-primary rounded-xl py-4 items-center"
-                accessibilityLabel="Save vehicle setup"
+                accessibilityLabel={t('setup.saveA11y')}
                 accessibilityRole="button"
                 accessibilityState={{ busy: saving, disabled: saving }}
                 onPress={handleSubmit(onSubmit)}
@@ -222,7 +224,7 @@ export default function VehicleSetupScreen() {
                 {saving ? (
                     <ActivityIndicator color="#081421" />
                 ) : (
-                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Vehicle</Text>
+                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">{t('setup.save')}</Text>
                 )}
             </TouchableOpacity>
         </AppFormScreen>

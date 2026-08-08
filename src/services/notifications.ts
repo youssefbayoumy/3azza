@@ -20,6 +20,7 @@ import {
   maintenanceHistoryByAction,
   maintenancePreferencesForScheduler,
 } from '../maintenance/storageProjection';
+import { t } from '../i18n/core';
 
 const CHANNEL_ID = '3azza-maintenance';
 const BACKUP_ID = '3azza-backup-weekly';
@@ -50,7 +51,7 @@ async function ensureNotificationChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: '3azza reminders',
+    name: t('notifications.channel'),
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#a9c7ff',
@@ -174,8 +175,8 @@ async function reconcileBackupReminder(enabled: boolean): Promise<NotificationSy
     await Notifications.scheduleNotificationAsync({
       identifier: BACKUP_ID,
       content: {
-        title: 'Export your 3azza backup',
-        body: 'Create an unencrypted JSON backup of your local records and document photos.',
+        title: t('notifications.backupTitle'),
+        body: t('notifications.backupBody'),
         data: { route: 'VehicleSettings' },
       },
       trigger: {
@@ -218,8 +219,8 @@ export async function scheduleTestNotification(): Promise<{
     await ensureNotificationChannel();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '3azza reminder test',
-        body: 'Local notifications are working on this device.',
+        title: t('notifications.testTitle'),
+        body: t('notifications.testBody'),
         data: { route: 'VehicleSettings' },
       },
       trigger: {

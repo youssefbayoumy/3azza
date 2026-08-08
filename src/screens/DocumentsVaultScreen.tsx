@@ -29,11 +29,13 @@ import AppListContinuation from '../components/ui/AppListContinuation';
 import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
+import { useTranslation } from '../i18n';
 
 const DOCUMENT_GRID_GAP = 16;
 const MIN_DOCUMENT_CARD_WIDTH = 220;
 
 export default function DocumentsVaultScreen() {
+    const { t } = useTranslation();
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const [documents, setDocuments] = useState<DocumentItem[]>([]);
     const [documentCount, setDocumentCount] = useState(0);
@@ -60,14 +62,14 @@ export default function DocumentsVaultScreen() {
 
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadDocuments,
-        'The document vault could not be loaded. Your local files were not changed.',
-        'Failed to load documents:'
+        t('documents.loadError'),
+        t('documents.loadLog')
     );
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Photo access needed', 'Allow photo access to choose a document image. You can still cancel without adding one.');
+            Alert.alert(t('documents.photoPermission'), t('documents.photoPermissionBody'));
             return;
         }
 
@@ -94,7 +96,7 @@ export default function DocumentsVaultScreen() {
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Camera access needed', 'Allow camera access to take a document photo. You can also choose an existing image.');
+            Alert.alert(t('documents.cameraPermission'), t('documents.cameraPermissionBody'));
             return;
         }
 
@@ -110,7 +112,7 @@ export default function DocumentsVaultScreen() {
 
     const handleSaveDocument = async () => {
         if (!title.trim() || !imageUri) {
-            Alert.alert('Missing Info', 'Please provide a title and select/take a photo.');
+            Alert.alert(t('documents.missingTitle'), t('documents.missingBody'));
             return;
         }
 
@@ -139,17 +141,17 @@ export default function DocumentsVaultScreen() {
             await syncMaintenanceNotifications(maintenanceReminders);
         } catch (error) {
             console.error('Save error:', error);
-            Alert.alert('Error', 'Failed to save document. Please try again.');
+            Alert.alert(t('documents.saveErrorTitle'), t('documents.saveErrorBody'));
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = (doc: DocumentItem) => {
-        Alert.alert('Delete Document', `Are you sure you want to delete "${doc.title}"?`, [
-            { text: 'Cancel', style: 'cancel' },
+        Alert.alert(t('documents.deleteTitle'), t('documents.deleteBody', { title: doc.title }), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Delete', 
+                text: t('common.delete'),
                 style: 'destructive',
                 onPress: async () => {
                     try {
@@ -163,7 +165,7 @@ export default function DocumentsVaultScreen() {
                         await syncMaintenanceNotifications(maintenanceReminders);
                     } catch (error) {
                         console.error('Failed to delete document:', error);
-                        Alert.alert('Document not deleted', 'The document record and its local photo are still saved. Try again.');
+                        Alert.alert(t('documents.deleteFailedTitle'), t('documents.deleteFailedBody'));
                     }
                 }
             }
@@ -183,7 +185,7 @@ export default function DocumentsVaultScreen() {
         : '100%';
 
     if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title="DOCUMENTS" />;
+        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title={t('documents.title')} />;
     }
 
     return (
@@ -194,7 +196,7 @@ export default function DocumentsVaultScreen() {
                     <MaterialIcons name="person" size={20} color="#a9c7ff" style={{ alignSelf: 'center', marginTop: 4 }} />
                 </View>}
             >
-                <Text className="text-xl font-bold text-[#C0C0C0] tracking-widest font-headline uppercase">DOCUMENTS</Text>
+                <Text className="text-xl font-bold text-[#C0C0C0] tracking-widest font-headline uppercase">{t('documents.title')}</Text>
             </AppTopBar>
 
             <ScrollView
@@ -205,16 +207,16 @@ export default function DocumentsVaultScreen() {
                 <View className="mb-6 gap-4">
                     <View className="gap-2">
                         <ActiveVehicleChip />
-                        <Text className="font-label text-xs uppercase font-bold tracking-[0.2em] text-primary">LOCAL RECORDS</Text>
+                        <Text className="font-label text-xs uppercase font-bold tracking-[0.2em] text-primary">{t('documents.localRecords')}</Text>
                     </View>
                     <View className="bg-surface-container-high/40 p-4 rounded-xl border border-outline-variant/10 flex-row items-stretch">
                         <View className="flex-1 items-center justify-center px-2">
-                            <Text className="font-label text-xs text-secondary/60 uppercase">STORAGE</Text>
-                            <Text className="font-headline text-lg font-bold text-primary text-center">On device</Text>
+                            <Text className="font-label text-xs text-secondary/60 uppercase">{t('documents.storage')}</Text>
+                            <Text className="font-headline text-lg font-bold text-primary text-center">{t('documents.onDevice')}</Text>
                         </View>
                         <View className="w-px self-stretch bg-outline-variant/20" />
                         <View className="flex-1 items-center justify-center px-2">
-                            <Text className="font-label text-xs text-secondary/60 uppercase">FILES</Text>
+                            <Text className="font-label text-xs text-secondary/60 uppercase">{t('documents.files')}</Text>
                             <Text className="font-headline text-lg font-bold text-on-surface">{documentCount}</Text>
                         </View>
                     </View>
@@ -223,7 +225,7 @@ export default function DocumentsVaultScreen() {
                 {documents.length === 0 ? (
                     <TouchableOpacity
                         className="border border-dashed border-outline-variant/30 rounded-2xl px-6 py-10 items-center justify-center bg-surface-container-low/30"
-                        accessibilityLabel="Add your first document"
+                        accessibilityLabel={t('documents.addFirst')}
                         accessibilityRole="button"
                         onPress={() => setModalVisible(true)}
                         activeOpacity={0.8}
@@ -231,13 +233,13 @@ export default function DocumentsVaultScreen() {
                         <View className="w-14 h-14 rounded-full bg-primary/10 items-center justify-center mb-4">
                             <MaterialIcons name="note-add" size={28} color="#a9c7ff" />
                         </View>
-                        <Text className="font-headline text-lg font-bold text-on-surface text-center">No documents yet</Text>
+                        <Text className="font-headline text-lg font-bold text-on-surface text-center">{t('documents.emptyTitle')}</Text>
                         <Text className="font-body text-sm text-on-surface-variant text-center mt-2 leading-5">
-                            Keep registration, insurance, and service paperwork available offline on this device.
+                            {t('documents.emptyBody')}
                         </Text>
                         <View className="mt-6 px-5 py-3 rounded-xl bg-primary flex-row items-center gap-2">
                             <MaterialIcons name="add" size={18} color="#082047" />
-                            <Text className="font-label text-xs font-bold uppercase tracking-wider text-on-primary">Add document</Text>
+                            <Text className="font-label text-xs font-bold uppercase tracking-wider text-on-primary">{t('documents.add')}</Text>
                         </View>
                     </TouchableOpacity>
                 ) : (
@@ -255,7 +257,7 @@ export default function DocumentsVaultScreen() {
                         return (
                             <TouchableOpacity
                                 key={doc.id}
-                                accessibilityLabel={`${doc.title}, expires ${formatDateLabel(doc.expiry_date)}. Long press to delete.`}
+                                accessibilityLabel={t('documents.cardA11y', { title: doc.title, date: formatDateLabel(doc.expiry_date) })}
                                 accessibilityRole="button"
                                 className="bg-[#1B2735] border border-secondary/30 rounded-xl p-4 flex-col gap-4 relative overflow-hidden"
                                 style={{ width: documentCardWidth }}
@@ -274,7 +276,7 @@ export default function DocumentsVaultScreen() {
                                         {doc.title}
                                     </Text>
                                     <View className="mt-2 flex-row items-center gap-1">
-                                        <Text className="font-label text-xs text-secondary/50 uppercase">Expires:</Text>
+                                        <Text className="font-label text-xs text-secondary/50 uppercase">{t('documents.expires')}</Text>
                                         <Text className={`font-label text-xs font-bold ${expired ? 'text-error' : expiring ? 'text-[#FFB100]' : 'text-secondary'}`}>
                                             {formatDateLabel(doc.expiry_date)}
                                         </Text>
@@ -293,12 +295,12 @@ export default function DocumentsVaultScreen() {
 
                         <TouchableOpacity
                             className="mt-5 py-3.5 px-4 rounded-xl border border-primary/30 bg-primary/10 flex-row items-center justify-center gap-2"
-                            accessibilityLabel="Add document"
+                            accessibilityLabel={t('documents.add')}
                             accessibilityRole="button"
                             onPress={() => setModalVisible(true)}
                         >
                             <MaterialIcons name="add-photo-alternate" size={20} color="#a9c7ff" />
-                            <Text className="font-label text-xs uppercase font-bold tracking-wider text-primary">Add document</Text>
+                            <Text className="font-label text-xs uppercase font-bold tracking-wider text-primary">{t('documents.add')}</Text>
                         </TouchableOpacity>
                     </>
                 )}
@@ -312,17 +314,17 @@ export default function DocumentsVaultScreen() {
                             <MaterialIcons name="lock-open" size={18} color="#a9c7ff" />
                         </View>
                         <View>
-                            <Text className="font-label text-xs text-secondary/50 uppercase">Status</Text>
-                            <Text className="font-headline text-sm font-bold uppercase text-on-surface">Not encrypted</Text>
+                            <Text className="font-label text-xs text-secondary/50 uppercase">{t('documents.status')}</Text>
+                            <Text className="font-headline text-sm font-bold uppercase text-on-surface">{t('documents.notEncrypted')}</Text>
                         </View>
                     </View>
-                    <Text className="font-body text-xs text-on-surface-variant flex-1 leading-5">Photos stay unencrypted in app storage and are included in new self-contained JSON backups.</Text>
+                    <Text className="font-body text-xs text-on-surface-variant flex-1 leading-5">{t('documents.securityBody')}</Text>
                 </View>
             </ScrollView>
 
             {/* Add Document Modal */}
             <ProtectedModal
-                accessibilityLabel="Add document photo dialog"
+                accessibilityLabel={t('documents.dialog')}
                 visible={modalVisible}
                 animationType="slide"
                 transparent
@@ -337,24 +339,24 @@ export default function DocumentsVaultScreen() {
                 <View className="flex-1 justify-end bg-black/50">
                     <View className="w-full max-w-2xl self-center bg-surface-container rounded-t-3xl p-6 border-t border-outline-variant/20 pt-8 shadow-2xl">
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="font-headline text-xl font-bold text-on-surface">Add Document Photo</Text>
+                            <Text className="font-headline text-xl font-bold text-on-surface">{t('documents.addPhoto')}</Text>
                             <TouchableOpacity onPress={() => {
                                 setModalVisible(false);
                                 setImageUri(null);
                                 setExpiryDate(null);
                                 setShowDatePicker(false);
-                            }} accessibilityLabel="Close add document form" accessibilityRole="button">
+                            }} accessibilityLabel={t('documents.closeForm')} accessibilityRole="button">
                                 <MaterialIcons name="close" size={24} color="#c4c6cc" />
                             </TouchableOpacity>
                         </View>
 
                         <View className="flex-col gap-5 mb-8">
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Document Title</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('documents.documentTitle')}</Text>
                                 <TextInput
-                                    accessibilityLabel="Document title"
+                                    accessibilityLabel={t('documents.titleA11y')}
                                     className="bg-surface-container-high rounded-xl px-4 py-3 text-on-surface font-body border border-outline-variant/20"
-                                    placeholder="e.g. Vehicle Registration"
+                                    placeholder={t('documents.titlePlaceholder')}
                                     placeholderTextColor="#64748b"
                                     value={title}
                                     onChangeText={setTitle}
@@ -362,23 +364,23 @@ export default function DocumentsVaultScreen() {
                             </View>
                             
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Expiry Date (Optional)</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('documents.expiryOptional')}</Text>
                                 <View className="flex-row gap-3">
                                     <TouchableOpacity
                                         className="flex-1 bg-surface-container-high rounded-xl px-4 py-3 border border-outline-variant/20 flex-row items-center justify-between"
-                                        accessibilityLabel="Set document expiry date"
+                                        accessibilityLabel={t('documents.setExpiry')}
                                         accessibilityRole="button"
                                         onPress={() => setShowDatePicker(true)}
                                     >
                                         <Text className={`font-body ${expiryDate ? 'text-on-surface' : 'text-slate-500'}`}>
-                                            {expiryDate ? toIsoDate(expiryDate) : 'No expiry date'}
+                                            {expiryDate ? toIsoDate(expiryDate) : t('documents.noExpiry')}
                                         </Text>
                                         <MaterialIcons name="event" size={20} color="#a9c7ff" />
                                     </TouchableOpacity>
                                     {expiryDate && (
                                         <TouchableOpacity
                                             className="bg-surface-container-high rounded-xl px-4 items-center justify-center border border-outline-variant/20"
-                                            accessibilityLabel="Clear document expiry date"
+                                            accessibilityLabel={t('documents.clearExpiry')}
                                             accessibilityRole="button"
                                             onPress={() => setExpiryDate(null)}
                                         >
@@ -397,33 +399,33 @@ export default function DocumentsVaultScreen() {
                             </View>
 
                             <View>
-                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">Document Image</Text>
+                                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('documents.image')}</Text>
                                 {imageUri ? (
                                     <View className="flex-row items-center gap-4">
                                         <Image source={{ uri: imageUri }} className="w-24 h-24 rounded-lg border border-outline-variant/30" />
                                         <TouchableOpacity onPress={() => setImageUri(null)} className="px-4 py-2 bg-surface-container-high rounded-lg">
-                                            <Text className="text-secondary text-sm font-label font-bold">Remove</Text>
+                                            <Text className="text-secondary text-sm font-label font-bold">{t('documents.remove')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
                                     <View className="flex-row gap-4">
                                         <TouchableOpacity 
                                             className="flex-1 bg-surface-container-high rounded-xl py-4 flex-col items-center justify-center border border-outline-variant/20 border-dashed"
-                                            accessibilityLabel="Take document photo"
+                                            accessibilityLabel={t('documents.takePhoto')}
                                             accessibilityRole="button"
                                             onPress={takePhoto}
                                         >
                                             <MaterialIcons name="photo-camera" size={24} color="#a9c7ff" />
-                                            <Text className="mt-2 text-xs font-bold uppercase text-primary tracking-widest">Camera</Text>
+                                            <Text className="mt-2 text-xs font-bold uppercase text-primary tracking-widest">{t('documents.camera')}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity 
                                             className="flex-1 bg-surface-container-high rounded-xl py-4 flex-col items-center justify-center border border-outline-variant/20 border-dashed"
-                                            accessibilityLabel="Choose document photo from gallery"
+                                            accessibilityLabel={t('documents.chooseGallery')}
                                             accessibilityRole="button"
                                             onPress={pickImage}
                                         >
                                             <MaterialIcons name="photo-library" size={24} color="#a9c7ff" />
-                                            <Text className="mt-2 text-xs font-bold uppercase text-primary tracking-widest">Gallery</Text>
+                                            <Text className="mt-2 text-xs font-bold uppercase text-primary tracking-widest">{t('documents.gallery')}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -432,7 +434,7 @@ export default function DocumentsVaultScreen() {
 
                         <TouchableOpacity
                             className="bg-primary rounded-xl py-4 items-center mb-8 shadow-lg"
-                            accessibilityLabel="Save document"
+                            accessibilityLabel={t('documents.saveA11y')}
                             accessibilityRole="button"
                             onPress={handleSaveDocument}
                             disabled={saving}
@@ -441,7 +443,7 @@ export default function DocumentsVaultScreen() {
                             {saving ? (
                                 <ActivityIndicator color="#081421" />
                             ) : (
-                                <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Document</Text>
+                                <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">{t('documents.save')}</Text>
                             )}
                         </TouchableOpacity>
                     </View>

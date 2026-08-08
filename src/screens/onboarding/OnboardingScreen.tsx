@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Alert } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
 import AppScreen from '../../components/ui/AppScreen';
+import { configureLayoutDirection, useTranslation, type AppLocale } from '../../i18n';
 
 interface Slide {
   icon: React.ReactNode;
@@ -12,38 +13,22 @@ interface Slide {
   accent: string;
 }
 
-const SLIDES: Slide[] = [
-  {
-    icon: <MaterialCommunityIcons name="engine" size={64} color="#a9c7ff" />,
-    title: 'Your Maintenance, Offline',
-    subtitle:
-      'Manually record odometer readings, service, and checks. No account, internet, or scooter connection required.',
-    accent: '#a9c7ff',
-  },
-  {
-    icon: <MaterialCommunityIcons name="gas-station" size={64} color="#c6c6c7" />,
-    title: 'Record Every Fill-Up',
-    subtitle:
-      'Keep a local history of fuel amounts, costs, and odometer readings for each vehicle.',
-    accent: '#c6c6c7',
-  },
-  {
-    icon: <MaterialIcons name="inventory-2" size={64} color="#a9c7ff" />,
-    title: 'Plan Your Next Service',
-    subtitle:
-      'Start with editable reminders, then set each maintenance interval from your vehicle manual.',
-    accent: '#a9c7ff',
-  },
-];
-
 export default function OnboardingScreen() {
   const pagerRef = useRef<PagerView>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
+  const locale = useAppStore((s) => s.locale);
+  const setLocale = useAppStore((s) => s.setLocale);
+  const { t, isRTL } = useTranslation();
   const { height: viewportHeight } = useWindowDimensions();
   const compactHeight = viewportHeight < 700;
 
-  const isLastSlide = currentPage === SLIDES.length - 1;
+  const slides: Slide[] = [
+    { icon: <MaterialCommunityIcons name="engine" size={64} color="#a9c7ff" />, title: t('onboarding.slide1.title'), subtitle: t('onboarding.slide1.body'), accent: '#a9c7ff' },
+    { icon: <MaterialCommunityIcons name="gas-station" size={64} color="#c6c6c7" />, title: t('onboarding.slide2.title'), subtitle: t('onboarding.slide2.body'), accent: '#c6c6c7' },
+    { icon: <MaterialIcons name="inventory-2" size={64} color="#a9c7ff" />, title: t('onboarding.slide3.title'), subtitle: t('onboarding.slide3.body'), accent: '#a9c7ff' },
+  ];
+  const isLastSlide = currentPage === slides.length - 1;
 
   const handleNext = () => {
     if (isLastSlide) {
@@ -57,12 +42,23 @@ export default function OnboardingScreen() {
     completeOnboarding();
   };
 
+  const changeLocale = (next: AppLocale) => {
+    if (next === locale) return;
+    setLocale(next);
+    if (configureLayoutDirection(next)) {
+      Alert.alert(
+        t('language.changeTitle'),
+        t('language.changeBody')
+      );
+    }
+  };
+
   return (
     <AppScreen edges={['top', 'bottom', 'left', 'right']} style={styles.container}>
       {/* Skip Button */}
       {!isLastSlide && (
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={[styles.skipText, isRTL && styles.arabicText]}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       )}
 
@@ -73,7 +69,7 @@ export default function OnboardingScreen() {
         initialPage={0}
         onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
       >
-        {SLIDES.map((slide, index) => (
+        {slides.map((slide, index) => (
           <View
             key={index}
             style={[
@@ -95,8 +91,8 @@ export default function OnboardingScreen() {
               <View style={styles.iconContainer}>{slide.icon}</View>
             </View>
 
-            <Text style={[styles.title, { fontSize: compactHeight ? 26 : 32 }]}>{slide.title}</Text>
-            <Text style={styles.subtitle}>{slide.subtitle}</Text>
+            <Text style={[styles.title, isRTL && styles.arabicText, { fontSize: compactHeight ? 26 : 32 }]}>{slide.title}</Text>
+            <Text style={[styles.subtitle, isRTL && styles.arabicText]}>{slide.subtitle}</Text>
           </View>
         ))}
       </PagerView>
@@ -113,7 +109,7 @@ export default function OnboardingScreen() {
       >
         {/* Page dots */}
         <View style={styles.dotsRow}>
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <View
               key={i}
               style={[
@@ -126,12 +122,21 @@ export default function OnboardingScreen() {
 
         {/* CTA Button */}
         <TouchableOpacity style={styles.ctaButton} onPress={handleNext} activeOpacity={0.85}>
-          <Text style={styles.ctaText}>{isLastSlide ? 'Get Started' : 'Next'}</Text>
+          <Text style={[styles.ctaText, isRTL && styles.arabicText]}>{isLastSlide ? t('onboarding.getStarted') : t('onboarding.next')}</Text>
           <MaterialIcons
-            name={isLastSlide ? 'check' : 'arrow-forward'}
+            name={isLastSlide ? 'check' : (isRTL ? 'arrow-back' : 'arrow-forward')}
             size={20}
             color="#081421"
           />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.languageRow}>
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: locale === 'en' }} onPress={() => changeLocale('en')}>
+          <Text style={[styles.languageText, locale === 'en' && styles.languageActive]}>{t('language.english')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.languageDivider}>|</Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: locale === 'ar-EG' }} onPress={() => changeLocale('ar-EG')}>
+          <Text style={[styles.languageText, locale === 'ar-EG' && styles.languageActive, styles.arabicText]}>{t('language.egyptianArabic')}</Text>
         </TouchableOpacity>
       </View>
     </AppScreen>
@@ -236,4 +241,18 @@ const styles = StyleSheet.create({
     color: '#081421',
     letterSpacing: 0.3,
   },
+  arabicText: {
+    fontFamily: 'Cairo_600SemiBold',
+    letterSpacing: 0,
+  },
+  languageRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    paddingBottom: 12,
+  },
+  languageText: { color: '#8e9196', fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12 },
+  languageActive: { color: '#a9c7ff' },
+  languageDivider: { color: '#64748b' },
 });

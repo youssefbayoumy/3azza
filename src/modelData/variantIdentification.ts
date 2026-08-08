@@ -4,6 +4,7 @@ import type {
   VariantIdentificationData,
   VariantIdentificationProfile,
 } from './types';
+import { formatNumber, t } from '../i18n/core';
 
 export type IdentificationFeatureKey = 'displacementCc' | 'coolingSystem' | 'fuelSystem' | 'modelCode';
 
@@ -22,18 +23,18 @@ export function getIdentificationProfilesForVersion(versionId?: string): Variant
 }
 
 export function identificationFeatureStatusLabel(status: IdentificationStatus): string {
-  if (status === 'conflict') return 'Conflicting manual evidence';
-  if (status === 'missing') return 'Not specified in this manual';
-  return 'Manual-confirmed';
+  if (status === 'conflict') return t('ident.conflicting');
+  if (status === 'missing') return t('ident.missing');
+  return t('ident.confirmed');
 }
 
 export function formatIdentificationFeatureValue(
   key: IdentificationFeatureKey,
   value: string | number
 ): string {
-  if (key === 'displacementCc') return `${Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })} cc`;
-  if (key === 'coolingSystem') return value === 'liquid' ? 'Liquid-cooled' : 'Air-cooled';
-  if (key === 'fuelSystem') return value === 'fuel_injection' ? 'Electronic fuel injection' : 'Carburetor';
+  if (key === 'displacementCc') return `${formatNumber(Number(value))} cc`;
+  if (key === 'coolingSystem') return value === 'liquid' ? t('ident.liquidCooled') : t('ident.airCooled');
+  if (key === 'fuelSystem') return value === 'fuel_injection' ? t('ident.injection') : t('ident.carburetor');
   return String(value);
 }
 

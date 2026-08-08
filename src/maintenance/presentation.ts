@@ -5,6 +5,7 @@ import type {
   ScheduleType,
   TechnicianLevel,
 } from './types';
+import { formatNumber, t, type TranslationKey } from '../i18n/core';
 
 export type MaintenancePresentationSectionKey =
   | 'scheduled-maintenance'
@@ -43,35 +44,52 @@ export type ProductionMaintenanceComponentView = {
   actions: ProductionMaintenanceActionView[];
 };
 
-const SECTION_LABELS: Record<MaintenancePresentationSectionKey, string> = {
-  'scheduled-maintenance': 'Scheduled maintenance',
-  'wear-and-condition': 'Wear and condition',
-  'general-checks': 'General checks',
+const SECTION_LABELS: Record<MaintenancePresentationSectionKey, TranslationKey> = {
+  'scheduled-maintenance': 'maintenance.section.scheduled',
+  'wear-and-condition': 'maintenance.section.wear',
+  'general-checks': 'maintenance.section.checks',
 };
 
-const SCHEDULED_COMPONENTS = new Set([
-  'engine-oil',
-  'oil-filter-screen',
-  'transmission-oil',
-  'transmission',
-  'air-cleaner-element',
-  'air-cleaner-system',
-  'spark-plug',
-  'drive-belt-rollers',
-  'clutch-disk',
-  'fuel-pump-filter',
-  'cooling-system',
-  'coolant',
-]);
-
-const WEAR_COMPONENTS = new Set([
-  'brake-pads',
-  'brake-fluid',
-  'tires',
-  'battery',
-  'bulbs',
-  'hoses',
-]);
+const COMPONENT_PRESENTATION = {
+  'air-cleaner-element': { labelKey: 'maintenance.component.airCleanerElement', sectionKey: 'scheduled-maintenance' },
+  'air-cleaner-system': { labelKey: 'maintenance.component.airCleanerSystem', sectionKey: 'scheduled-maintenance' },
+  battery: { labelKey: 'maintenance.component.battery', sectionKey: 'wear-and-condition' },
+  'brake-fluid': { labelKey: 'maintenance.component.brakeFluid', sectionKey: 'wear-and-condition' },
+  'brake-pads': { labelKey: 'maintenance.component.brakePads', sectionKey: 'wear-and-condition' },
+  'brake-system': { labelKey: 'maintenance.component.brakeSystem', sectionKey: 'wear-and-condition' },
+  'cam-chain-ignition-timing': { labelKey: 'maintenance.component.camChainIgnitionTiming', sectionKey: 'general-checks' },
+  'carburetor-idle-speed': { labelKey: 'maintenance.component.carburetorIdleSpeed', sectionKey: 'general-checks' },
+  'clutch-disk': { labelKey: 'maintenance.component.clutchDisk', sectionKey: 'scheduled-maintenance' },
+  coolant: { labelKey: 'maintenance.component.coolant', sectionKey: 'scheduled-maintenance' },
+  'cooling-system': { labelKey: 'maintenance.component.coolingSystem', sectionKey: 'scheduled-maintenance' },
+  crankcase: { labelKey: 'maintenance.component.crankcase', sectionKey: 'general-checks' },
+  'cylinder-assembly': { labelKey: 'maintenance.component.cylinderAssembly', sectionKey: 'general-checks' },
+  'drive-belt-rollers': { labelKey: 'maintenance.component.driveBeltRollers', sectionKey: 'scheduled-maintenance' },
+  'engine-fasteners': { labelKey: 'maintenance.component.engineFasteners', sectionKey: 'general-checks' },
+  'engine-oil': { labelKey: 'maintenance.component.engineOil', sectionKey: 'scheduled-maintenance' },
+  'exhaust-system': { labelKey: 'maintenance.component.exhaustSystem', sectionKey: 'general-checks' },
+  'fuel-lines': { labelKey: 'maintenance.component.fuelLines', sectionKey: 'general-checks' },
+  'fuel-pump-filter': { labelKey: 'maintenance.component.fuelPumpFilter', sectionKey: 'scheduled-maintenance' },
+  'general-fasteners': { labelKey: 'maintenance.component.generalFasteners', sectionKey: 'general-checks' },
+  'main-side-stands': { labelKey: 'maintenance.component.mainSideStands', sectionKey: 'general-checks' },
+  'oil-filter-screen': { labelKey: 'maintenance.component.oilFilterScreen', sectionKey: 'scheduled-maintenance' },
+  'pcv-system': { labelKey: 'maintenance.component.pcvSystem', sectionKey: 'general-checks' },
+  'shock-absorbers': { labelKey: 'maintenance.component.shockAbsorbers', sectionKey: 'general-checks' },
+  'spark-plug': { labelKey: 'maintenance.component.sparkPlug', sectionKey: 'scheduled-maintenance' },
+  'steering-bearing-handles': { labelKey: 'maintenance.component.steeringBearingHandles', sectionKey: 'general-checks' },
+  suspension: { labelKey: 'maintenance.component.suspension', sectionKey: 'general-checks' },
+  'throttle-cable': { labelKey: 'maintenance.component.throttleCable', sectionKey: 'general-checks' },
+  tires: { labelKey: 'maintenance.component.tires', sectionKey: 'wear-and-condition' },
+  transmission: { labelKey: 'maintenance.component.transmission', sectionKey: 'scheduled-maintenance' },
+  'transmission-oil': { labelKey: 'maintenance.component.transmissionOil', sectionKey: 'scheduled-maintenance' },
+  'valve-clearance': { labelKey: 'maintenance.component.valveClearance', sectionKey: 'general-checks' },
+  bulbs: { labelKey: 'maintenance.component.bulbs', sectionKey: 'wear-and-condition' },
+  hoses: { labelKey: 'maintenance.component.hoses', sectionKey: 'wear-and-condition' },
+  'general-workshop-inspection': { labelKey: 'maintenance.component.generalWorkshopInspection', sectionKey: 'general-checks' },
+} as const satisfies Record<string, {
+  labelKey: TranslationKey;
+  sectionKey: MaintenancePresentationSectionKey;
+}>;
 
 const WORKSHOP_COMPONENTS = new Set([
   'carburetor-idle-speed',
@@ -88,7 +106,7 @@ const WORKSHOP_COMPONENTS = new Set([
 ]);
 
 function section(key: MaintenancePresentationSectionKey): MaintenancePresentationSection {
-  return { key, label: SECTION_LABELS[key] };
+  return { key, label: t(SECTION_LABELS[key]) };
 }
 
 function slug(value: string): string {
@@ -100,125 +118,87 @@ export function maintenanceComponentGroup(componentId: string): {
   label: string;
   section: MaintenancePresentationSection;
 } {
-  const scheduled = section('scheduled-maintenance');
-  const wear = section('wear-and-condition');
-  const checks = section('general-checks');
-  if (componentId === 'air-cleaner-element' || componentId === 'air-cleaner-system') {
-    return { key: 'air-filter', label: 'Air filter', section: scheduled };
+  const definition = COMPONENT_PRESENTATION[componentId as keyof typeof COMPONENT_PRESENTATION];
+  if (definition) {
+    return { key: componentId, label: t(definition.labelKey), section: section(definition.sectionKey) };
   }
-  if (componentId === 'engine-oil' || componentId === 'oil-filter-screen') {
-    return { key: 'engine-oil', label: 'Engine oil', section: scheduled };
-  }
-  if (componentId === 'transmission-oil' || componentId === 'transmission') {
-    return { key: 'gear-oil', label: 'Gear oil', section: scheduled };
-  }
-  if (componentId === 'drive-belt-rollers' || componentId === 'clutch-disk') {
-    return { key: 'cvt', label: 'CVT / drive belt', section: scheduled };
-  }
-  if (componentId === 'cooling-system' || componentId === 'coolant') {
-    return { key: 'cooling-system', label: 'Cooling system', section: scheduled };
-  }
-  if (componentId === 'brake-pads' || componentId === 'brake-fluid') {
-    return { key: 'brakes', label: 'Brakes', section: wear };
-  }
-  if (componentId === 'tires') return { key: 'tires', label: 'Tires', section: wear };
-  if (componentId === 'battery') return { key: 'battery', label: 'Battery', section: wear };
-  if (componentId === 'steering-bearing-handles') return { key: 'steering', label: 'Steering', section: checks };
-  if (componentId === 'shock-absorbers' || componentId === 'suspension') {
-    return { key: 'suspension', label: 'Suspension', section: checks };
-  }
-  if (componentId === 'engine-fasteners' || componentId === 'general-fasteners') {
-    return { key: 'nuts-and-bolts', label: 'Nuts and bolts', section: checks };
-  }
-  if (componentId === 'main-side-stands') {
-    return { key: 'main-side-stands', label: 'Main and side stands', section: checks };
-  }
-  if (WORKSHOP_COMPONENTS.has(componentId)) {
-    return { key: 'general-workshop-inspection', label: 'General workshop inspection', section: checks };
-  }
-  const label = componentId.split('-').map((word) => word[0]?.toUpperCase() + word.slice(1)).join(' ');
-  const componentSection = SCHEDULED_COMPONENTS.has(componentId)
-    ? scheduled
-    : WEAR_COMPONENTS.has(componentId) ? wear : checks;
-  return { key: componentId, label, section: componentSection };
+  // Unknown imported IDs remain identifiable instead of being silently renamed as generic maintenance.
+  return { key: componentId, label: `[${componentId}]`, section: section('general-checks') };
 }
 
-function baseActionLabel(action: MaintenanceAction): string {
-  const labels: Record<MaintenanceAction, string> = {
-    inspect: 'Inspection',
-    replace: 'Replacement',
-    clean: 'Cleaning',
-    adjust: 'Adjustment',
-    lubricate: 'Lubrication',
-    test: 'Test',
-    tighten: 'Tightening',
-    initial_service: 'Initial service',
-    condition_check: 'Condition check',
+export function maintenanceBaseActionLabel(action: MaintenanceAction): string {
+  const labels: Record<MaintenanceAction, TranslationKey> = {
+    inspect: 'maintenance.base.inspect',
+    replace: 'maintenance.base.replace',
+    clean: 'maintenance.base.clean',
+    adjust: 'maintenance.base.adjust',
+    lubricate: 'maintenance.base.lubricate',
+    test: 'maintenance.base.test',
+    tighten: 'maintenance.base.tighten',
+    initial_service: 'maintenance.base.initial',
+    condition_check: 'maintenance.base.condition',
   };
-  return labels[action];
+  return t(labels[action]);
 }
-
-const COMPONENT_ACTION_NAMES: Record<string, string> = {
-  battery: 'Battery',
-  'brake-fluid': 'Brake fluid',
-  'cam-chain-ignition-timing': 'Cam-chain and ignition-timing',
-  'carburetor-idle-speed': 'Carburetor idle-speed',
-  'clutch-disk': 'Clutch disk',
-  'crankcase': 'Crankcase leakage',
-  'cylinder-assembly': 'Cylinder head, cylinder, and piston',
-  'drive-belt-rollers': 'Drive belt and roller',
-  'exhaust-system': 'Exhaust system',
-  'fuel-lines': 'Fuel tank switch and line',
-  'fuel-pump-filter': 'Fuel-pump filter',
-  'main-side-stands': 'Main and side stand',
-  'pcv-system': 'Crankcase blow-by system',
-  'spark-plug': 'Spark plug',
-  'throttle-cable': 'Throttle operation and cable',
-  tires: 'Tire and pressure',
-  transmission: 'Transmission leakage',
-  'valve-clearance': 'Valve-clearance',
-};
 
 type MaintenanceActionIdentity = Pick<MaintenanceTaskProjection, 'componentId' | 'action'>
   & Partial<Pick<MaintenanceTaskProjection, 'isOneTime'>>;
 
 function exactComponentActionLabel(task: MaintenanceActionIdentity): string {
-  const component = COMPONENT_ACTION_NAMES[task.componentId]
-    ?? task.componentId.split('-').map((word) => word[0]?.toUpperCase() + word.slice(1)).join(' ');
-  return `${component} ${baseActionLabel(task.action).toLowerCase()}`;
+  const labels: Record<MaintenanceAction, TranslationKey> = {
+    inspect: 'maintenance.action.inspectComponent',
+    replace: 'maintenance.action.replaceComponent',
+    clean: 'maintenance.action.cleanComponent',
+    adjust: 'maintenance.action.adjustComponent',
+    lubricate: 'maintenance.action.lubricateComponent',
+    test: 'maintenance.action.testComponent',
+    tighten: 'maintenance.action.tightenComponent',
+    initial_service: 'maintenance.action.initialComponent',
+    condition_check: 'maintenance.action.conditionComponent',
+  };
+  const label = t(labels[task.action], { component: maintenanceComponentGroup(task.componentId).label });
+  return task.isOneTime && task.action !== 'initial_service'
+    ? t('maintenance.initialLabel', { label: label.toLocaleLowerCase() })
+    : label;
 }
 
 export function naturalMaintenanceActionLabel(task: MaintenanceActionIdentity): string {
-  const withInitial = (label: string) => task.isOneTime ? `Initial ${label.toLowerCase()}` : label;
-  if (task.componentId === 'engine-oil' && task.action === 'replace') return withInitial('Engine-oil replacement');
-  if (task.componentId === 'engine-oil' && task.action === 'condition_check') return withInitial('Oil-level check');
-  if (task.componentId === 'engine-oil' && task.action === 'inspect') return withInitial('Engine-oil inspection');
-  if (task.componentId === 'oil-filter-screen' && task.action === 'clean') return 'Oil filter screen cleaning';
-  if (task.componentId === 'oil-filter-screen' && task.action === 'replace') return 'Oil filter screen replacement';
-  if (task.componentId === 'transmission-oil' && task.action === 'replace') return withInitial('Gear-oil replacement');
-  if (task.componentId === 'transmission' && task.action === 'inspect') return withInitial('Gearbox leakage check');
-  if (task.componentId === 'brake-pads' && task.action === 'inspect') return withInitial('Brake inspection');
-  if (task.componentId === 'brake-pads' && task.action === 'replace') return 'Brake-pad replacement';
-  if (task.componentId === 'brake-fluid' && task.action === 'inspect') return 'Brake-fluid inspection';
-  if (task.componentId === 'tires' && task.action === 'inspect') return withInitial('Tire inspection');
-  if (task.componentId === 'tires' && task.action === 'replace') return 'Tire replacement';
-  if (task.componentId === 'battery' && task.action === 'inspect') return withInitial('Battery inspection');
-  if (task.componentId === 'battery' && task.action === 'clean') return 'Battery-terminal cleaning';
-  if (task.componentId === 'battery' && task.action === 'replace') return 'Battery replacement';
-  if (task.componentId === 'engine-fasteners' && task.action === 'inspect') return 'Engine fastener inspection';
-  if (task.componentId === 'general-fasteners' && task.action === 'inspect') return 'General fastener inspection';
-  if (task.componentId === 'shock-absorbers' && task.action === 'inspect') return 'Shock absorber inspection';
-  if (task.componentId === 'steering-bearing-handles' && task.action === 'inspect') return 'Steering inspection';
-  if (task.componentId === 'suspension' && task.action === 'inspect') return 'Suspension inspection';
-  if (task.componentId === 'drive-belt-rollers' && task.action === 'inspect') return 'Drive-belt and roller inspection';
-  if (task.componentId === 'drive-belt-rollers' && task.action === 'replace') return 'Drive-belt and roller replacement';
-  if (task.componentId === 'clutch-disk' && task.action === 'inspect') return 'Clutch inspection';
-  if (task.componentId === 'spark-plug' && task.action === 'inspect') return withInitial('Spark-plug inspection');
-  if (task.componentId === 'spark-plug' && task.action === 'replace') return 'Spark-plug replacement';
-  if (task.componentId === 'air-cleaner-element' || task.componentId === 'air-cleaner-system') {
-    if (task.action === 'inspect') return withInitial('Air-filter inspection');
-    if (task.action === 'clean') return 'Air-filter cleaning';
-    if (task.action === 'replace') return 'Air-filter replacement';
+  const withInitial = (key: TranslationKey) => {
+    const label = t(key);
+    return task.isOneTime ? t('maintenance.initialLabel', { label: label.toLocaleLowerCase() }) : label;
+  };
+  if (task.componentId === 'engine-oil' && task.action === 'replace') return withInitial('maintenance.exact.engineOilReplace');
+  if (task.componentId === 'general-workshop-inspection' && task.action === 'inspect') {
+    return t('logs.generalInspection');
+  }
+  if (task.componentId === 'engine-oil' && task.action === 'condition_check') return withInitial('maintenance.exact.oilLevel');
+  if (task.componentId === 'engine-oil' && task.action === 'inspect') return withInitial('maintenance.exact.engineOilInspect');
+  if (task.componentId === 'oil-filter-screen' && task.action === 'clean') return t('maintenance.exact.oilScreenClean');
+  if (task.componentId === 'oil-filter-screen' && task.action === 'replace') return t('maintenance.exact.oilScreenReplace');
+  if (task.componentId === 'transmission-oil' && task.action === 'replace') return withInitial('maintenance.exact.gearOilReplace');
+  if (task.componentId === 'transmission' && task.action === 'inspect') return withInitial('maintenance.exact.gearboxLeak');
+  if (task.componentId === 'brake-pads' && task.action === 'inspect') return withInitial('maintenance.exact.brakeInspect');
+  if (task.componentId === 'brake-pads' && task.action === 'replace') return t('maintenance.exact.brakePadReplace');
+  if (task.componentId === 'brake-fluid' && task.action === 'inspect') return t('maintenance.exact.brakeFluidInspect');
+  if (task.componentId === 'tires' && task.action === 'inspect') return withInitial('maintenance.exact.tireInspect');
+  if (task.componentId === 'tires' && task.action === 'replace') return t('maintenance.exact.tireReplace');
+  if (task.componentId === 'battery' && task.action === 'inspect') return withInitial('maintenance.exact.batteryInspect');
+  if (task.componentId === 'battery' && task.action === 'clean') return t('maintenance.exact.batteryClean');
+  if (task.componentId === 'battery' && task.action === 'replace') return t('maintenance.exact.batteryReplace');
+  if (task.componentId === 'engine-fasteners' && task.action === 'inspect') return t('maintenance.exact.engineFastener');
+  if (task.componentId === 'general-fasteners' && task.action === 'inspect') return t('maintenance.exact.generalFastener');
+  if (task.componentId === 'shock-absorbers' && task.action === 'inspect') return t('maintenance.exact.shock');
+  if (task.componentId === 'steering-bearing-handles' && task.action === 'inspect') return t('maintenance.exact.steering');
+  if (task.componentId === 'suspension' && task.action === 'inspect') return t('maintenance.exact.suspension');
+  if (task.componentId === 'drive-belt-rollers' && task.action === 'inspect') return t('maintenance.exact.driveInspect');
+  if (task.componentId === 'drive-belt-rollers' && task.action === 'replace') return t('maintenance.exact.driveReplace');
+  if (task.componentId === 'clutch-disk' && task.action === 'inspect') return t('maintenance.exact.clutch');
+  if (task.componentId === 'spark-plug' && task.action === 'inspect') return withInitial('maintenance.exact.sparkInspect');
+  if (task.componentId === 'spark-plug' && task.action === 'replace') return t('maintenance.exact.sparkReplace');
+  if (task.componentId === 'air-cleaner-element') {
+    if (task.action === 'inspect') return withInitial('maintenance.exact.airInspect');
+    if (task.action === 'clean') return t('maintenance.exact.airClean');
+    if (task.action === 'replace') return t('maintenance.exact.airReplace');
   }
   return exactComponentActionLabel(task);
 }
@@ -227,8 +207,7 @@ export function naturalRecordActionLabel(
   task: MaintenanceActionIdentity,
   historical = false
 ): string {
-  const prefix = historical ? 'Record previous' : 'Record';
-  return `${prefix} ${naturalMaintenanceActionLabel(task).toLowerCase()}`;
+  return t(historical ? 'maintenance.recordPrevious' : 'maintenance.record', { label: naturalMaintenanceActionLabel(task).toLocaleLowerCase() });
 }
 
 export function canCustomizeMaintenanceTask(
@@ -240,28 +219,28 @@ export function canCustomizeMaintenanceTask(
 export function maintenanceOverrideBadge(
   task: Pick<MaintenanceTaskProjection,
     'conditionBasedDefault' | 'customConditionReminderEnabled' | 'intervalSource' | 'reminderDisabled'>
-): 'Custom' | 'Reminder disabled' | 'User-created reminder' | null {
-  if (task.reminderDisabled) return 'Reminder disabled';
+): string | null {
+  if (task.reminderDisabled) return t('maintenance.reminderDisabled');
   if (task.intervalSource === 'profile_default') return null;
-  if (task.conditionBasedDefault && task.customConditionReminderEnabled) return 'User-created reminder';
-  return 'Custom';
+  if (task.conditionBasedDefault && task.customConditionReminderEnabled) return t('maintenance.userReminder');
+  return t('maintenance.custom');
 }
 
 export function maintenanceScheduleText(
   task: Pick<MaintenanceTaskProjection,
     'effectiveIntervalKm' | 'effectiveIntervalMonths' | 'reminderDisabled' | 'scheduleType'>
 ): string {
-  if (task.reminderDisabled) return 'Reminder disabled';
+  if (task.reminderDisabled) return t('maintenance.reminderDisabled');
   const parts: string[] = [];
   if (task.effectiveIntervalKm !== null) {
-    parts.push(`Every ${task.effectiveIntervalKm.toLocaleString()} km`);
+    parts.push(t('maintenance.everyKm', { km: formatNumber(task.effectiveIntervalKm) }));
   }
   if (task.effectiveIntervalMonths !== null) {
-    parts.push(`every ${task.effectiveIntervalMonths.toLocaleString()} ${task.effectiveIntervalMonths === 1 ? 'month' : 'months'}`);
+    parts.push(t('maintenance.everyMonths', { count: formatNumber(task.effectiveIntervalMonths), unit: t(task.effectiveIntervalMonths === 1 ? 'maintenance.month' : 'maintenance.months') }));
   }
   if (parts.length > 0) return parts.join(', ');
-  if (task.scheduleType === 'condition_based') return 'By condition';
-  return 'No fixed interval';
+  if (task.scheduleType === 'condition_based') return t('maintenance.byCondition');
+  return t('maintenance.noFixedInterval');
 }
 
 function scheduleSignature(
@@ -280,30 +259,30 @@ export function maintenanceGroupSummary(tasks: MaintenanceTaskProjection[]): str
     && task.status !== 'not_applicable'
     && !task.reminderDisabled
   );
-  if (active.length === 0) return tasks.some((task) => task.reminderDisabled)
-    ? 'Reminders disabled'
-    : 'No active reminders';
+  if (active.length === 0) return t(tasks.some((task) => task.reminderDisabled)
+    ? 'maintenance.remindersDisabled'
+    : 'maintenance.noActiveReminders');
 
   const groupKey = maintenanceComponentGroup(active[0].componentId).key;
-  if (groupKey === 'air-filter') {
+  if (groupKey === 'air-cleaner-element') {
     const inspection = active.find((task) => task.action === 'inspect' && !task.isOneTime);
     const interval = inspection?.effectiveIntervalKm;
     return interval !== null && interval !== undefined
-      ? `Inspection every ${interval.toLocaleString()} km · replace when needed`
-      : 'Inspect regularly · clean or replace when needed';
+      ? t('maintenance.airSummary', { km: formatNumber(interval) })
+      : t('maintenance.airCondition');
   }
-  if (groupKey === 'brakes') return 'Inspect regularly · replace pads by condition';
-  if (groupKey === 'tires') return 'Inspect pressure, tread, and damage · replace when needed';
-  if (groupKey === 'battery') return 'Inspect and test regularly · replace when needed';
+  if (groupKey === 'brake-pads') return t('maintenance.brakeSummary');
+  if (groupKey === 'tires') return t('maintenance.tireSummary');
+  if (groupKey === 'battery') return t('maintenance.batterySummary');
   if (groupKey === 'engine-oil') {
     const replacement = active.find((task) => task.componentId === 'engine-oil'
       && task.action === 'replace' && !task.isOneTime);
-    if (replacement) return maintenanceScheduleText(replacement).replace(/^Every/, 'Change every');
+    if (replacement) return t('maintenance.changeSchedule', { schedule: maintenanceScheduleText(replacement) });
   }
-  if (groupKey === 'gear-oil') {
+  if (groupKey === 'transmission-oil') {
     const replacement = active.find((task) => task.componentId === 'transmission-oil'
       && task.action === 'replace' && !task.isOneTime);
-    if (replacement) return maintenanceScheduleText(replacement).replace(/^Every/, 'Change every');
+    if (replacement) return t('maintenance.changeSchedule', { schedule: maintenanceScheduleText(replacement) });
   }
 
   const signatures = new Set(active.map(scheduleSignature));
@@ -314,22 +293,22 @@ export function maintenanceGroupSummary(tasks: MaintenanceTaskProjection[]): str
     .sort((left, right) => (left.remainingKm ?? Infinity) - (right.remainingKm ?? Infinity))[0];
   if (nearestDistance?.remainingKm !== null && nearestDistance?.remainingKm !== undefined) {
     if (nearestDistance.remainingKm < 0) {
-      return `Multiple schedules · ${naturalMaintenanceActionLabel(nearestDistance)} overdue by ${Math.abs(nearestDistance.remainingKm).toLocaleString()} km`;
+      return t('maintenance.multipleOverdue', { label: naturalMaintenanceActionLabel(nearestDistance), km: formatNumber(Math.abs(nearestDistance.remainingKm)) });
     }
     if (nearestDistance.remainingKm === 0) {
-      return `Multiple schedules · ${naturalMaintenanceActionLabel(nearestDistance)} due now`;
+      return t('maintenance.multipleDue', { label: naturalMaintenanceActionLabel(nearestDistance) });
     }
-    return `Multiple schedules · next action due in ${nearestDistance.remainingKm.toLocaleString()} km`;
+    return t('maintenance.multipleNextKm', { km: formatNumber(nearestDistance.remainingKm) });
   }
 
   const nearestTime = [...active]
     .filter((task) => task.remainingDays !== null)
     .sort((left, right) => (left.remainingDays ?? Infinity) - (right.remainingDays ?? Infinity))[0];
   if (nearestTime?.remainingDays !== null && nearestTime?.remainingDays !== undefined) {
-    if (nearestTime.remainingDays <= 0) return `Multiple schedules · ${naturalMaintenanceActionLabel(nearestTime)} due now`;
-    return `Multiple schedules · next action due in ${nearestTime.remainingDays} days`;
+    if (nearestTime.remainingDays <= 0) return t('maintenance.multipleDue', { label: naturalMaintenanceActionLabel(nearestTime) });
+    return t('maintenance.multipleNextDays', { days: formatNumber(nearestTime.remainingDays) });
   }
-  return 'Multiple schedules';
+  return t('maintenance.multiple');
 }
 
 export function maintenanceNearestActionSummary(tasks: MaintenanceTaskProjection[]): string | null {
@@ -338,21 +317,21 @@ export function maintenanceNearestActionSummary(tasks: MaintenanceTaskProjection
     .sort(compareMaintenanceTaskPriority)[0];
   if (!nearest) return null;
   if (nearest.status === 'overdue') {
-    return `${naturalMaintenanceActionLabel(nearest)} · ${Math.abs(nearest.remainingKm ?? 0).toLocaleString()} km overdue`;
+    return t('maintenance.nearestOverdue', { label: naturalMaintenanceActionLabel(nearest), km: formatNumber(Math.abs(nearest.remainingKm ?? 0)) });
   }
   if (nearest.status === 'due' || nearest.status === 'condition_attention') {
-    return `${naturalMaintenanceActionLabel(nearest)} · ${nearest.status === 'due' ? 'due now' : statusLabel(nearest).toLowerCase()}`;
+    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: nearest.status === 'due' ? t('maintenance.dueNow') : statusLabel(nearest) });
   }
-  if (nearest.status === 'due_soon') return `${naturalMaintenanceActionLabel(nearest)} · due soon`;
-  if (nearest.conditionResult === 'cleaning_needed') return `${naturalMaintenanceActionLabel(nearest)} · cleaning needed`;
-  if (nearest.conditionResult === 'healthy') return `${naturalMaintenanceActionLabel(nearest)} · last condition healthy`;
-  if (nearest.remainingKm !== null) return `${naturalMaintenanceActionLabel(nearest)} · due in ${nearest.remainingKm.toLocaleString()} km`;
-  if (nearest.remainingDays !== null) return `${naturalMaintenanceActionLabel(nearest)} · due in ${nearest.remainingDays} days`;
+  if (nearest.status === 'due_soon') return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.dueSoon') });
+  if (nearest.conditionResult === 'cleaning_needed') return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.statusCleaning') });
+  if (nearest.conditionResult === 'healthy') return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.conditionHealthy') });
+  if (nearest.remainingKm !== null) return t('maintenance.nearestDueKm', { label: naturalMaintenanceActionLabel(nearest), km: formatNumber(nearest.remainingKm) });
+  if (nearest.remainingDays !== null) return t('maintenance.nearestDueDays', { label: naturalMaintenanceActionLabel(nearest), days: formatNumber(nearest.remainingDays) });
   if (nearest.status === 'history_unknown_recommend_service') {
-    return `${naturalMaintenanceActionLabel(nearest)} · last replacement unknown`;
+    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.lastReplacementUnknown') });
   }
   if (nearest.status === 'history_unknown_request_record' || nearest.status === 'unknown') {
-    return `${naturalMaintenanceActionLabel(nearest)} · last inspection unknown`;
+    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.lastInspectionUnknown') });
   }
   return null;
 }
@@ -364,26 +343,16 @@ export function maintenanceSectionForTask(
 }
 
 function statusLabel(task: MaintenanceTaskProjection): string {
-  const labels: Partial<Record<MaintenanceTaskProjection['status'], string>> = {
-    upcoming: 'Upcoming',
-    due_soon: 'Due soon',
-    due: 'Due now',
-    overdue: 'Overdue',
-    condition_attention: task.conditionResult === 'replace_now' ? 'Replace now'
-      : task.conditionResult === 'replace_soon' ? 'Replace soon'
-        : task.conditionResult === 'service_soon' ? 'Service soon'
-          : task.conditionResult === 'cleaning_needed' ? 'Cleaning needed'
-          : task.conditionResult === 'monitor' ? 'Monitor' : 'Needs inspection',
-    history_unknown_recommend_service: 'Last change unknown',
-    history_unknown_request_record: 'Last check unknown',
-    historical_unverified: 'Past initial milestone',
-    no_fixed_interval: 'No fixed interval',
-    completed_confirmed: 'Completed',
-    not_applicable: 'Not applicable',
-    unknown: 'History unknown',
-    informational: 'Guidance',
+  const labels: Partial<Record<MaintenanceTaskProjection['status'], TranslationKey>> = {
+    upcoming: 'maintenance.upcoming', due_soon: 'maintenance.dueSoon', due: 'maintenance.dueNow', overdue: 'maintenance.overdue',
+    condition_attention: task.conditionResult === 'replace_now' ? 'maintenance.statusReplaceNow'
+      : task.conditionResult === 'replace_soon' ? 'maintenance.statusReplaceSoon'
+        : task.conditionResult === 'service_soon' ? 'maintenance.statusServiceSoon'
+          : task.conditionResult === 'cleaning_needed' ? 'maintenance.statusCleaning'
+          : task.conditionResult === 'monitor' ? 'maintenance.statusMonitor' : 'maintenance.statusInspection',
+    history_unknown_recommend_service: 'maintenance.statusLastChange', history_unknown_request_record: 'maintenance.statusLastCheck', historical_unverified: 'maintenance.statusPast', no_fixed_interval: 'maintenance.noFixedInterval', completed_confirmed: 'maintenance.statusCompleted', not_applicable: 'maintenance.statusNotApplicable', unknown: 'maintenance.statusHistory', informational: 'maintenance.statusGuidance',
   };
-  return labels[task.status] ?? 'Maintenance';
+  return t(labels[task.status] ?? 'maintenance.statusMaintenance');
 }
 
 function tone(task: MaintenanceTaskProjection): ProductionMaintenanceActionView['tone'] {
@@ -396,28 +365,28 @@ function tone(task: MaintenanceTaskProjection): ProductionMaintenanceActionView[
 
 function safeSummary(task: MaintenanceTaskProjection): string {
   if (task.status === 'historical_unverified') {
-    return 'This initial milestone is no longer a current task; no completion has been assumed.';
+    return t('maintenance.safePast');
   }
   if (task.status === 'history_unknown_recommend_service') {
-    return 'Enter previous maintenance or consider servicing it now.';
+    return t('maintenance.safeService');
   }
   if (task.status === 'history_unknown_request_record') {
-    return 'Add a previous record, or consider having it checked.';
+    return t('maintenance.safeRecord');
   }
-  if (task.status === 'no_fixed_interval') return 'Inspect and service according to condition.';
+  if (task.status === 'no_fixed_interval') return t('maintenance.safeCondition');
   if (task.status === 'condition_attention') return statusLabel(task);
   if (task.remainingKm !== null) {
-    if (task.remainingKm < 0) return `${Math.abs(task.remainingKm).toLocaleString()} km overdue.`;
-    if (task.remainingKm === 0) return 'Due at the current odometer.';
-    return `${task.remainingKm.toLocaleString()} km remaining.`;
+    if (task.remainingKm < 0) return `${t('maintenance.overdueKm', { km: formatNumber(Math.abs(task.remainingKm)) })}.`;
+    if (task.remainingKm === 0) return t('maintenance.currentDue');
+    return `${t('maintenance.kmRemaining', { km: formatNumber(task.remainingKm) })}.`;
   }
-  if (task.dueOn) return `Next due ${task.dueOn}.`;
+  if (task.dueOn) return t('maintenance.nextDueDate', { date: task.dueOn });
   return statusLabel(task);
 }
 
 function technicianGuidance(level: TechnicianLevel): string | null {
-  if (level === 'workshop_required') return 'Workshop service required';
-  if (level === 'workshop_recommended') return 'Workshop inspection recommended';
+  if (level === 'workshop_required') return t('maintenance.workshopService');
+  if (level === 'workshop_recommended') return t('maintenance.workshopInspection');
   return null;
 }
 

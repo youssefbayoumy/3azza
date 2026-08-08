@@ -1,4 +1,5 @@
 import { parseIsoDate } from './dates';
+import { formatNumber, t } from '../i18n/core';
 
 export type MaintenanceDueResult = {
   dueAtKm: number | null;
@@ -40,19 +41,19 @@ export function getMaintenanceDueResult(input: {
   const timeDue = dueDate !== null && now >= dueDate;
 
   if (input.intervalKm === null && input.intervalMonths === null) {
-    return { dueAtKm: null, dueOn: null, dueBy: 'manual', isDue: false, reason: 'Manual inspection; no fixed interval is specified.' };
+    return { dueAtKm: null, dueOn: null, dueBy: 'manual', isDue: false, reason: t('due.manual') };
   }
   if (dueAtKm === null && dueDate === null) {
-    return { dueAtKm, dueOn, dueBy: 'unknown', isDue: false, reason: 'Add known service history to calculate the next due point.' };
+    return { dueAtKm, dueOn, dueBy: 'unknown', isDue: false, reason: t('due.history') };
   }
   if (distanceDue && timeDue) {
-    return { dueAtKm, dueOn, dueBy: 'both', isDue: true, reason: `Due by distance and time (${dueAtKm?.toLocaleString()} km / ${dueOn}).` };
+    return { dueAtKm, dueOn, dueBy: 'both', isDue: true, reason: t('due.both', { km: formatNumber(dueAtKm ?? 0), date: dueOn ?? '' }) };
   }
-  if (distanceDue) return { dueAtKm, dueOn, dueBy: 'distance', isDue: true, reason: `Due by distance at ${dueAtKm?.toLocaleString()} km.` };
-  if (timeDue) return { dueAtKm, dueOn, dueBy: 'time', isDue: true, reason: `Due by elapsed time on ${dueOn}.` };
+  if (distanceDue) return { dueAtKm, dueOn, dueBy: 'distance', isDue: true, reason: t('due.distance', { km: formatNumber(dueAtKm ?? 0) }) };
+  if (timeDue) return { dueAtKm, dueOn, dueBy: 'time', isDue: true, reason: t('due.time', { date: dueOn ?? '' }) };
   if (dueAtKm !== null && dueOn !== null) {
-    return { dueAtKm, dueOn, dueBy: 'both', isDue: false, reason: `Whichever comes first: ${dueAtKm.toLocaleString()} km or ${dueOn}.` };
+    return { dueAtKm, dueOn, dueBy: 'both', isDue: false, reason: t('due.first', { km: formatNumber(dueAtKm), date: dueOn }) };
   }
-  if (dueAtKm !== null) return { dueAtKm, dueOn, dueBy: 'distance', isDue: false, reason: `Next due at ${dueAtKm.toLocaleString()} km.` };
-  return { dueAtKm, dueOn, dueBy: 'time', isDue: false, reason: `Next due on ${dueOn}.` };
+  if (dueAtKm !== null) return { dueAtKm, dueOn, dueBy: 'distance', isDue: false, reason: t('due.nextDistance', { km: formatNumber(dueAtKm) }) };
+  return { dueAtKm, dueOn, dueBy: 'time', isDue: false, reason: t('due.nextTime', { date: dueOn ?? '' }) };
 }

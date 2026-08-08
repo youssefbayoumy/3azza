@@ -19,6 +19,7 @@ import {
   getSelectedVariant,
 } from '../modelData/modelKnowledge';
 import type { KnowledgeRecord } from '../modelData/types';
+import { formatNumber, useTranslation } from '../i18n';
 
 function recordTitle(record: KnowledgeRecord): string {
   const attributes = record.attributes;
@@ -29,6 +30,7 @@ function recordTitle(record: KnowledgeRecord): string {
 }
 
 export default function PreRideCheckScreen() {
+  const { isRTL, locale, t } = useTranslation();
   const navigation = useNavigation<PreRideNavigationProp>();
   const { width: viewportWidth } = useWindowDimensions();
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
@@ -58,8 +60,8 @@ export default function PreRideCheckScreen() {
 
   const { error: loadError, loading, reload } = useFocusedLoader(
     loadState,
-    'Today’s pre-ride checklist could not be loaded. No check was recorded.',
-    'Failed to load pre-ride check:'
+    t('preRide.loadError'),
+    t('preRide.loadLog')
   );
 
   const modelProfile = getModelProfileForVehicle(profile);
@@ -85,12 +87,12 @@ export default function PreRideCheckScreen() {
           checked: Boolean(checked[item.recordId]),
         })),
       });
-      Alert.alert('Pre-ride check saved', `${completedChecks} of ${items.length} exact-manual items recorded for today.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(t('preRide.savedTitle'), t('preRide.savedBody', { completed: completedChecks, total: items.length }), [
+        { text: t('language.ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       console.error('Failed to save pre-ride check:', error);
-      Alert.alert('Save failed', 'The pre-ride check could not be saved. Try again.');
+      Alert.alert(t('preRide.saveFailedTitle'), t('preRide.saveFailedBody'));
     } finally {
       setSaving(false);
     }
@@ -99,9 +101,9 @@ export default function PreRideCheckScreen() {
   const handleSave = () => {
     if (completedChecks < items.length) {
       Alert.alert(
-        'Incomplete check',
-        `Only ${completedChecks} of ${items.length} manual items are marked complete. Save this run without changing the unchecked items?`,
-        [{ text: 'Cancel', style: 'cancel' }, { text: 'Save anyway', onPress: performSave }]
+        t('preRide.incompleteTitle'),
+        t('preRide.incompleteBody', { completed: completedChecks, total: items.length }),
+        [{ text: t('common.cancel'), style: 'cancel' }, { text: t('preRide.saveAnyway'), onPress: performSave }]
       );
       return;
     }
@@ -109,7 +111,7 @@ export default function PreRideCheckScreen() {
   };
 
   if (loading || loadError) {
-    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="PRE-RIDE CHECK" />;
+    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={t('preRide.title')} />;
   }
 
   return (
@@ -117,24 +119,25 @@ export default function PreRideCheckScreen() {
       <AppTopBar
         tone="subtle"
         className="z-50"
-        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
+        leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
       >
-        <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#a9c7ff]" numberOfLines={1}>PRE-RIDE CHECK</Text>
+        <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#a9c7ff]" numberOfLines={1}>{t('preRide.title')}</Text>
       </AppTopBar>
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 32 }}>
         <ActiveVehicleChip />
         {!modelProfile ? (
           <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6 mt-5">
-            <Text className="font-headline text-xl font-bold text-on-surface">Scooter manual required</Text>
-            <Text className="font-body text-sm text-on-surface-variant leading-6 mt-2">Select the exact scooter in Vehicle Settings. No checklist from another model will be substituted.</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface">{t('preRide.manualRequired')}</Text>
+            <Text className="font-body text-sm text-on-surface-variant leading-6 mt-2">{t('preRide.manualRequiredBody')}</Text>
           </View>
         ) : (
           <>
             <View className="bg-surface-container-lowest border border-primary/20 rounded-xl p-4 mt-4 mb-5">
-              <Text className="font-label text-xs font-bold text-primary uppercase tracking-wider">Checklist source</Text>
+              <Text className="font-label text-xs font-bold text-primary uppercase tracking-wider">{t('preRide.checklistSource')}</Text>
               <Text className="font-headline text-base font-bold text-on-surface mt-1">{modelProfile.modelName} · {selectedVariant?.name ?? modelProfile.manualYears}</Text>
-              <Text className="font-body text-xs text-on-surface-variant mt-1">Saved runs retain this manual and variant identity, so a later model switch cannot reinterpret them.</Text>
+              <Text className="font-body text-xs text-on-surface-variant mt-1">{t('preRide.sourceBody')}</Text>
+              {isRTL ? <Text className="font-body text-xs text-on-surface-variant mt-2">{t('common.manualEnglishNotice')}</Text> : null}
             </View>
 
             <View className="relative mx-auto mb-8 items-center justify-center" style={{ height: gaugeSize, width: gaugeSize }}>
@@ -149,21 +152,21 @@ export default function PreRideCheckScreen() {
                 <Circle cx="50" cy="50" r="45" fill="none" stroke="url(#gaugeGradient)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={strokeDashoffset} />
               </Svg>
               <View className="items-center z-10">
-                <Text className="font-label text-xs uppercase tracking-widest text-secondary/60">Checks completed</Text>
-                <Text className="font-headline text-5xl font-bold tracking-tighter text-secondary mt-1">{readiness}%</Text>
-                <Text className="font-label text-xs uppercase font-bold text-primary mt-2">{completedChecks} of {items.length}</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-secondary/60">{t('preRide.checksCompleted')}</Text>
+                <Text className="font-headline text-5xl font-bold tracking-tighter text-secondary mt-1">{formatNumber(readiness, locale)}%</Text>
+                <Text className="font-label text-xs uppercase font-bold text-primary mt-2">{t('preRide.completedCount', { completed: completedChecks, total: items.length })}</Text>
               </View>
             </View>
 
             {items.length === 0 ? (
               <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-5">
-                <Text className="font-headline text-base font-bold text-on-surface">No pre-ride checklist is available for this selection.</Text>
+                <Text className="font-headline text-base font-bold text-on-surface">{t('preRide.noChecklist')}</Text>
               </View>
             ) : items.map((item) => {
               const isChecked = Boolean(checked[item.recordId]);
               return (
                 <TouchableOpacity
-                  accessibilityLabel={`${recordTitle(item)}: ${isChecked ? 'checked' : 'not checked'}`}
+                  accessibilityLabel={`${recordTitle(item)}: ${isChecked ? t('preRide.checked') : t('preRide.notChecked')}`}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: isChecked }}
                   className={`rounded-xl p-5 border-l-4 mb-4 ${isChecked ? 'bg-surface-container-high border-emerald-500' : 'bg-surface-container-low border-transparent'}`}
@@ -192,7 +195,7 @@ export default function PreRideCheckScreen() {
                 onPress={handleSave}
               >
                 {saving ? <ActivityIndicator color="#030f1c" /> : <MaterialIcons name="save" size={24} color="#030f1c" />}
-                <Text className="text-[#030f1c] font-headline font-bold uppercase tracking-[0.16em]">{saving ? 'Saving' : 'Save pre-ride check'}</Text>
+                <Text className="text-[#030f1c] font-headline font-bold uppercase tracking-[0.16em]">{saving ? t('preRide.saving') : t('preRide.saveCheck')}</Text>
               </TouchableOpacity>
             ) : null}
           </>

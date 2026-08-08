@@ -10,6 +10,7 @@ import type {
   TaskStatus,
   VehicleMaintenancePreference,
 } from './types';
+import { formatNumber, t } from '../i18n/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_INITIAL_ACTIONABLE_UNTIL_KM = 1000;
@@ -512,9 +513,9 @@ function statusFromDue(input: {
 
   if (distanceDue || timeDue) {
     const status: TaskStatus = distanceOverdue || timeOverdue ? 'overdue' : 'due';
-    if (distanceDue && timeDue) return { status, dueBy: 'both', reason: `Due by distance and time (${input.dueAtKm?.toLocaleString()} km / ${dueOn}).`, remainingKm, remainingDays };
-    if (distanceDue) return { status, dueBy: 'distance', reason: `Due by distance at ${input.dueAtKm?.toLocaleString()} km.`, remainingKm, remainingDays };
-    return { status, dueBy: 'time', reason: `Due by elapsed time on ${dueOn}.`, remainingKm, remainingDays };
+    if (distanceDue && timeDue) return { status, dueBy: 'both', reason: t('due.both', { km: formatNumber(input.dueAtKm ?? 0), date: dueOn ?? '' }), remainingKm, remainingDays };
+    if (distanceDue) return { status, dueBy: 'distance', reason: t('due.distance', { km: formatNumber(input.dueAtKm ?? 0) }), remainingKm, remainingDays };
+    return { status, dueBy: 'time', reason: t('due.time', { date: dueOn ?? '' }), remainingKm, remainingDays };
   }
 
   const distanceWindow = input.dueAtKm !== null && input.intervalKm !== null
@@ -525,16 +526,16 @@ function statusFromDue(input: {
   const timeSoon = input.dueOnDate !== null
     && input.dueOnDate.getTime() - input.now.getTime() <= 30 * DAY_MS;
   const status: TaskStatus = distanceSoon || timeSoon ? 'due_soon' : 'upcoming';
-  if (input.dueAtKm !== null && dueOn) return { status, dueBy, reason: `Whichever comes first: ${input.dueAtKm.toLocaleString()} km or ${dueOn}.`, remainingKm, remainingDays };
-  if (input.dueAtKm !== null) return { status, dueBy, reason: `Next due at ${input.dueAtKm.toLocaleString()} km.`, remainingKm, remainingDays };
-  return { status, dueBy, reason: `Next due on ${dueOn}.`, remainingKm, remainingDays };
+  if (input.dueAtKm !== null && dueOn) return { status, dueBy, reason: t('due.first', { km: formatNumber(input.dueAtKm), date: dueOn }), remainingKm, remainingDays };
+  if (input.dueAtKm !== null) return { status, dueBy, reason: t('due.nextDistance', { km: formatNumber(input.dueAtKm) }), remainingKm, remainingDays };
+  return { status, dueBy, reason: t('due.nextTime', { date: dueOn ?? '' }), remainingKm, remainingDays };
 }
 
 function scheduledTitle(rule: MaintenanceRule, status: TaskStatus): string {
-  if (status === 'overdue') return `${rule.label} is overdue.`;
-  if (status === 'due') return `${rule.label} is due.`;
-  if (status === 'due_soon') return `${rule.label} is due soon.`;
-  return `${rule.label} is upcoming.`;
+  if (status === 'overdue') return t('due.overdueTitle', { label: rule.label });
+  if (status === 'due') return t('due.nowTitle', { label: rule.label });
+  if (status === 'due_soon') return t('due.soonTitle', { label: rule.label });
+  return t('due.upcomingTitle', { label: rule.label });
 }
 
 function projectScheduledRule(

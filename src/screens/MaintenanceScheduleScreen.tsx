@@ -48,133 +48,57 @@ import {
 import type { VehicleProfile } from '../types/database.types';
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
+import { formatKilometres, formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
 
 type SectionId = 'scheduled' | 'checks' | 'wear';
 
 type ComponentGroup = {
   id: string;
   label: string;
-  description: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   section: SectionId;
 };
 
-const COMPONENT_GROUPS: ComponentGroup[] = [
-  {
-    id: 'engine-oil',
-    label: 'Engine oil',
-    description: 'Oil level, condition, replacement, and records',
-    icon: 'opacity',
-    section: 'scheduled',
-  },
-  {
-    id: 'gear-oil',
-    label: 'Gear oil',
-    description: 'Replacement and transmission leakage checks',
-    icon: 'settings',
-    section: 'scheduled',
-  },
-  {
-    id: 'air-filter',
-    label: 'Air filter',
-    description: 'Inspection, cleaning, and paper-element replacement',
-    icon: 'air',
-    section: 'scheduled',
-  },
-  {
-    id: 'spark-plug',
-    label: 'Spark plug',
-    description: 'Inspection and replacement',
-    icon: 'bolt',
-    section: 'scheduled',
-  },
-  {
-    id: 'cvt',
-    label: 'CVT / drive belt',
-    description: 'Drive belt, rollers, and clutch inspection',
-    icon: 'settings-input-component',
-    section: 'scheduled',
-  },
-  {
-    id: 'fuel-pump-filter',
-    label: 'Fuel-pump filter',
-    description: 'Scheduled filter replacement',
-    icon: 'filter-alt',
-    section: 'scheduled',
-  },
-  {
-    id: 'cooling-system',
-    label: 'Cooling system',
-    description: 'Coolant replacement and leakage inspection',
-    icon: 'ac-unit',
-    section: 'scheduled',
-  },
-  {
-    id: 'brakes',
-    label: 'Brakes',
-    description: 'Inspection and latest known condition',
-    icon: 'do-not-disturb-on',
-    section: 'wear',
-  },
-  {
-    id: 'tires',
-    label: 'Tires',
-    description: 'Pressure, wear, damage, and latest condition',
-    icon: 'trip-origin',
-    section: 'wear',
-  },
-  {
-    id: 'battery',
-    label: 'Battery',
-    description: 'Inspection, testing, condition, and replacement',
-    icon: 'battery-charging-full',
-    section: 'wear',
-  },
-  {
-    id: 'steering',
-    label: 'Steering',
-    description: 'Steering bearing and handle checks',
-    icon: 'device-hub',
-    section: 'checks',
-  },
-  {
-    id: 'suspension',
-    label: 'Suspension',
-    description: 'Shock absorber and suspension inspection',
-    icon: 'device-hub',
-    section: 'checks',
-  },
-  {
-    id: 'nuts-and-bolts',
-    label: 'Nuts and bolts',
-    description: 'Engine and general fastener checks',
-    icon: 'build',
-    section: 'checks',
-  },
-  {
-    id: 'main-side-stands',
-    label: 'Main and side stands',
-    description: 'Inspection and lubrication',
-    icon: 'two-wheeler',
-    section: 'checks',
-  },
-  {
-    id: 'general-workshop-inspection',
-    label: 'General workshop inspection',
-    description: 'Engine, fuel, electrical, controls, stands, and emissions',
-    icon: 'fact-check',
-    section: 'checks',
-  },
-];
+const COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+  'engine-oil': 'opacity',
+  'oil-filter-screen': 'filter-alt',
+  'transmission-oil': 'settings',
+  transmission: 'settings',
+  'air-cleaner-element': 'air',
+  'air-cleaner-system': 'air',
+  'spark-plug': 'bolt',
+  'drive-belt-rollers': 'settings-input-component',
+  'clutch-disk': 'settings-input-component',
+  'fuel-pump-filter': 'filter-alt',
+  'cooling-system': 'ac-unit',
+  coolant: 'ac-unit',
+  'brake-pads': 'do-not-disturb-on',
+  'brake-fluid': 'do-not-disturb-on',
+  'brake-system': 'do-not-disturb-on',
+  tires: 'trip-origin',
+  battery: 'battery-charging-full',
+  'steering-bearing-handles': 'device-hub',
+  'shock-absorbers': 'device-hub',
+  suspension: 'device-hub',
+  'main-side-stands': 'two-wheeler',
+  'general-workshop-inspection': 'fact-check',
+};
 
 function groupForTask(task: MaintenanceTaskProjection): ComponentGroup {
   const definition = maintenanceComponentGroup(task.componentId);
-  return COMPONENT_GROUPS.find((group) => group.id === definition.key)
-    ?? COMPONENT_GROUPS.find((group) => group.id === 'general-workshop-inspection')!;
+  const groupSection = definition.section.key === 'scheduled-maintenance'
+    ? 'scheduled'
+    : definition.section.key === 'wear-and-condition' ? 'wear' : 'checks';
+  return {
+    id: definition.key,
+    label: definition.label,
+    icon: COMPONENT_ICONS[definition.key] ?? 'build',
+    section: groupSection,
+  };
 }
 
 function groupTasks(
-  group: ComponentGroup,
+  group: Pick<ComponentGroup, 'id'>,
   tasks: MaintenanceTaskProjection[]
 ): MaintenanceTaskProjection[] {
   return tasks.filter((task) => groupForTask(task).id === group.id);
@@ -212,53 +136,53 @@ function statusPresentation(task: MaintenanceTaskProjection): {
   color: string;
   background: string;
 } {
-  if (task.reminderDisabled) return { label: 'Disabled by you', color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.conditionResult === 'cleaning_needed') return { label: 'Cleaning needed', color: 'text-amber-400', background: 'bg-amber-500/15' };
-  if (task.conditionResult === 'healthy' && task.status === 'upcoming') return { label: 'Healthy', color: 'text-primary', background: 'bg-primary/15' };
-  if (task.status === 'overdue') return { label: 'Overdue', color: 'text-error', background: 'bg-error/15' };
-  if (task.status === 'due') return { label: 'Due now', color: 'text-error', background: 'bg-error/15' };
-  if (task.status === 'due_soon') return { label: 'Due soon', color: 'text-amber-400', background: 'bg-amber-500/15' };
+  if (task.reminderDisabled) return { label: t('oil.disabled'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.conditionResult === 'cleaning_needed') return { label: t('maintenance.statusCleaning'), color: 'text-amber-400', background: 'bg-amber-500/15' };
+  if (task.conditionResult === 'healthy' && task.status === 'upcoming') return { label: t('record.healthy'), color: 'text-primary', background: 'bg-primary/15' };
+  if (task.status === 'overdue') return { label: t('maintenance.overdue'), color: 'text-error', background: 'bg-error/15' };
+  if (task.status === 'due') return { label: t('maintenance.dueNow'), color: 'text-error', background: 'bg-error/15' };
+  if (task.status === 'due_soon') return { label: t('maintenance.dueSoon'), color: 'text-amber-400', background: 'bg-amber-500/15' };
   if (task.status === 'condition_attention') {
-    if (task.conditionResult === 'replace_now') return { label: 'Replace now', color: 'text-error', background: 'bg-error/15' };
-    if (task.conditionResult === 'replace_soon') return { label: 'Replace soon', color: 'text-amber-400', background: 'bg-amber-500/15' };
-    if (task.conditionResult === 'service_soon') return { label: 'Service soon', color: 'text-amber-400', background: 'bg-amber-500/15' };
-    return { label: 'Needs attention', color: 'text-amber-400', background: 'bg-amber-500/15' };
+    if (task.conditionResult === 'replace_now') return { label: t('maintenance.statusReplaceNow'), color: 'text-error', background: 'bg-error/15' };
+    if (task.conditionResult === 'replace_soon') return { label: t('maintenance.statusReplaceSoon'), color: 'text-amber-400', background: 'bg-amber-500/15' };
+    if (task.conditionResult === 'service_soon') return { label: t('maintenance.statusServiceSoon'), color: 'text-amber-400', background: 'bg-amber-500/15' };
+    return { label: t('maintenance.needsAttention'), color: 'text-amber-400', background: 'bg-amber-500/15' };
   }
-  if (task.status === 'history_unknown_recommend_service') return { label: 'Last change unknown', color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') return { label: 'Last check unknown', color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'historical_unverified') return { label: 'Past milestone', color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'not_applicable') return { label: 'Not applicable', color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return { label: 'By condition', color: 'text-secondary', background: 'bg-secondary/15' };
-  return { label: 'Upcoming', color: 'text-primary', background: 'bg-primary/15' };
+  if (task.status === 'history_unknown_recommend_service') return { label: t('maintenance.statusLastChange'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') return { label: t('oil.lastCheckUnknown'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'historical_unverified') return { label: t('oil.pastMilestone'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'not_applicable') return { label: t('maintenance.statusNotApplicable'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'no_fixed_interval' || task.status === 'informational') return { label: t('oil.byCondition'), color: 'text-secondary', background: 'bg-secondary/15' };
+  return { label: t('maintenance.upcoming'), color: 'text-primary', background: 'bg-primary/15' };
 }
 
 function taskTiming(task: MaintenanceTaskProjection): string {
-  if (task.reminderDisabled) return 'Reminder disabled by you. The original schedule and history are preserved.';
+  if (task.reminderDisabled) return t('plan.disabledTiming');
   if (task.status === 'history_unknown_recommend_service') {
-    return 'Last change unknown. Enter previous maintenance or consider servicing it now.';
+    return t('oil.historyUnknownBody');
   }
   if (task.status === 'history_unknown_request_record' || task.status === 'unknown') {
-    return 'Last check unknown. Consider having it inspected.';
+    return t('plan.lastCheckBody');
   }
   if (task.status === 'historical_unverified') {
-    return 'This scooter was added after the initial-service stage.';
+    return t('plan.initialPastBody');
   }
-  if (task.status === 'not_applicable') return 'Marked as not applicable in maintenance history.';
-  if (task.status === 'condition_attention') return task.title;
+  if (task.status === 'not_applicable') return t('plan.notApplicableBody');
+  if (task.status === 'condition_attention') return statusPresentation(task).label;
   if (task.remainingKm !== null) {
-    if (task.remainingKm < 0) return `${Math.abs(task.remainingKm).toLocaleString()} km overdue`;
-    if (task.remainingKm === 0) return `Due at ${task.dueAtKm?.toLocaleString()} km`;
-    return `${task.remainingKm.toLocaleString()} km remaining`;
+    if (task.remainingKm < 0) return t('maintenance.overdueKm', { km: formatNumber(Math.abs(task.remainingKm)) });
+    if (task.remainingKm === 0) return t('plan.dueAt', { km: formatNumber(task.dueAtKm ?? 0) });
+    return t('maintenance.kmRemaining', { km: formatNumber(task.remainingKm) });
   }
   if (task.remainingDays !== null) {
-    if (task.remainingDays < 0) return `${Math.abs(task.remainingDays)} days overdue`;
-    if (task.remainingDays === 0) return 'Due today';
-    return `${task.remainingDays} days remaining`;
+    if (task.remainingDays < 0) return t('dashboard.daysOverdue', { days: formatNumber(Math.abs(task.remainingDays)) });
+    if (task.remainingDays === 0) return t('dashboard.statusDueToday');
+    return t('maintenance.daysRemaining', { days: formatNumber(task.remainingDays) });
   }
   if (task.status === 'no_fixed_interval' || task.status === 'informational') {
-    return 'Service based on inspection and condition.';
+    return t('plan.serviceCondition');
   }
-  return task.title;
+  return naturalMaintenanceActionLabel(task);
 }
 
 function representativeForGroup(
@@ -266,7 +190,7 @@ function representativeForGroup(
   tasks: MaintenanceTaskProjection[]
 ): MaintenanceTaskProjection | null {
   const sorted = [...tasks].sort(compareMaintenanceTaskPriority);
-  if (group.id === 'engine-oil' || group.id === 'gear-oil') {
+  if (group.id === 'engine-oil' || group.id === 'transmission-oil') {
     const replacement = sorted.find((task) =>
       task.action === 'replace'
       && !task.isOneTime
@@ -283,11 +207,12 @@ function duplicateSummary(error: unknown): string | null {
     ? (error as Error & { duplicates: unknown[] }).duplicates.length
     : 1;
   return count === 1
-    ? 'A matching maintenance record already exists for this action, date, and mileage.'
-    : `${count} matching maintenance records already exist for these actions, date, and mileage.`;
+    ? t('plan.duplicateOne')
+    : t('plan.duplicateMany', { count });
 }
 
 export default function MaintenanceScheduleScreen() {
+  const { locale, isRTL, t: tr } = useTranslation();
   const navigation = useNavigation<VitalsNavigationProp>();
   const route = useRoute<RouteProp<TabParamList, 'Maintenance'>>();
   const remindersEnabled = useAppStore((state) => state.maintenanceReminders);
@@ -341,8 +266,8 @@ export default function MaintenanceScheduleScreen() {
 
   const { error: loadError, loading, reload } = useFocusedLoader(
     loadData,
-    'The maintenance plan could not be loaded. Your records were not changed.',
-    'Failed to load maintenance:'
+    tr('plan.loadError'),
+    tr('plan.loadLog')
   );
 
   useEffect(() => {
@@ -412,43 +337,43 @@ export default function MaintenanceScheduleScreen() {
       const duplicate = duplicateSummary(error);
       if (duplicate && !allowDuplicate) {
         setSaving(false);
-        Alert.alert('Matching record found', duplicate, [
-          { text: 'Cancel', style: 'cancel' },
+        Alert.alert(tr('oil.matchFound'), duplicate, [
+          { text: tr('common.cancel'), style: 'cancel' },
           {
-            text: 'Save anyway',
+            text: tr('logs.saveAnyway'),
             onPress: () => void persistRecord(task, draft, true),
           },
         ]);
         return;
       }
       console.error('Failed to record maintenance:', error);
-      Alert.alert('Not saved', error instanceof Error ? error.message : 'The maintenance record was not changed.');
+      Alert.alert(tr('oil.notSaved'), localizeErrorMessage(error, tr('plan.notChanged')));
     } finally {
       setSaving(false);
     }
-  }, [reload, remindersEnabled, saving, vehicle]);
+  }, [reload, remindersEnabled, saving, tr, vehicle]);
 
   const restoreOriginalSchedule = useCallback((task: MaintenanceTaskProjection) => {
     Alert.alert(
-      'Restore original schedule?',
-      `This removes only your reminder override for ${naturalMaintenanceActionLabel(task).toLowerCase()}. Maintenance history is preserved.`,
+      tr('oil.restoreTitle'),
+      tr('oil.restoreBody', { action: naturalMaintenanceActionLabel(task).toLocaleLowerCase() }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: tr('oil.restore'),
           onPress: () => void (async () => {
             try {
               await restoreMaintenancePreference(task.componentId, task.action);
               await reload();
               await syncMaintenanceNotifications(remindersEnabled);
             } catch (error) {
-              Alert.alert('Not restored', error instanceof Error ? error.message : 'The original schedule was not restored.');
+              Alert.alert(tr('oil.notRestored'), localizeErrorMessage(error, tr('oil.notRestoredBody')));
             }
           })(),
         },
       ]
     );
-  }, [reload, remindersEnabled]);
+  }, [reload, remindersEnabled, tr]);
 
   const trackTasks = useCallback(async (tasksToTrack: MaintenanceTaskProjection[]) => {
     try {
@@ -462,18 +387,18 @@ export default function MaintenanceScheduleScreen() {
       await reload();
       await syncMaintenanceNotifications(remindersEnabled);
     } catch (error) {
-      Alert.alert('Not added', error instanceof Error ? error.message : 'The service could not be added.');
+      Alert.alert(tr('plan.notAdded'), localizeErrorMessage(error, tr('plan.notAddedBody')));
     }
-  }, [reload, remindersEnabled]);
+  }, [reload, remindersEnabled, tr]);
 
   const stopTrackingTask = useCallback((task: MaintenanceTaskProjection) => {
     Alert.alert(
-      'Stop tracking?',
-      `${naturalMaintenanceActionLabel(task)} will be hidden from your plan and reminders. Your history is kept, and you can add it back anytime.`,
+      tr('plan.stopTitle'),
+      tr('plan.stopBody', { action: naturalMaintenanceActionLabel(task) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Stop tracking',
+          text: tr('plan.stop'),
           style: 'destructive',
           onPress: () => void (async () => {
             try {
@@ -482,21 +407,21 @@ export default function MaintenanceScheduleScreen() {
               await reload();
               await syncMaintenanceNotifications(remindersEnabled);
             } catch (error) {
-              Alert.alert('Not changed', error instanceof Error ? error.message : 'Tracking was not changed.');
+              Alert.alert(tr('plan.notAdded'), localizeErrorMessage(error, tr('plan.trackingUnchanged')));
             }
           })(),
         },
       ]
     );
-  }, [reload, remindersEnabled]);
+  }, [reload, remindersEnabled, tr]);
 
   if (loading || loadError || !vehicle) {
     return (
       <ScreenLoadState
-        error={loadError ?? (!loading ? 'The active vehicle is unavailable.' : null)}
+        error={loadError ?? (!loading ? tr('oil.vehicleUnavailable') : null)}
         loading={loading}
         onRetry={reload}
-        title="MAINTENANCE"
+        title={tr('plan.title')}
       />
     );
   }
@@ -514,7 +439,7 @@ export default function MaintenanceScheduleScreen() {
     && task.status !== 'historical_unverified'
     && task.status !== 'not_applicable'
   );
-  const trackableGroups = COMPONENT_GROUPS.filter((group) =>
+  const trackableGroups = deduplicateByGroup(untrackedTasks).map(({ group }) => group).filter((group) =>
     groupTasks(group, trackedTasks).length === 0
     && groupTasks(group, untrackedTasks).length > 0
   );
@@ -549,12 +474,12 @@ export default function MaintenanceScheduleScreen() {
         </View>
         <View className="flex-1 min-w-0">
           <View className="flex-row items-center justify-between gap-2">
-            <Text className="font-headline text-sm font-bold text-on-surface flex-1">{group.label}</Text>
+            <Text className="font-headline text-sm font-bold text-on-surface flex-1">{naturalMaintenanceActionLabel(task)}</Text>
             <Text className={`font-label text-[11px] font-bold ${status.color}`}>{status.label}</Text>
           </View>
           <Text className="font-body text-xs text-on-surface-variant mt-1" numberOfLines={2}>{taskTiming(task)}</Text>
         </View>
-        <MaterialIcons name="chevron-right" size={21} color="#8e9196" />
+        <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={21} color="#8e9196" />
       </TouchableOpacity>
     );
   };
@@ -591,7 +516,7 @@ export default function MaintenanceScheduleScreen() {
               <Text className="font-label text-[10px] text-secondary mt-1" numberOfLines={1}>{nearest}</Text>
             ) : null}
           </View>
-          <MaterialIcons name={group.id === 'engine-oil' || !expanded ? 'chevron-right' : 'expand-less'} size={22} color="#8e9196" />
+          <MaterialIcons name={group.id === 'engine-oil' || !expanded ? (isRTL ? 'chevron-left' : 'chevron-right') : 'expand-less'} size={22} color="#8e9196" />
         </TouchableOpacity>
 
         {expanded && group.id !== 'engine-oil' ? (
@@ -608,7 +533,7 @@ export default function MaintenanceScheduleScreen() {
   };
 
   const renderSection = (id: SectionId, title: string) => {
-    const groups = COMPONENT_GROUPS.filter((group) => group.section === id && groupTasks(group, trackedTasks).some((task) =>
+    const groups = deduplicateByGroup(trackedTasks).map(({ group }) => group).filter((group) => group.section === id && groupTasks(group, trackedTasks).some((task) =>
       task.status !== 'historical_unverified' && task.status !== 'not_applicable'
     ));
     if (groups.length === 0) return null;
@@ -624,61 +549,61 @@ export default function MaintenanceScheduleScreen() {
     <AppScreen>
       <AppTopBar
         tone="subtle"
-        trailing={<AppIconButton accessibilityLabel="Open maintenance history" icon="history" onPress={() => navigation.navigate('ServiceLogs')} />}
+        trailing={<AppIconButton accessibilityLabel={tr('history.open')} icon="history" onPress={() => navigation.navigate('ServiceLogs')} />}
       >
-        <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#C0C0C0]">MAINTENANCE</Text>
+        <Text className="font-headline uppercase tracking-widest text-sm font-bold text-[#C0C0C0]">{tr('plan.title')}</Text>
       </AppTopBar>
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}>
         <View className="px-1">
-          <Text accessibilityRole="header" className="font-headline text-2xl font-bold text-on-surface">Maintenance plan</Text>
+          <Text accessibilityRole="header" className="font-headline text-2xl font-bold text-on-surface">{tr('plan.heading')}</Text>
           <Text className="font-body text-xs text-on-surface-variant mt-2">
-            {scooterSelection ? formatScooterSelection(scooterSelection) : 'Select your exact scooter to see its maintenance plan'}
+            {scooterSelection ? formatScooterSelection(scooterSelection) : tr('plan.selectExact')}
           </Text>
-          <Text className="font-body text-sm text-secondary mt-1">{vehicle.current_mileage.toLocaleString()} km</Text>
+          <Text className="font-body text-sm text-secondary mt-1">{formatKilometres(vehicle.current_mileage, locale)}</Text>
         </View>
 
         {!selectable ? (
           <View className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 mt-6">
             <MaterialIcons name="two-wheeler" size={24} color="#f59e0b" />
-            <Text className="font-headline text-lg font-bold text-on-surface mt-3">Select a supported scooter</Text>
+            <Text className="font-headline text-lg font-bold text-on-surface mt-3">{tr('plan.selectSupported')}</Text>
             <Text className="font-body text-sm text-on-surface-variant mt-2 leading-6">
-              Choose the exact scooter version in Vehicle Settings to load its maintenance plan.
+              {tr('plan.selectSupportedBody')}
             </Text>
             <TouchableOpacity className="mt-4 min-h-12 rounded-lg bg-primary items-center justify-center px-4" onPress={() => navigation.navigate('VehicleSettings')}>
-              <Text className="font-label font-bold text-on-primary">Open Vehicle Settings</Text>
+              <Text className="font-label font-bold text-on-primary">{tr('plan.openSettings')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             {dueNow.length > 0 ? (
               <View className="mt-7">
-                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-error mb-3">Due now</Text>
+                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-error mb-3">{tr('maintenance.dueNow')}</Text>
                 <View className="gap-2">{dueNow.map(renderPriorityRow)}</View>
               </View>
             ) : null}
 
             {comingUp.length > 0 ? (
               <View className="mt-7">
-                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-amber-400 mb-3">Coming up</Text>
+                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-amber-400 mb-3">{tr('plan.comingUp')}</Text>
                 <View className="gap-2">{comingUp.map(renderPriorityRow)}</View>
               </View>
             ) : null}
 
             {activeInitialTasks.length > 0 ? (
               <Text className="font-body text-xs text-secondary mt-6 px-1">
-                Relevant break-in actions are shown inside their component details.
+                {tr('plan.breakInNotice')}
               </Text>
             ) : null}
 
-            {renderSection('scheduled', 'Scheduled maintenance')}
-            {renderSection('wear', 'Wear and condition')}
-            {renderSection('checks', 'General checks')}
+            {renderSection('scheduled', tr('maintenance.section.scheduled'))}
+            {renderSection('wear', tr('maintenance.section.wear'))}
+            {renderSection('checks', tr('maintenance.section.checks'))}
 
             {trackableGroups.length > 0 ? (
               <View className="mt-7">
-                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-1">Track more services</Text>
-                <Text className="font-body text-xs text-on-surface-variant mb-3">Add only what you maintain — the rest stays out of your plan. Logging a record adds its service automatically.</Text>
+                <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-1">{tr('plan.trackMore')}</Text>
+                <Text className="font-body text-xs text-on-surface-variant mb-3">{tr('plan.trackMoreBody')}</Text>
                 <View className="gap-2">
                   {trackableGroups.map((group) => (
                     <View key={group.id} className="min-h-16 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 flex-row items-center gap-3">
@@ -687,16 +612,16 @@ export default function MaintenanceScheduleScreen() {
                       </View>
                       <View className="flex-1 min-w-0">
                         <Text className="font-headline text-sm font-bold text-on-surface">{group.label}</Text>
-                        <Text className="font-body text-xs text-on-surface-variant mt-1">Not tracked</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('plan.notTracked')}</Text>
                       </View>
                       <TouchableOpacity
                         accessibilityRole="button"
-                        accessibilityLabel={`Track ${group.label}`}
+                        accessibilityLabel={tr('plan.trackA11y', { label: group.label })}
                         className="min-h-10 rounded-lg bg-primary/15 border border-primary/30 px-3 flex-row items-center gap-1"
                         onPress={() => void trackTasks(groupTasks(group, untrackedTasks))}
                       >
                         <MaterialIcons name="add" size={16} color="#a9c7ff" />
-                        <Text className="font-label text-xs font-bold text-primary">Track</Text>
+                        <Text className="font-label text-xs font-bold text-primary">{tr('plan.track')}</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -705,7 +630,7 @@ export default function MaintenanceScheduleScreen() {
             ) : null}
 
             <View className="mt-7">
-              <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-3">Maintenance history</Text>
+              <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-3">{tr('history.screenTitle')}</Text>
               <TouchableOpacity
                 accessibilityRole="button"
                 className="min-h-16 rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 flex-row items-center gap-3"
@@ -715,10 +640,10 @@ export default function MaintenanceScheduleScreen() {
                   <MaterialIcons name="history" size={21} color="#a9c7ff" />
                 </View>
                 <View className="flex-1">
-                  <Text className="font-headline text-sm font-bold text-on-surface">View maintenance history</Text>
-                  <Text className="font-body text-xs text-on-surface-variant mt-1">Review, edit, or delete saved maintenance.</Text>
+                  <Text className="font-headline text-sm font-bold text-on-surface">{tr('history.open')}</Text>
+                  <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('plan.historyBody')}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color="#8e9196" />
+                <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={22} color="#8e9196" />
               </TouchableOpacity>
             </View>
 
@@ -730,10 +655,10 @@ export default function MaintenanceScheduleScreen() {
               >
                 <MaterialIcons name="playlist-add-check" size={22} color="#a9c7ff" />
                 <View className="flex-1">
-                  <Text className="font-headline text-sm font-bold text-on-surface">Finish setting up your maintenance history</Text>
-                  <Text className="font-body text-xs text-on-surface-variant mt-1">A few useful records make due dates more accurate.</Text>
+                  <Text className="font-headline text-sm font-bold text-on-surface">{tr('plan.finishHistory')}</Text>
+                  <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('plan.finishHistoryBody')}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color="#a9c7ff" />
+                <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={22} color="#a9c7ff" />
               </TouchableOpacity>
             ) : null}
           </>
@@ -751,8 +676,8 @@ export default function MaintenanceScheduleScreen() {
         onClose={() => !saving && setRecordingTask(null)}
         onSubmit={(draft) => recordingTask ? persistRecord(recordingTask, draft) : undefined}
         saving={saving}
-        submitLabel="Save maintenance"
-        title={recordingTask ? naturalRecordActionLabel(recordingTask) : 'Maintenance record'}
+        submitLabel={tr('record.saveMaintenance')}
+        title={recordingTask ? naturalRecordActionLabel(recordingTask) : tr('record.formTitle')}
         visible={recordingTask !== null}
       />
       <MaintenanceActionMenu

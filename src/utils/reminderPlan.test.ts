@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { DocumentItem, ServiceInterval, VehicleProfile } from '../types/database.types';
 import { buildMaintenanceReminderPlan, MAINTENANCE_REMINDER_IDS } from './reminderPlan';
+import { setActiveLocale } from '../i18n/localeState';
 
 const profile: VehicleProfile = {
   id: 1,
@@ -122,5 +123,18 @@ describe('maintenance reminder plan', () => {
     );
 
     assert.ok(!plan.some((item) => item.identifier === MAINTENANCE_REMINDER_IDS.service));
+  });
+
+  it('builds Arabic notification titles and bodies without leaking app-owned English', () => {
+    setActiveLocale('ar-EG');
+    try {
+      const plan = buildMaintenanceReminderPlan(profile, [interval()], [document()], now);
+      for (const item of plan) {
+        assert.match(`${item.title} ${item.body}`, /[\u0600-\u06ff]/);
+        assert.doesNotMatch(`${item.title} ${item.body}`, /\b(?:check|service|document|maintenance|open|record)\b/i);
+      }
+    } finally {
+      setActiveLocale('en');
+    }
   });
 });

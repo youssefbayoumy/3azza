@@ -1,5 +1,6 @@
 import type { GasLog } from '../types/database.types';
 import { parseIsoDate } from './dates';
+import { t } from '../i18n/core';
 
 export type FuelEfficiencySample = {
   fromLogId: number;
@@ -83,15 +84,15 @@ export function calculateFuelSummary(
 
 export function validateTankCapacityLiters(value: number | null): string | null {
   if (value === null) return null;
-  if (!Number.isFinite(value) || value <= 0) return 'Tank capacity must be a positive number of liters.';
+  if (!Number.isFinite(value) || value <= 0) return t('fuel.validationCapacity');
   return null;
 }
 
 export function validateFuelLogFields(log: Pick<GasLog, 'liters' | 'cost' | 'odometer_km' | 'logged_on' | 'is_full_tank'>): string | null {
-  if (!Number.isFinite(log.liters) || log.liters <= 0) return 'Fuel amount must be a positive number.';
-  if (!Number.isFinite(log.cost) || log.cost < 0) return 'Fuel cost must be a non-negative number.';
-  if (!Number.isSafeInteger(log.odometer_km) || log.odometer_km < 0) return 'Odometer must be a non-negative whole number.';
-  if (parseIsoDate(log.logged_on) === null) return 'Fuel date must be a valid calendar date.';
-  if (log.is_full_tank !== 0 && log.is_full_tank !== 1) return 'Full-tank status is invalid.';
+  if (!Number.isFinite(log.liters) || log.liters <= 0) return t('fuel.validationAmount');
+  if (!Number.isFinite(log.cost) || log.cost < 0) return t('fuel.validationCost');
+  if (!Number.isSafeInteger(log.odometer_km) || log.odometer_km < 0) return t('fuel.validationOdometer');
+  if (parseIsoDate(log.logged_on) === null) return t('fuel.validationDate');
+  if (log.is_full_tank !== 0 && log.is_full_tank !== 1) return t('fuel.validationFullTank');
   return null;
 }

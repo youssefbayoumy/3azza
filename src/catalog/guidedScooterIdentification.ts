@@ -8,6 +8,7 @@ import {
 import type { VariantIdentificationProfile } from '../modelData/types';
 import { isScooterSelectionComplete, type ScooterSelection } from './scooterCatalog';
 import { getSelectableMaintenanceProfiles } from '../maintenance/profiles';
+import { t } from '../i18n/core';
 
 export type IdentificationAnswers = Partial<Record<IdentificationFeatureKey, string>>;
 
@@ -25,28 +26,24 @@ export type IdentificationQuestion = {
   options: { value: string; label: string; remainingCandidateCount: number }[];
 };
 
-const QUESTION_COPY: Record<IdentificationFeatureKey, Pick<IdentificationQuestion, 'label' | 'prompt' | 'help'>> = {
+function questionCopy(key: IdentificationFeatureKey): Pick<IdentificationQuestion, 'label' | 'prompt' | 'help'> {
+  const keys = {
   displacementCc: {
-    label: 'Engine displacement',
-    prompt: 'What displacement does your scooter have?',
-    help: 'Use the exact cc value shown in your scooter documents or identification details.',
+    label: 'ident.displacementLabel', prompt: 'ident.displacementPrompt', help: 'ident.displacementHelp',
   },
   coolingSystem: {
-    label: 'Cooling system',
-    prompt: 'How is the engine cooled?',
-    help: 'Choose only if your scooter documentation clearly says air-cooled or liquid-cooled.',
+    label: 'ident.coolingLabel', prompt: 'ident.coolingPrompt', help: 'ident.coolingHelp',
   },
   fuelSystem: {
-    label: 'Fuel system',
-    prompt: 'How is fuel delivered?',
-    help: 'Choose only if your documentation explicitly says carburetor or fuel injection / EFI.',
+    label: 'ident.fuelLabel', prompt: 'ident.fuelPrompt', help: 'ident.fuelHelp',
   },
   modelCode: {
-    label: 'Exact model / engine code',
-    prompt: 'Which exact code or variant is listed for your scooter?',
-    help: 'Check the scooter identification details, registration paperwork, or owner documents. If none clearly lists a code, choose I\'m not sure.',
+    label: 'ident.codeLabel', prompt: 'ident.codePrompt', help: 'ident.codeHelp',
   },
-};
+  } as const;
+  const copy = keys[key];
+  return { label: t(copy.label), prompt: t(copy.prompt), help: t(copy.help) };
+}
 
 export function createGuidedSelectionDraft(
   selection: Partial<ScooterSelection> = {}
@@ -177,7 +174,7 @@ export function getNextIdentificationQuestion(draft: GuidedScooterSelectionDraft
       (value): value is string => value !== null
     ))];
     if (values.length < 2) continue;
-    const copy = QUESTION_COPY[key];
+    const copy = questionCopy(key);
     return {
       key,
       ...copy,

@@ -8,12 +8,14 @@ import {
   isValidOnlineManualUrl,
   openOnlineManual,
 } from '../catalog/manualLinks';
+import { useTranslation } from '../i18n';
 
 type Props = {
   selection: ResolvedScooterSelection | null;
 };
 
 export default function OnlineManualAction({ selection }: Props) {
+  const { isRTL, t } = useTranslation();
   const reference = getOnlineManualReference(selection);
   const activeManualIdRef = useRef<string | null>(reference?.manualId ?? null);
   const [opening, setOpening] = useState(false);
@@ -33,29 +35,29 @@ export default function OnlineManualAction({ selection }: Props) {
 
     if (outcome === 'offline') {
       Alert.alert(
-        'You’re offline',
-        'Connect to the internet to view this manual. The PDF is not stored in 3azza.',
+        t('manual.offlineTitle'),
+        t('manual.offlineBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Try again', onPress: () => { void handleOpen(); } },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('manual.tryAgain'), onPress: () => { void handleOpen(); } },
         ]
       );
     } else if (outcome === 'cannot-open') {
       Alert.alert(
-        'The manual could not be opened',
-        'Check your connection or PDF viewer, then try again. Nothing was downloaded.',
+        t('manual.openFailedTitle'),
+        t('manual.openFailedBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => { void handleOpen(); } },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.retry'), onPress: () => { void handleOpen(); } },
         ]
       );
     }
-  }, [opening, reference]);
+  }, [opening, reference, t]);
 
   const available = isValidOnlineManualUrl(reference?.onlineManualUrl);
   const accessibilityLabel = reference
     ? `View the ${reference.manualName.replace(/ owner manual$/i, '')} ${reference.years} owner manual.`
-    : 'View the selected vehicle owner manual.';
+    : t('manual.viewSelected');
 
   return (
     <View className="mt-5 pt-5 border-t border-outline-variant/15">
@@ -65,19 +67,20 @@ export default function OnlineManualAction({ selection }: Props) {
         </View>
         <View className="flex-1">
           <Text className="font-headline text-sm font-bold text-on-surface">
-            {reference?.manualName ?? 'Owner manual'}
+            {reference?.manualName ?? t('manual.ownerManual')}
           </Text>
           <Text className="font-label text-xs uppercase tracking-wider text-on-surface-variant mt-1">
-            {reference ? `${reference.years} · Opens outside 3azza` : 'Select an exact model and version'}
+            {reference ? `${reference.years} · ${t('manual.opensOutside')}` : t('manual.selectExact')}
           </Text>
         </View>
       </View>
+      {isRTL ? <Text className="font-body text-xs text-on-surface-variant mt-3">{t('common.manualEnglishNotice')}</Text> : null}
 
       {available ? (
         <TouchableOpacity
           accessibilityRole="link"
           accessibilityLabel={accessibilityLabel}
-          accessibilityHint="Opens the PDF outside 3azza in your browser or installed PDF viewer."
+          accessibilityHint={t('manual.openHint')}
           accessibilityState={{ busy: opening, disabled: opening }}
           activeOpacity={0.82}
           className="mt-4 min-h-12 px-4 py-3 rounded-lg bg-primary flex-row items-center justify-center gap-2"
@@ -85,18 +88,18 @@ export default function OnlineManualAction({ selection }: Props) {
           onPress={() => { void handleOpen(); }}
         >
           <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">
-            {opening ? 'Opening…' : 'View manual'}
+            {opening ? t('manual.opening') : t('manual.view')}
           </Text>
           <MaterialIcons name="open-in-new" size={18} color="#081421" />
         </TouchableOpacity>
       ) : (
         <View
           accessibilityRole="link"
-          accessibilityLabel={`${accessibilityLabel} Online manual unavailable.`}
+          accessibilityLabel={`${accessibilityLabel} ${t('manual.unavailable')}`}
           accessibilityState={{ disabled: true }}
           className="mt-4 min-h-12 px-4 py-3 rounded-lg bg-surface-container-high border border-outline-variant/20 flex-row items-center justify-center gap-2"
         >
-          <Text className="font-body text-sm text-on-surface-variant">Online manual unavailable.</Text>
+          <Text className="font-body text-sm text-on-surface-variant">{t('manual.unavailable')}</Text>
         </View>
       )}
     </View>

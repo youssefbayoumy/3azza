@@ -23,16 +23,9 @@ import {
   getSelectedVariant,
 } from '../modelData/modelKnowledge';
 import type { ApplicableSpecification, KnowledgeRecord } from '../modelData/types';
+import { useTranslation, vehicleDisplayName } from '../i18n';
 
 type SectionKey = 'specs' | 'fluids' | 'indicators' | 'troubleshooting' | 'break-in';
-
-const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: 'specs', label: 'Specs' },
-  { key: 'fluids', label: 'Fluids & tires' },
-  { key: 'indicators', label: 'Indicators' },
-  { key: 'troubleshooting', label: 'Troubleshooting' },
-  { key: 'break-in', label: 'Break-in' },
-];
 
 function RecordCard({ record }: { record: KnowledgeRecord }) {
   return (
@@ -60,6 +53,10 @@ function SpecificationCard({ item }: { item: ApplicableSpecification }) {
 }
 
 export default function TechSpecsScreen() {
+  const { isRTL, t } = useTranslation();
+  const sections: { key: SectionKey; label: string }[] = [
+    { key: 'specs', label: t('reference.specs') }, { key: 'fluids', label: t('reference.fluids') }, { key: 'indicators', label: t('reference.indicators') }, { key: 'troubleshooting', label: t('reference.troubleshooting') }, { key: 'break-in', label: t('reference.breakIn') },
+  ];
   const navigation = useNavigation<MainStackNavigationProp>();
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [section, setSection] = useState<SectionKey>('specs');
@@ -70,8 +67,8 @@ export default function TechSpecsScreen() {
   }, []);
   const { error: loadError, loading, reload } = useFocusedLoader(
     loadProfile,
-    'The active vehicle reference could not be loaded. No specifications are being inferred.',
-    'Failed to load vehicle reference:'
+    t('reference.loadError'),
+    t('reference.loadLog')
   );
 
   const modelProfile = getModelProfileForVehicle(profile);
@@ -85,7 +82,7 @@ export default function TechSpecsScreen() {
   }, [profile]);
 
   if (loading || loadError) {
-    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE REFERENCE" />;
+    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={t('reference.title')} />;
   }
 
   const renderSelectedSection = () => {
@@ -96,15 +93,15 @@ export default function TechSpecsScreen() {
         <>
           {!selectedVariant && modelProfile.requiresVariant ? (
             <View className="bg-tertiary/10 border border-tertiary/30 rounded-xl p-4 mb-4">
-              <Text className="font-headline text-sm font-bold text-tertiary">Select the exact variant for one definitive value</Text>
+              <Text className="font-headline text-sm font-bold text-tertiary">{t('reference.variantRequired')}</Text>
               <Text className="font-body text-xs text-on-surface-variant leading-5 mt-1">
-                Shared facts are shown first. Variant-specific facts remain grouped and labelled below; 3azza will not choose an engine code automatically.
+                {t('reference.variantRequiredBody')}
               </Text>
             </View>
           ) : null}
           {exact.map((item) => <SpecificationCard item={item} key={item.id} />)}
           {specifications.variantAlternatives.length > 0 ? (
-            <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-5 mb-3">Variant alternatives</Text>
+            <Text className="font-label text-xs font-bold text-secondary uppercase tracking-[0.2em] mt-5 mb-3">{t('reference.variantAlternatives')}</Text>
           ) : null}
           {specifications.variantAlternatives.map((item) => <SpecificationCard item={item} key={item.id} />)}
         </>
@@ -117,13 +114,13 @@ export default function TechSpecsScreen() {
           <View className="bg-error/10 border border-error/30 rounded-xl p-4 mb-4 flex-row gap-3">
             <MaterialIcons name="warning-amber" size={22} color="#ffb4ab" />
             <Text className="font-body text-xs text-on-surface-variant leading-5 flex-1">
-              Confirm workshop-critical capacities, pressures, grades, and tightening values against the scooter placard or a qualified SYM technician before service.
+              {t('reference.fluidsWarning')}
             </Text>
           </View>
           {fluidSpecs.map((item) => <SpecificationCard item={item} key={item.id} />)}
           {manualFluids.map((record) => <RecordCard key={record.recordId} record={record} />)}
           {fluidSpecs.length === 0 && manualFluids.length === 0 ? (
-            <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific value is available.</Text>
+            <Text className="font-body text-sm text-on-surface-variant">{t('reference.noValue')}</Text>
           ) : null}
         </>
       );
@@ -132,19 +129,19 @@ export default function TechSpecsScreen() {
       const records = getApplicableIndicators(profile);
       return records.length > 0
         ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific guidance is available.</Text>;
+        : <Text className="font-body text-sm text-on-surface-variant">{t('reference.noGuidance')}</Text>;
     }
     if (section === 'troubleshooting') {
       const records = getApplicableTroubleshooting(profile);
       return records.length > 0
         ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific guidance is available.</Text>;
+        : <Text className="font-body text-sm text-on-surface-variant">{t('reference.noGuidance')}</Text>;
     }
     if (section === 'break-in') {
       const records = getApplicableBreakInGuidance(profile);
       return records.length > 0
         ? records.map((record) => <RecordCard key={record.recordId} record={record} />)
-        : <Text className="font-body text-sm text-on-surface-variant">No vehicle-specific break-in guidance is available.</Text>;
+        : <Text className="font-body text-sm text-on-surface-variant">{t('reference.noBreakIn')}</Text>;
     }
     return null;
   };
@@ -153,35 +150,36 @@ export default function TechSpecsScreen() {
     <AppScreen edges={['top', 'bottom', 'left', 'right']}>
       <AppTopBar
         tone="elevated"
-        leading={<AppIconButton icon="arrow-back" className="-ml-2" onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back" />}
+        leading={<AppIconButton icon={isRTL ? 'arrow-forward' : 'arrow-back'} className="-ml-2" onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel={t('common.back')} />}
         trailing={<Text className="text-secondary font-black tracking-tighter text-2xl italic">3AZZA</Text>}
       >
-        <Text className="font-headline uppercase tracking-wider text-sm font-bold text-primary" numberOfLines={1}>MODEL REFERENCE</Text>
+        <Text className="font-headline uppercase tracking-wider text-sm font-bold text-primary" numberOfLines={1}>{t('reference.title')}</Text>
       </AppTopBar>
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40 }}>
         {!modelProfile ? (
           <View className="bg-surface-container-lowest border border-outline-variant/15 rounded-xl p-6">
-            <Text className="font-headline text-xl font-bold text-on-surface">Select a supported scooter</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface">{t('reference.selectScooter')}</Text>
             <Text className="font-body text-sm text-on-surface-variant leading-6 mt-2">
-              Choose its brand, model, manual version, and any required engine code in Vehicle Settings. No fleet-wide values will be substituted.
+              {t('reference.selectScooterBody')}
             </Text>
           </View>
         ) : (
           <>
-            <Text className="font-label text-xs text-primary uppercase tracking-[0.25em] font-bold">{profile?.name ?? 'Active vehicle'}</Text>
+            <Text className="font-label text-xs text-primary uppercase tracking-[0.25em] font-bold">{profile ? vehicleDisplayName(profile.name) : t('reference.activeVehicle')}</Text>
             <Text className="font-headline text-3xl font-bold text-on-surface tracking-tight mt-2">{modelProfile.brandName} {modelProfile.modelName}</Text>
             <Text className="font-body text-sm text-on-surface-variant mt-2">
-              {selectedVariant?.name ?? (modelProfile.requiresVariant ? 'Exact variant not selected' : modelProfile.modelName)} · {modelProfile.manualYears}
+              {selectedVariant?.name ?? (modelProfile.requiresVariant ? t('reference.exactVariantMissing') : modelProfile.modelName)} · {modelProfile.manualYears}
             </Text>
             <View className="bg-primary/10 border border-primary/20 rounded-xl p-5 mt-5 mb-6">
-              <Text className="font-headline text-sm font-bold text-primary">Vehicle reference</Text>
+              <Text className="font-headline text-sm font-bold text-primary">{t('reference.vehicleReference')}</Text>
+              {isRTL ? <Text className="font-body text-xs text-on-surface-variant mt-2">{t('common.manualEnglishNotice')}</Text> : null}
               <Text className="font-body text-xs text-on-surface-variant mt-1">{modelProfile.modelName} · {modelProfile.manualYears}</Text>
               <OnlineManualAction selection={scooter} />
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 mb-6" contentContainerStyle={{ paddingHorizontal: 4, gap: 8 }}>
-              {SECTIONS.map((item) => (
+              {sections.map((item) => (
                 <TouchableOpacity
                   accessibilityRole="tab"
                   accessibilityState={{ selected: section === item.key }}

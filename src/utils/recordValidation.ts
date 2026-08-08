@@ -1,3 +1,5 @@
+import { formatNumber, t } from '../i18n/core';
+
 export type NumberValidationResult =
   | { ok: true; value: number }
   | { ok: false; message: string };
@@ -29,13 +31,13 @@ export function validateWholeNumber(
   { label, min = 0, max }: WholeNumberOptions
 ): string | null {
   if (!Number.isSafeInteger(value)) {
-    return `${label} must be a whole number.`;
+    return t('validation.whole', { label });
   }
   if (value < min) {
-    return `${label} cannot be less than ${min.toLocaleString()}.`;
+    return t('validation.min', { label, min: formatNumber(min) });
   }
   if (max !== undefined && value > max) {
-    return `${label} cannot be more than ${max.toLocaleString()}.`;
+    return t('validation.max', { label, max: formatNumber(max) });
   }
   return null;
 }
@@ -46,7 +48,7 @@ export function parseWholeNumberInput(
 ): NumberValidationResult {
   const normalized = input.trim();
   if (!/^\d+$/.test(normalized)) {
-    return { ok: false, message: `${options.label} must be a whole number.` };
+    return { ok: false, message: t('validation.whole', { label: options.label }) };
   }
 
   const value = Number(normalized);
@@ -61,44 +63,44 @@ export function parseDecimalNumberInput(
 ): NumberValidationResult {
   const normalized = input.trim();
   if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized)) {
-    return { ok: false, message: `${label} must be a number.` };
+    return { ok: false, message: t('validation.number', { label }) };
   }
 
   const value = Number(normalized);
   if (!Number.isFinite(value)) {
-    return { ok: false, message: `${label} must be a number.` };
+    return { ok: false, message: t('validation.number', { label }) };
   }
   if (value < min) {
-    return { ok: false, message: `${label} cannot be less than ${min.toLocaleString()}.` };
+    return { ok: false, message: t('validation.min', { label, min: formatNumber(min) }) };
   }
   if (max !== undefined && value > max) {
-    return { ok: false, message: `${label} cannot be more than ${max.toLocaleString()}.` };
+    return { ok: false, message: t('validation.max', { label, max: formatNumber(max) }) };
   }
   return { ok: true, value };
 }
 
 export function validateOdometerReading(value: number, minimum: number): string | null {
   return validateWholeNumber(value, {
-    label: 'Odometer reading',
+    label: t('validation.odometerReading'),
     min: minimum,
   });
 }
 
 export function validateRecordedOdometer(value: number, confirmedOdometer: number): string | null {
   const domainMessage = validateWholeNumber(value, {
-    label: 'Record odometer',
+    label: t('validation.recordOdometer'),
     min: 0,
   });
   if (domainMessage) return domainMessage;
   if (value > confirmedOdometer) {
-    return `Record odometer cannot exceed the confirmed vehicle odometer of ${confirmedOdometer.toLocaleString()} km. Update the vehicle odometer first.`;
+    return t('validation.recordOdometerMax', { max: formatNumber(confirmedOdometer) });
   }
   return null;
 }
 
 export function validateInventoryQuantity(value: number): string | null {
   return validateWholeNumber(value, {
-    label: 'Quantity',
+    label: t('validation.quantity'),
     min: 0,
   });
 }
@@ -110,12 +112,19 @@ export function getInventoryStatus(quantity: number): 'In Stock' | 'Low' | 'Out'
 }
 
 export function validateVehicleVital(field: VehicleVitalField, value: number): string | null {
-  return validateWholeNumber(value, VEHICLE_VITAL_RULES[field]);
+  return validateWholeNumber(value, { ...VEHICLE_VITAL_RULES[field], label: vitalLabel(field) });
 }
 
 export function parseVehicleVitalInput(
   field: VehicleVitalField,
   input: string
 ): NumberValidationResult {
-  return parseWholeNumberInput(input, VEHICLE_VITAL_RULES[field]);
+  return parseWholeNumberInput(input, { ...VEHICLE_VITAL_RULES[field], label: vitalLabel(field) });
+}
+
+function vitalLabel(field: VehicleVitalField): string {
+  const labels = {
+    oil_life_pct: t('vitals.oilLife'), tire_pressure_psi: t('vitals.tirePressure'), battery_health_pct: t('vitals.batteryHealth'), coolant_temp_c: t('vitals.coolantTemp'), brake_pad_pct: t('validation.brakePadLife'),
+  } as const;
+  return labels[field];
 }

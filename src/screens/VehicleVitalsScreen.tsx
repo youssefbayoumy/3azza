@@ -11,6 +11,7 @@ import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
+import { formatDate, localizeErrorMessage, useTranslation } from '../i18n';
 
 type VitalsFormData = {
     oil_life_pct: string;
@@ -29,6 +30,7 @@ const EMPTY_VITALS_FORM: VitalsFormData = {
 };
 
 export default function VehicleVitalsScreen() {
+    const { isRTL, t } = useTranslation();
     const navigation = useNavigation<MainStackNavigationProp>();
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -52,7 +54,7 @@ export default function VehicleVitalsScreen() {
             };
             reset(formData);
             setPersistedFormData(formData);
-            setLastUpdated(new Date(data.updated_at).toLocaleString());
+            setLastUpdated(formatDate(new Date(data.updated_at)));
         } else {
             reset(EMPTY_VITALS_FORM);
             setPersistedFormData(EMPTY_VITALS_FORM);
@@ -62,8 +64,8 @@ export default function VehicleVitalsScreen() {
 
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadVitals,
-        'Manual vehicle readings could not be loaded. Your saved readings were not changed.',
-        'Failed to load vehicle readings:'
+        t('vitals.loadError'),
+        t('vitals.loadLog')
     );
 
     const onSubmit = async (data: VitalsFormData) => {
@@ -80,7 +82,7 @@ export default function VehicleVitalsScreen() {
             await reload();
             setIsEditing(false);
         } catch (err) {
-            Alert.alert('Could Not Save', err instanceof Error ? err.message : 'Failed to save vehicle readings.');
+            Alert.alert(t('vitals.saveFailed'), localizeErrorMessage(err, t('vitals.saveFailedBody')));
         } finally {
             setSaving(false);
         }
@@ -97,7 +99,7 @@ export default function VehicleVitalsScreen() {
     };
 
     if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE VITALS" />;
+        return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={t('vitals.title')} />;
     }
 
     const InputRow = ({ label, name, icon, unit }: { label: string; name: keyof VitalsFormData; icon: React.ReactNode; unit: string }) => (
@@ -146,7 +148,7 @@ export default function VehicleVitalsScreen() {
                         name={name}
                         render={({ field: { value } }) => (
                             <View className="flex-row items-baseline justify-end gap-2">
-                                <Text className="font-headline text-xl font-bold text-primary">{value || 'Not set'}</Text>
+                                <Text className="font-headline text-xl font-bold text-primary">{value || t('vitals.notSet')}</Text>
                                 <Text className="font-label text-xs uppercase text-on-surface-variant/60">{lastUpdated ? unit : ''}</Text>
                             </View>
                         )}
@@ -159,42 +161,42 @@ export default function VehicleVitalsScreen() {
     return (
         <AppScreen edges={['top', 'bottom', 'left', 'right']}>
             <AppTopBar
-                leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" className="-ml-2" onPress={() => navigation.goBack()} />}
-                trailing={<TouchableOpacity onPress={isEditing ? cancelEditing : beginEditing} className="flex-row items-center gap-2 bg-surface-container-highest px-4 py-2 rounded-full border border-outline-variant/30" accessibilityLabel={isEditing ? 'Cancel editing manual readings' : 'Edit manual readings'} accessibilityRole="button">
+                leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} className="-ml-2" onPress={() => navigation.goBack()} />}
+                trailing={<TouchableOpacity onPress={isEditing ? cancelEditing : beginEditing} className="flex-row items-center gap-2 bg-surface-container-highest px-4 py-2 rounded-full border border-outline-variant/30" accessibilityLabel={isEditing ? t('vitals.cancelEditing') : t('vitals.editReadings')} accessibilityRole="button">
                     <MaterialIcons name={isEditing ? 'close' : 'edit'} size={18} color={isEditing ? '#ffb4ab' : '#a9c7ff'} />
                     <Text className={`font-label text-xs font-bold uppercase tracking-widest ${isEditing ? 'text-error' : 'text-primary'}`}>
-                        {isEditing ? 'Cancel' : 'Edit'}
+                        {isEditing ? t('common.cancel') : t('common.edit')}
                     </Text>
                 </TouchableOpacity>}
             >
-                <Text className="font-headline text-xl font-bold tracking-tighter text-slate-100 uppercase" numberOfLines={1}>Manual Readings</Text>
+                <Text className="font-headline text-xl font-bold tracking-tighter text-slate-100 uppercase" numberOfLines={1}>{t('vitals.title')}</Text>
             </AppTopBar>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 }} className="flex-grow">
                 <Text className="font-body text-sm text-on-surface-variant text-center mb-5 bg-primary/10 border border-primary/20 px-4 py-3 rounded-xl">
-                    Enter readings from your dashboard or inspection. 3azza does not connect to your vehicle.
+                    {t('vitals.description')}
                 </Text>
                 {lastUpdated && !isEditing && (
                     <Text className="font-label text-xs text-on-surface-variant/50 uppercase tracking-widest text-center mb-8">
-                        Last Updated: {lastUpdated}
+                        {t('vitals.lastUpdated', { date: lastUpdated })}
                     </Text>
                 )}
                 {isEditing && (
                     <Text className="font-body text-sm text-primary/80 text-center mb-8 bg-primary/10 py-3 rounded-lg">
-                        Tap any value to update current readings.
+                        {t('vitals.editHint')}
                     </Text>
                 )}
 
-                <InputRow label="Oil Life" name="oil_life_pct" icon={<MaterialCommunityIcons name="oil" size={20} color="#a9c7ff" />} unit="%" />
-                <InputRow label="Tire Pressure" name="tire_pressure_psi" icon={<MaterialCommunityIcons name="tire" size={20} color="#a9c7ff" />} unit="PSI" />
-                <InputRow label="Battery Health" name="battery_health_pct" icon={<MaterialCommunityIcons name="car-battery" size={20} color="#a9c7ff" />} unit="%" />
-                <InputRow label="Coolant Temp" name="coolant_temp_c" icon={<MaterialIcons name="thermostat" size={20} color="#a9c7ff" />} unit="°C" />
-                <InputRow label="Brake Pads" name="brake_pad_pct" icon={<MaterialCommunityIcons name="car-brake-alert" size={20} color="#a9c7ff" />} unit="%" />
+                <InputRow label={t('vitals.oilLife')} name="oil_life_pct" icon={<MaterialCommunityIcons name="oil" size={20} color="#a9c7ff" />} unit="%" />
+                <InputRow label={t('vitals.tirePressure')} name="tire_pressure_psi" icon={<MaterialCommunityIcons name="tire" size={20} color="#a9c7ff" />} unit="PSI" />
+                <InputRow label={t('vitals.batteryHealth')} name="battery_health_pct" icon={<MaterialCommunityIcons name="car-battery" size={20} color="#a9c7ff" />} unit="%" />
+                <InputRow label={t('vitals.coolantTemp')} name="coolant_temp_c" icon={<MaterialIcons name="thermostat" size={20} color="#a9c7ff" />} unit="°C" />
+                <InputRow label={t('vitals.brakePads')} name="brake_pad_pct" icon={<MaterialCommunityIcons name="car-brake-alert" size={20} color="#a9c7ff" />} unit="%" />
 
                 {isEditing && (
                     <TouchableOpacity
                         className="bg-primary rounded-xl py-4 items-center mt-6 shadow-lg"
-                        accessibilityLabel="Save manual readings"
+                        accessibilityLabel={t('vitals.saveReadingsLabel')}
                         accessibilityRole="button"
                         accessibilityState={{ busy: saving, disabled: saving }}
                         onPress={handleSubmit(onSubmit)}
@@ -204,7 +206,7 @@ export default function VehicleVitalsScreen() {
                         {saving ? (
                             <ActivityIndicator color="#081421" />
                         ) : (
-                            <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Save Readings</Text>
+                            <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">{t('vitals.saveReadings')}</Text>
                         )}
                     </TouchableOpacity>
                 )}

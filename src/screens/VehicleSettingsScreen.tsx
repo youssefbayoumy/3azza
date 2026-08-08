@@ -26,6 +26,7 @@ import ProtectedModal from '../components/ProtectedModal';
 import type { MainStackNavigationProp } from '../navigation/types';
 import type { VehicleProfile, VehicleVitals } from '../types/database.types';
 import { getExportCompletionMessage } from '../utils/exportFormat';
+import { configureLayoutDirection, formatNumber, localizeErrorMessage, t as appT, useTranslation, vehicleDisplayName, type AppLocale } from '../i18n';
 import { changePin, disablePin } from '../services/auth';
 import { isValidPin, normalizePinInput } from '../utils/appLock';
 import { validateTankCapacityLiters } from '../utils/fuel';
@@ -50,24 +51,24 @@ import {
 
 function showNotificationFailure(result: Pick<NotificationSyncResult, 'blocked' | 'failed' | 'unsupported'>): void {
   const title = result.unsupported
-    ? 'Unsupported'
+    ? appT('settings.unsupported')
     : result.failed
-      ? 'Reminders unavailable'
-      : 'Notifications blocked';
+      ? appT('settings.remindersUnavailable')
+      : appT('settings.notificationsBlocked');
   const message = result.unsupported
-    ? 'Reminders are not available on this platform.'
+    ? appT('settings.platformUnsupported')
     : result.failed
-      ? '3azza could not safely schedule the reminder. Try again.'
+      ? appT('settings.scheduleFailed')
       : result.blocked
-        ? 'Notifications are blocked for 3azza. Open Android settings to allow them.'
-        : 'Notification permission was not granted. You can enable it later in Android settings.';
+        ? appT('settings.blockedBody')
+        : appT('settings.permissionDenied');
 
   const buttons = result.blocked
     ? [
-        { text: 'Cancel', style: 'cancel' as const },
-        { text: 'Open Settings', onPress: () => Linking.openSettings().catch(() => undefined) },
+        { text: appT('common.cancel'), style: 'cancel' as const },
+        { text: appT('settings.openSystemSettings'), onPress: () => Linking.openSettings().catch(() => undefined) },
       ]
-    : [{ text: 'OK' }];
+    : [{ text: appT('language.ok') }];
   Alert.alert(title, message, buttons);
 }
 
@@ -81,6 +82,9 @@ export default function VehicleSettingsScreen() {
   const logout = useAppStore((s) => s.logout);
   const appLockEnabled = useAppStore((s) => s.appLockEnabled);
   const setAppLockEnabled = useAppStore((s) => s.setAppLockEnabled);
+  const locale = useAppStore((s) => s.locale);
+  const setLocale = useAppStore((s) => s.setLocale);
+  const { isRTL, t, tp } = useTranslation();
 
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [vehicles, setVehicles] = useState<VehicleProfile[]>([]);
@@ -124,8 +128,8 @@ export default function VehicleSettingsScreen() {
 
   const { error: loadError, loading, reload } = useFocusedLoader(
     loadData,
-    'Vehicle settings could not be loaded. Your saved preferences were not changed.',
-    'Failed to load vehicle settings:'
+    t('settings.loadError'),
+    t('settings.loadLog')
   );
 
   const refreshDataAndNotifications = useCallback(async () => {
@@ -156,14 +160,31 @@ export default function VehicleSettingsScreen() {
   const handleTestNotification = async () => {
     const result = await scheduleTestNotification();
     if (result.unsupported) {
-      Alert.alert('Unsupported', 'Local notifications are not available on this platform.');
+      Alert.alert(t('settings.unsupported'), t('settings.localUnsupported'));
       return;
     }
     if (!result.granted) {
       showNotificationFailure(result);
       return;
     }
-    Alert.alert('Test scheduled', 'A local notification should appear in a few seconds.');
+    Alert.alert(t('settings.testScheduled'), t('settings.testScheduledBody'));
+  };
+
+  const handleLocaleChange = async (nextLocale: AppLocale) => {
+    if (nextLocale === locale) return;
+    setLocale(nextLocale);
+    const restartRequired = configureLayoutDirection(nextLocale);
+    // Recreate pending notices in the language the user selected.
+    await Promise.all([
+      syncMaintenanceNotifications(maintenanceReminders),
+      syncBackupReminder(backupReminder),
+    ]);
+    if (restartRequired) {
+      Alert.alert(
+        appT('settings.restartTitle'),
+        appT('settings.restartBody')
+      );
+    }
   };
 
   const performExportBackup = async () => {
@@ -171,13 +192,13 @@ export default function VehicleSettingsScreen() {
     try {
       const result = await exportBackupJson();
       Alert.alert(
-        'Backup created',
-        `${getExportCompletionMessage('unencrypted self-contained backup', result.uri, result.shareSheetOutcome)}\n\nIncluded document photos: ${result.documentPhotoCount ?? 0}.`
+        t('settings.backupCreated'),
+        t('settings.backupCreatedBody', { message: getExportCompletionMessage(t('export.backupFormat'), result.uri, result.shareSheetOutcome), count: result.documentPhotoCount ?? 0 })
       );
     } catch (error) {
       Alert.alert(
-        'Export failed',
-        error instanceof Error ? error.message : 'Could not create the backup file.'
+        t('settings.exportFailed'),
+        localizeErrorMessage(error, t('settings.backupCreateFailed'))
       );
     } finally {
       setFileAction(null);
@@ -186,11 +207,11 @@ export default function VehicleSettingsScreen() {
 
   const handleExportBackup = () => {
     Alert.alert(
-      'Export unencrypted backup?',
-      'This self-contained JSON includes local records and document photos. It excludes app preferences and the app-lock PIN. Anyone with the file can read its contents.',
+      t('settings.exportBackupTitle'),
+      t('settings.exportBackupBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Export', onPress: performExportBackup },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.export'), onPress: performExportBackup },
       ]
     );
   };
@@ -200,12 +221,12 @@ export default function VehicleSettingsScreen() {
     try {
       const result = await exportServiceLogsCsv();
       Alert.alert(
-        'CSV created',
-        getExportCompletionMessage('unencrypted service-history CSV', result.uri, result.shareSheetOutcome)
+        t('settings.csvCreated'),
+        getExportCompletionMessage(t('export.csvFormat'), result.uri, result.shareSheetOutcome)
       );
     } catch (error) {
       console.error('CSV export failed:', error);
-      Alert.alert('Export failed', 'Could not create the service history CSV.');
+      Alert.alert(t('settings.exportFailed'), t('settings.csvCreateFailed'));
     } finally {
       setFileAction(null);
     }
@@ -213,23 +234,23 @@ export default function VehicleSettingsScreen() {
 
   const handleExportCsv = () => {
     Alert.alert(
-      'Export unencrypted CSV?',
-      'The service-history file can be read by anyone or any app you share it with.',
+      t('settings.exportCsvTitle'),
+      t('settings.exportCsvBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Export', onPress: performExportCsv },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.export'), onPress: performExportCsv },
       ]
     );
   };
 
   const handleCreateVehicle = async () => {
     const name = vehicleName.trim();
-    const mileageResult = parseWholeNumberInput(vehicleMileage, { label: 'Starting odometer' });
-    const dailyAverageResult = parseWholeNumberInput(vehicleDailyAverage, { label: 'Daily average' });
+    const mileageResult = parseWholeNumberInput(vehicleMileage, { label: t('settings.startingOdometer') });
+    const dailyAverageResult = parseWholeNumberInput(vehicleDailyAverage, { label: t('settings.dailyAverage') });
     const resolvedSelection = resolveScooterSelection(newVehicleSelection.selection);
     if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection)) {
       setShowNewVehicleSelectionErrors(!resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection));
-      Alert.alert('Complete vehicle details', 'Select a brand, model, manual version, and any required exact variant, then enter a name, starting odometer, and daily average.');
+      Alert.alert(t('settings.completeVehicle'), t('settings.completeVehicleBody'));
       return;
     }
     const mileage = mileageResult.value;
@@ -246,7 +267,7 @@ export default function VehicleSettingsScreen() {
       await refreshDataAndNotifications();
     } catch (error) {
       console.error('Failed to create vehicle:', error);
-      Alert.alert('Vehicle not added', error instanceof Error ? error.message : 'No vehicle was added. Try again.');
+      Alert.alert(t('settings.vehicleNotAdded'), localizeErrorMessage(error, t('settings.vehicleNotAddedBody')));
     }
   };
 
@@ -284,17 +305,17 @@ export default function VehicleSettingsScreen() {
     const resolved = resolveScooterSelection(scooterSelection.selection);
     if (!resolved || !isScooterSelectionComplete(scooterSelection.selection) || scooterTargetVehicleId === null) {
       setShowScooterSelectionErrors(true);
-      Alert.alert('Select your scooter', 'Choose a brand, model, manual version, and any required exact variant before saving.');
+      Alert.alert(t('settings.selectScooter'), t('settings.selectScooterBody'));
       return;
     }
 
     Alert.alert(
-      'Change scooter reference?',
-      `Use ${formatScooterSelection(resolved)} as the source for this vehicle? The starting maintenance plan will be reapplied, including oil replacement every 1,000 km. Service history is preserved.`,
+      t('settings.changeScooterTitle'),
+      t('settings.changeScooterBody', { scooter: formatScooterSelection(resolved) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Apply',
+          text: t('settings.apply'),
           onPress: async () => {
             setSavingScooter(true);
             try {
@@ -304,7 +325,7 @@ export default function VehicleSettingsScreen() {
               setScooterTargetVehicleId(null);
               setScooterSelection(createGuidedSelectionDraft());
             } catch (error) {
-              Alert.alert('Scooter not changed', error instanceof Error ? error.message : 'Try again.');
+              Alert.alert(t('settings.scooterNotChanged'), localizeErrorMessage(error, t('dashboard.tryAgain')));
             } finally {
               setSavingScooter(false);
             }
@@ -327,7 +348,7 @@ export default function VehicleSettingsScreen() {
       setVehicleName('');
       await refreshDataAndNotifications();
     } catch (error) {
-      Alert.alert('Vehicle not renamed', error instanceof Error ? error.message : 'Try again.');
+      Alert.alert(t('settings.vehicleNotRenamed'), localizeErrorMessage(error, t('dashboard.tryAgain')));
     }
   };
 
@@ -341,22 +362,22 @@ export default function VehicleSettingsScreen() {
 
   const handleChangePin = async () => {
     if (!isValidPin(currentPin) || !isValidPin(newPin)) {
-      Alert.alert('Invalid PIN', 'Current and new PINs must each contain exactly four digits.');
+      Alert.alert(t('settings.invalidPin'), t('settings.pinFourDigits'));
       return;
     }
     if (newPin !== confirmNewPin) {
-      Alert.alert('PIN mismatch', 'The new PIN entries do not match.');
+      Alert.alert(t('settings.pinMismatch'), t('settings.pinMismatchBody'));
       return;
     }
     if (newPin === currentPin) {
-      Alert.alert('Choose a new PIN', 'The new PIN must be different from the current PIN.');
+      Alert.alert(t('settings.chooseNewPin'), t('settings.chooseNewPinBody'));
       return;
     }
 
     setChangingPin(true);
     try {
       if (!(await changePin(currentPin, newPin))) {
-        Alert.alert('PIN not changed', 'The current PIN is incorrect.');
+        Alert.alert(t('settings.pinNotChanged'), t('settings.currentPinIncorrect'));
         return;
       }
       setPinModalVisible(false);
@@ -364,9 +385,9 @@ export default function VehicleSettingsScreen() {
       setNewPin('');
       setConfirmNewPin('');
       logout();
-      Alert.alert('PIN changed', 'The app is locked. Unlock it with your new PIN.');
+      Alert.alert(t('settings.pinChanged'), t('settings.pinChangedBody'));
     } catch (error) {
-      Alert.alert('PIN not changed', error instanceof Error ? error.message : 'Try again.');
+      Alert.alert(t('settings.pinNotChanged'), localizeErrorMessage(error, t('dashboard.tryAgain')));
     } finally {
       setChangingPin(false);
     }
@@ -380,22 +401,22 @@ export default function VehicleSettingsScreen() {
 
   const handleDisablePin = async () => {
     if (!isValidPin(disablePinInput)) {
-      Alert.alert('Invalid PIN', 'Enter your current 4-digit PIN.');
+      Alert.alert(t('settings.invalidPin'), t('settings.enterCurrentPin'));
       return;
     }
 
     setDisablingPin(true);
     try {
       if (!(await disablePin(disablePinInput))) {
-        Alert.alert('PIN not disabled', 'The current PIN is incorrect.');
+        Alert.alert(t('settings.pinNotDisabled'), t('settings.currentPinIncorrect'));
         return;
       }
       setDisablePinModalVisible(false);
       setDisablePinInput('');
       setAppLockEnabled(false);
-      Alert.alert('App PIN disabled', '3azza will no longer require a PIN to open. You can enable one again in Settings.');
+      Alert.alert(t('settings.pinDisabled'), t('settings.pinDisabledBody'));
     } catch (error) {
-      Alert.alert('PIN not disabled', error instanceof Error ? error.message : 'Try again.');
+      Alert.alert(t('settings.pinNotDisabled'), localizeErrorMessage(error, t('dashboard.tryAgain')));
     } finally {
       setDisablingPin(false);
     }
@@ -412,25 +433,25 @@ export default function VehicleSettingsScreen() {
       await refreshDataAndNotifications();
     } catch (error) {
       console.error('Failed to switch active vehicle:', error);
-      Alert.alert('Vehicle not switched', 'The previous active vehicle is still selected. Try again.');
+      Alert.alert(t('settings.vehicleNotSwitched'), t('settings.vehicleNotSwitchedBody'));
     }
   };
 
   const handleDeleteVehicle = (vehicle: VehicleProfile) => {
     Alert.alert(
-      'Delete vehicle?',
-      `Delete ${vehicle.name} and all of its local maintenance, fuel, inventory, document, and pre-ride records? This cannot be undone.`,
+      t('settings.deleteVehicleTitle'),
+      t('settings.deleteVehicleBody', { name: vehicleDisplayName(vehicle.name) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete vehicle',
+          text: t('settings.deleteVehicle'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteVehicleProfile(vehicle.id);
               await refreshDataAndNotifications();
             } catch (error) {
-              Alert.alert('Vehicle not deleted', error instanceof Error ? error.message : 'Try again.');
+              Alert.alert(t('settings.vehicleNotDeleted'), localizeErrorMessage(error, t('dashboard.tryAgain')));
             }
           },
         },
@@ -449,15 +470,15 @@ export default function VehicleSettingsScreen() {
     const trimmed = tankCapacityInput.trim();
     const capacityResult = trimmed === ''
       ? null
-      : parseDecimalNumberInput(trimmed, { label: 'Tank capacity' });
+      : parseDecimalNumberInput(trimmed, { label: t('settings.tankCapacity') });
     if (capacityResult && !capacityResult.ok) {
-      Alert.alert('Invalid tank capacity', capacityResult.message);
+      Alert.alert(t('settings.invalidCapacity'), capacityResult.message);
       return;
     }
     const capacity = capacityResult?.value ?? null;
     const validationMessage = validateTankCapacityLiters(capacity);
     if (validationMessage) {
-      Alert.alert('Invalid tank capacity', validationMessage);
+      Alert.alert(t('settings.invalidCapacity'), validationMessage);
       return;
     }
 
@@ -467,7 +488,7 @@ export default function VehicleSettingsScreen() {
       await reload();
       setFuelCapacityModalVisible(false);
     } catch (error) {
-      Alert.alert('Tank capacity not saved', error instanceof Error ? error.message : 'Try again.');
+      Alert.alert(t('settings.capacityNotSaved'), localizeErrorMessage(error, t('dashboard.tryAgain')));
     } finally {
       setSavingTankCapacity(false);
     }
@@ -488,8 +509,8 @@ export default function VehicleSettingsScreen() {
       archive = await prepareBackupJsonFromUri(asset.uri);
     } catch (error) {
       Alert.alert(
-        'Restore failed',
-        error instanceof Error ? error.message : 'The selected file is not a valid 3azza backup.'
+        t('settings.restoreFailed'),
+        localizeErrorMessage(error, t('settings.invalidBackup'))
       );
       setFileAction(null);
       return;
@@ -498,15 +519,15 @@ export default function VehicleSettingsScreen() {
 
     const includesPhotos = archive.source_schema === '3azza-local-backup/v4';
     const photoDisclosure = includesPhotos
-      ? `It includes ${archive.document_files.length} document photo${archive.document_files.length === 1 ? '' : 's'}, which will be copied into this app.`
-      : 'This older backup does not contain document photo files; restored document records may still point to photos that are no longer on this device.';
+      ? tp('settings.photosIncluded', archive.document_files.length)
+      : t('settings.olderBackupPhotos');
     Alert.alert(
-      'Restore backup?',
-      `This replaces local vehicle, service, fuel, inventory, document, and pre-ride data. ${photoDisclosure} App preferences and the app-lock PIN are not changed.`,
+      t('settings.restoreTitle'),
+      t('settings.restoreBody', { photos: photoDisclosure }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: t('settings.restore'),
           style: 'destructive',
           onPress: async () => {
             setFileAction('restore');
@@ -515,8 +536,8 @@ export default function VehicleSettingsScreen() {
               await refreshDataAndNotifications();
               const restoredProfile = await getVehicleProfile();
               Alert.alert(
-                'Backup restored',
-                `Local data was replaced from the selected backup. Restored document photos: ${result.documentPhotoCount}.`
+                t('settings.backupRestored'),
+                t('settings.backupRestoredBody', { count: result.documentPhotoCount })
               );
               setVehicleSetupComplete(Boolean(
                 restoredProfile?.has_completed_setup === 1
@@ -524,8 +545,8 @@ export default function VehicleSettingsScreen() {
               ));
             } catch (error) {
               Alert.alert(
-                'Restore failed',
-                error instanceof Error ? error.message : 'The selected backup could not be restored.'
+                t('settings.restoreFailed'),
+                localizeErrorMessage(error, t('settings.restoreFailedBody'))
               );
             } finally {
               setFileAction(null);
@@ -537,17 +558,17 @@ export default function VehicleSettingsScreen() {
   };
 
   if (loading || loadError) {
-    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title="VEHICLE SETTINGS" />;
+    return <ScreenLoadState error={loadError} loading={loading} onBack={() => navigation.goBack()} onRetry={reload} title={t('settings.title')} />;
   }
 
   return (
     <AppScreen edges={['top', 'bottom', 'left', 'right']}>
       <AppTopBar
         tone="elevated"
-        leading={<AppIconButton accessibilityLabel="Go back" icon="arrow-back" onPress={() => navigation.goBack()} />}
-        trailing={<AppIconButton accessibilityLabel="Open manual readings" icon="monitor-heart" color="#C0C0C0" onPress={() => navigation.navigate('VehicleVitals')} />}
+        leading={<AppIconButton accessibilityLabel={t('common.back')} icon={isRTL ? 'arrow-forward' : 'arrow-back'} onPress={() => navigation.goBack()} />}
+        trailing={<AppIconButton accessibilityLabel={t('vitals.editReadings')} icon="monitor-heart" color="#C0C0C0" onPress={() => navigation.navigate('VehicleVitals')} />}
       >
-        <Text className="font-headline tracking-tight font-bold uppercase text-[#a9c7ff]" numberOfLines={1}>VEHICLE SETTINGS</Text>
+        <Text className="font-headline tracking-tight font-bold uppercase text-[#a9c7ff]" numberOfLines={1}>{t('settings.title')}</Text>
       </AppTopBar>
 
       <ScrollView
@@ -560,9 +581,9 @@ export default function VehicleSettingsScreen() {
               <MaterialIcons name="two-wheeler" size={42} color="#a9c7ff" />
             </View>
             <View className="items-center">
-              <Text className="font-headline text-2xl font-bold tracking-tight text-[#C0C0C0] text-center">{profile?.name ?? '3azza Vehicle'}</Text>
+              <Text className="font-headline text-2xl font-bold tracking-tight text-[#C0C0C0] text-center">{profile ? vehicleDisplayName(profile.name) : t('settings.defaultVehicle')}</Text>
               <Text className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant font-bold mt-1 text-center">
-                {profile ? `${profile.current_mileage.toLocaleString()} KM - ${profile.daily_average_km || 0} KM/day` : 'Profile pending'}
+                {profile ? t('settings.profileStats', { km: formatNumber(profile.current_mileage, locale), daily: formatNumber(profile.daily_average_km || 0, locale) }) : t('settings.profilePending')}
               </Text>
             </View>
           </View>
@@ -570,25 +591,58 @@ export default function VehicleSettingsScreen() {
 
         <View className="flex-col gap-6">
           <View className="bg-surface-container-lowest p-6 rounded-xl border border-primary/20">
+            <View className="flex-row items-center gap-3 mb-4">
+              <View className="w-10 h-10 rounded-lg bg-surface-container-high items-center justify-center">
+                <MaterialIcons name="language" size={20} color="#a9c7ff" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-headline text-lg font-bold text-on-surface">{t('language.title')}</Text>
+                <Text className="font-body text-xs text-on-surface-variant mt-1">
+                  {t('settings.languageBody')}
+                </Text>
+              </View>
+            </View>
+            <View className="flex-row gap-3">
+              {(['en', 'ar-EG'] as AppLocale[]).map((option) => {
+                const active = locale === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={option === 'en' ? t('language.english') : t('language.egyptianArabic')}
+                    className={`flex-1 rounded-lg border px-3 py-3 items-center ${active ? 'bg-primary/15 border-primary' : 'border-outline-variant/30 bg-surface-container-high'}`}
+                    onPress={() => handleLocaleChange(option)}
+                  >
+                    <Text className={`font-label text-xs font-bold ${active ? 'text-primary' : 'text-on-surface-variant'}`}>
+                      {option === 'en' ? t('language.english') : t('language.egyptianArabic')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className="bg-surface-container-lowest p-6 rounded-xl border border-primary/20">
             <View className="flex-row items-start justify-between gap-4">
               <View className="flex-1">
-                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-2">Scooter Reference</Text>
+                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-2">{t('settings.scooterReference')}</Text>
                 <Text className="font-headline text-lg font-bold text-on-surface">
                   {profile && selectionFromProfile(profile)
                     ? formatScooterSelection(selectionFromProfile(profile)!)
-                    : 'Scooter not selected'}
+                    : t('settings.scooterNotSelected')}
                 </Text>
                 <Text className="font-body text-xs text-on-surface-variant mt-2 leading-5">
-                  Maintenance, manuals, parts, and future model-specific features use this selection.
+                  {t('settings.scooterReferenceBody')}
                 </Text>
               </View>
               <TouchableOpacity
-                accessibilityLabel="Change scooter brand, model, and version"
+                accessibilityLabel={t('settings.changeScooterA11y')}
                 accessibilityRole="button"
                 className="px-4 py-3 bg-primary rounded-lg"
                 onPress={openScooterModal}
               >
-                <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">Change</Text>
+                <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">{t('settings.change')}</Text>
               </TouchableOpacity>
             </View>
             <OnlineManualAction selection={profile ? selectionFromProfile(profile) : null} />
@@ -597,15 +651,15 @@ export default function VehicleSettingsScreen() {
           <View className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10">
             <View className="flex-row items-center justify-between mb-4">
               <View>
-                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-1">Garage</Text>
-                <Text className="font-headline text-lg font-bold text-secondary uppercase tracking-wider">Vehicles</Text>
+                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-1">{t('settings.garage')}</Text>
+                <Text className="font-headline text-lg font-bold text-secondary uppercase tracking-wider">{t('settings.vehicles')}</Text>
               </View>
               <TouchableOpacity
                 className="px-3 py-2 bg-primary rounded-lg flex-row items-center gap-2"
                 onPress={openVehicleModal}
               >
                 <MaterialIcons name="add" size={16} color="#081421" />
-                <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">Add</Text>
+                <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">{t('settings.add')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -619,25 +673,25 @@ export default function VehicleSettingsScreen() {
                   >
                     <TouchableOpacity onPress={() => handleSwitchVehicle(vehicle.id)} className="flex-row items-center justify-between">
                       <View className="flex-1 pr-3">
-                        <Text className={`font-headline text-base font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>{vehicle.name}</Text>
+                        <Text className={`font-headline text-base font-bold ${active ? 'text-primary' : 'text-on-surface'}`}>{vehicleDisplayName(vehicle.name)}</Text>
                         <Text className="font-label text-xs uppercase tracking-widest text-secondary/60 mt-1">
-                          {vehicle.current_mileage.toLocaleString()} KM - {vehicle.daily_average_km || 0} KM/day
+                          {t('settings.profileStats', { km: formatNumber(vehicle.current_mileage, locale), daily: formatNumber(vehicle.daily_average_km || 0, locale) })}
                         </Text>
                         <Text className="font-body text-xs text-on-surface-variant mt-1" numberOfLines={1}>
                           {selectionFromProfile(vehicle)
                             ? formatScooterSelection(selectionFromProfile(vehicle)!)
-                            : 'Scooter selection required'}
+                            : t('settings.scooterRequired')}
                         </Text>
                       </View>
                       <MaterialIcons name={active ? 'check-circle' : 'radio-button-unchecked'} size={22} color={active ? '#a9c7ff' : '#8e9196'} />
                     </TouchableOpacity>
                     {vehicles.length > 1 && (
                       <View className="flex-row self-end mt-3 gap-3">
-                        <TouchableOpacity onPress={() => openEditVehicle(vehicle)} className="px-2 py-1" accessibilityRole="button" accessibilityLabel={`Rename ${vehicle.name}`}>
-                          <Text className="font-label text-xs uppercase tracking-widest text-primary">Rename</Text>
+                        <TouchableOpacity onPress={() => openEditVehicle(vehicle)} className="px-2 py-1" accessibilityRole="button" accessibilityLabel={t('settings.renameA11y', { name: vehicleDisplayName(vehicle.name) })}>
+                          <Text className="font-label text-xs uppercase tracking-widest text-primary">{t('settings.rename')}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDeleteVehicle(vehicle)} className="px-2 py-1" accessibilityRole="button" accessibilityLabel={`Delete ${vehicle.name}`}>
-                          <Text className="font-label text-xs uppercase tracking-widest text-error">Delete</Text>
+                        <TouchableOpacity onPress={() => handleDeleteVehicle(vehicle)} className="px-2 py-1" accessibilityRole="button" accessibilityLabel={t('settings.deleteA11y', { name: vehicleDisplayName(vehicle.name) })}>
+                          <Text className="font-label text-xs uppercase tracking-widest text-error">{t('common.delete')}</Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -648,45 +702,45 @@ export default function VehicleSettingsScreen() {
           </View>
 
           <View className="bg-surface-container-high p-6 rounded-xl border border-outline-variant/10">
-            <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-2">Saved Manual Readings</Text>
-            <Text className="font-body text-xs text-on-surface-variant mb-5">Entered by you; 3azza does not read data from the vehicle.</Text>
+            <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-2">{t('settings.manualReadings')}</Text>
+            <Text className="font-body text-xs text-on-surface-variant mb-5">{t('settings.manualReadingsBody')}</Text>
             <View className="gap-1">
               <View className="flex-row items-baseline justify-between gap-4 py-2 border-b border-outline-variant/10">
-                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">Oil Life</Text>
-                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${vitals.oil_life_pct}%` : 'Not set'}</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">{t('settings.oilLife')}</Text>
+                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${formatNumber(vitals.oil_life_pct, locale)}%` : t('settings.notSet')}</Text>
               </View>
               <View className="flex-row items-baseline justify-between gap-4 py-2 border-b border-outline-variant/10">
-                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">Tire Pressure</Text>
-                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${vitals.tire_pressure_psi} PSI` : 'Not set'}</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">{t('settings.tirePressure')}</Text>
+                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${formatNumber(vitals.tire_pressure_psi, locale)} PSI` : t('settings.notSet')}</Text>
               </View>
               <View className="flex-row items-baseline justify-between gap-4 py-2 border-b border-outline-variant/10">
-                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">Brake Pads</Text>
-                <Text className="font-headline font-bold text-secondary text-lg text-right">{vitals ? `${vitals.brake_pad_pct}%` : 'Not set'}</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">{t('settings.brakePads')}</Text>
+                <Text className="font-headline font-bold text-secondary text-lg text-right">{vitals ? `${formatNumber(vitals.brake_pad_pct, locale)}%` : t('settings.notSet')}</Text>
               </View>
               <View className="flex-row items-baseline justify-between gap-4 py-2">
-                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">Battery</Text>
-                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${vitals.battery_health_pct}%` : 'Not set'}</Text>
+                <Text className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">{t('settings.battery')}</Text>
+                <Text className="font-headline font-bold text-primary text-lg text-right">{vitals ? `${formatNumber(vitals.battery_health_pct, locale)}%` : t('settings.notSet')}</Text>
               </View>
             </View>
             <TouchableOpacity className="py-4 bg-secondary rounded-lg items-center justify-center mt-6" onPress={() => navigation.navigate('VehicleVitals')}>
-              <Text className="font-headline font-bold text-[#2f3131] uppercase tracking-widest">Update Readings</Text>
+              <Text className="font-headline font-bold text-[#2f3131] uppercase tracking-widest">{t('settings.updateReadings')}</Text>
             </TouchableOpacity>
           </View>
 
           <View className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10">
             <View className="gap-4">
               <View className="flex-1">
-                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-1">Fuel model</Text>
-                <Text className="font-headline text-lg font-bold text-secondary">Tank Capacity</Text>
+                <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest mb-1">{t('settings.fuelModel')}</Text>
+                <Text className="font-headline text-lg font-bold text-secondary">{t('settings.tankCapacity')}</Text>
                 <Text className="font-body text-xs text-on-surface-variant mt-2">
                   {profile?.tank_capacity_liters === null || profile?.tank_capacity_liters === undefined
-                    ? 'Not set. Range stays hidden until you enter a manual capacity.'
-                    : `${profile.tank_capacity_liters.toLocaleString()} L saved. Range is calculated only from complete full-tank segments.`}
+                    ? t('settings.capacityUnset')
+                    : t('settings.capacitySaved', { capacity: formatNumber(profile.tank_capacity_liters, locale) })}
                 </Text>
               </View>
               <TouchableOpacity className="px-4 py-3 bg-primary rounded-lg self-start" onPress={openFuelCapacityModal}>
                 <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">
-                  {profile?.tank_capacity_liters === null || profile?.tank_capacity_liters === undefined ? 'Set' : 'Edit'}
+                  {profile?.tank_capacity_liters === null || profile?.tank_capacity_liters === undefined ? t('settings.set') : t('common.edit')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -699,12 +753,12 @@ export default function VehicleSettingsScreen() {
                   <MaterialIcons name="notifications-active" size={20} color="#c6c6c6" />
                 </View>
                 <View className="flex-1">
-                  <Text className="font-headline font-bold text-secondary tracking-wide">Maintenance Reminders</Text>
-                  <Text className="font-body text-xs text-on-surface-variant mt-1">Daily pre-ride plus due-service and document alerts.</Text>
+                  <Text className="font-headline font-bold text-secondary tracking-wide">{t('settings.maintenanceReminders')}</Text>
+                  <Text className="font-body text-xs text-on-surface-variant mt-1">{t('settings.remindersBody')}</Text>
                 </View>
               </View>
               <Switch
-                accessibilityLabel="Maintenance reminders"
+                accessibilityLabel={t('settings.maintenanceReminders')}
                 accessibilityRole="switch"
                 value={maintenanceReminders}
                 onValueChange={handleMaintenanceToggle}
@@ -713,12 +767,12 @@ export default function VehicleSettingsScreen() {
               />
             </View>
             <TouchableOpacity
-              accessibilityLabel="Send test reminder"
+              accessibilityLabel={t('settings.sendTest')}
               accessibilityRole="button"
               className="py-3 border border-primary/25 rounded-lg items-center justify-center"
               onPress={handleTestNotification}
             >
-              <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest">Send Test Reminder</Text>
+              <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest">{t('settings.sendTest')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -729,12 +783,12 @@ export default function VehicleSettingsScreen() {
                   <MaterialIcons name="archive" size={20} color="#c6c6c6" />
                 </View>
                 <View className="flex-1">
-                  <Text className="font-headline font-bold text-secondary tracking-wide uppercase">Local Backup</Text>
-                  <Text className="font-body text-xs text-on-surface-variant mt-1">The unencrypted JSON backup includes records and document photos. CSV includes service history only. App preferences and the app-lock PIN are excluded.</Text>
+                  <Text className="font-headline font-bold text-secondary tracking-wide uppercase">{t('settings.localBackup')}</Text>
+                  <Text className="font-body text-xs text-on-surface-variant mt-1">{t('settings.backupBody')}</Text>
                 </View>
               </View>
               <Switch
-                accessibilityLabel="Weekly backup reminder"
+                accessibilityLabel={t('settings.weeklyBackup')}
                 accessibilityRole="switch"
                 value={backupReminder}
                 onValueChange={handleBackupReminderToggle}
@@ -752,7 +806,7 @@ export default function VehicleSettingsScreen() {
                 {fileAction === 'json' ? (
                   <ActivityIndicator color="#081421" />
                 ) : (
-                  <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">Export JSON</Text>
+                  <Text className="font-label text-xs font-bold text-[#081421] uppercase tracking-widest">{t('settings.exportJson')}</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -763,7 +817,7 @@ export default function VehicleSettingsScreen() {
                 {fileAction === 'csv' ? (
                   <ActivityIndicator color="#a9c7ff" />
                 ) : (
-                  <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest">Service CSV</Text>
+                  <Text className="font-label text-xs font-bold text-primary uppercase tracking-widest">{t('settings.serviceCsv')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -775,7 +829,7 @@ export default function VehicleSettingsScreen() {
               {fileAction === 'restore' ? (
                 <ActivityIndicator color="#ffb4ab" />
               ) : (
-                <Text className="font-label text-xs font-bold text-error uppercase tracking-widest">Restore JSON Backup</Text>
+                <Text className="font-label text-xs font-bold text-error uppercase tracking-widest">{t('settings.restoreJson')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -786,16 +840,16 @@ export default function VehicleSettingsScreen() {
                 className="py-4 border border-primary/30 rounded-lg items-center justify-center mb-3"
                 onPress={() => setPinModalVisible(true)}
               >
-                <Text className="font-headline font-bold text-primary uppercase tracking-widest">Change App PIN</Text>
+                <Text className="font-headline font-bold text-primary uppercase tracking-widest">{t('settings.changePin')}</Text>
               </TouchableOpacity>
               <TouchableOpacity className="py-4 border border-error/30 rounded-lg items-center justify-center" onPress={logout}>
-                <Text className="font-headline font-bold text-error uppercase tracking-widest">Lock App</Text>
+                <Text className="font-headline font-bold text-error uppercase tracking-widest">{t('settings.lockApp')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 className="py-4 border border-error/30 rounded-lg items-center justify-center mt-3"
                 onPress={() => setDisablePinModalVisible(true)}
               >
-                <Text className="font-headline font-bold text-error uppercase tracking-widest">Disable App PIN</Text>
+                <Text className="font-headline font-bold text-error uppercase tracking-widest">{t('settings.disablePin')}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -806,14 +860,14 @@ export default function VehicleSettingsScreen() {
                 logout();
               }}
             >
-              <Text className="font-headline font-bold text-primary uppercase tracking-widest">Enable App PIN</Text>
+              <Text className="font-headline font-bold text-primary uppercase tracking-widest">{t('settings.enablePin')}</Text>
             </TouchableOpacity>
           )}
         </View>
       </ScrollView>
 
       <ProtectedModal
-        accessibilityLabel="Add vehicle dialog"
+        accessibilityLabel={t('settings.addVehicleDialog')}
         visible={vehicleModalVisible}
         transparent
         animationType="fade"
@@ -821,8 +875,8 @@ export default function VehicleSettingsScreen() {
       >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Add Vehicle</Text>
-            <Text className="font-body text-sm text-secondary/80 mb-6">Create a separate local maintenance profile tied to one manual catalog entry.</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.addVehicle')}</Text>
+            <Text className="font-body text-sm text-secondary/80 mb-6">{t('settings.addVehicleBody')}</Text>
             <ScrollView className="max-h-[520px]" keyboardShouldPersistTaps="handled">
             <ScooterSelectionFields
               value={newVehicleSelection}
@@ -835,41 +889,41 @@ export default function VehicleSettingsScreen() {
             <View className="h-5" />
             <TextInput
               className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4"
-              placeholder="e.g. Delivery Scooter"
+              placeholder={t('settings.vehicleExample')}
               placeholderTextColor="#64748b"
               value={vehicleName}
               onChangeText={setVehicleName}
             />
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4" placeholder="Starting odometer (KM)" placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleMileage} onChangeText={setVehicleMileage} />
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder="Daily average (KM)" placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} />
+            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4" placeholder={t('settings.startingOdometerPlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleMileage} onChangeText={setVehicleMileage} />
+            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder={t('settings.dailyAveragePlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} />
             </ScrollView>
             <View className="flex-row justify-end gap-3">
               <TouchableOpacity onPress={closeVehicleModal} className="px-4 py-2 rounded-lg">
-                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleCreateVehicle} className="px-6 py-2 bg-primary rounded-lg">
-                <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Create</Text>
+                <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('settings.create')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </ProtectedModal>
 
-      <ProtectedModal accessibilityLabel="Rename vehicle dialog" visible={editingVehicle !== null} transparent animationType="fade" onRequestClose={() => setEditingVehicle(null)}>
+      <ProtectedModal accessibilityLabel={t('settings.renameDialog')} visible={editingVehicle !== null} transparent animationType="fade" onRequestClose={() => setEditingVehicle(null)}>
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Rename Vehicle</Text>
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" value={vehicleName} onChangeText={setVehicleName} accessibilityLabel="Vehicle name" />
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.renameVehicle')}</Text>
+            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" value={vehicleName} onChangeText={setVehicleName} accessibilityLabel={t('settings.vehicleName')} />
             <View className="flex-row justify-end gap-3">
-              <TouchableOpacity onPress={() => setEditingVehicle(null)} className="px-4 py-2 rounded-lg"><Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text></TouchableOpacity>
-              <TouchableOpacity onPress={handleRenameVehicle} className="px-6 py-2 bg-primary rounded-lg"><Text className="font-label font-bold text-on-primary uppercase tracking-wider">Save</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditingVehicle(null)} className="px-4 py-2 rounded-lg"><Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleRenameVehicle} className="px-6 py-2 bg-primary rounded-lg"><Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('common.save')}</Text></TouchableOpacity>
             </View>
           </View>
         </View>
       </ProtectedModal>
 
       <ProtectedModal
-        accessibilityLabel="Change scooter reference dialog"
+        accessibilityLabel={t('settings.changeScooterDialog')}
         visible={scooterModalVisible}
         transparent
         animationType="fade"
@@ -877,9 +931,9 @@ export default function VehicleSettingsScreen() {
       >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Change Scooter</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.changeScooter')}</Text>
             <Text className="font-body text-sm text-secondary/80 mb-6">
-              This becomes the reference used by maintenance, manuals, parts, reminders, and future scooter-specific features.
+              {t('settings.changeScooterDescription')}
             </Text>
             <ScrollView className="max-h-[520px]" keyboardShouldPersistTaps="handled">
               <ScooterSelectionFields
@@ -893,11 +947,11 @@ export default function VehicleSettingsScreen() {
             </ScrollView>
             <View className="flex-row justify-end gap-3 mt-6">
               <TouchableOpacity disabled={savingScooter} onPress={closeScooterModal} className="px-4 py-3 rounded-lg">
-                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity disabled={savingScooter} onPress={saveScooterSelection} className={`px-6 py-3 bg-primary rounded-lg ${savingScooter ? 'opacity-60' : ''}`}>
                 {savingScooter ? <ActivityIndicator color="#081421" /> : (
-                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Save</Text>
+                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('common.save')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -905,15 +959,15 @@ export default function VehicleSettingsScreen() {
         </View>
       </ProtectedModal>
 
-      <ProtectedModal accessibilityLabel="Change app PIN dialog" visible={pinModalVisible} transparent animationType="fade" onRequestClose={closePinModal}>
+      <ProtectedModal accessibilityLabel={t('settings.changePinDialog')} visible={pinModalVisible} transparent animationType="fade" onRequestClose={closePinModal}>
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Change App PIN</Text>
-            <Text className="font-body text-sm text-secondary/80 mb-6">Confirm the current PIN before replacing the local app lock.</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.changePin')}</Text>
+            <Text className="font-body text-sm text-secondary/80 mb-6">{t('settings.changePinBody')}</Text>
             {[
-              { label: 'Current PIN', value: currentPin, setter: setCurrentPin },
-              { label: 'New PIN', value: newPin, setter: setNewPin },
-              { label: 'Confirm New PIN', value: confirmNewPin, setter: setConfirmNewPin },
+              { label: t('settings.currentPin'), value: currentPin, setter: setCurrentPin },
+              { label: t('settings.newPin'), value: newPin, setter: setNewPin },
+              { label: t('settings.confirmNewPin'), value: confirmNewPin, setter: setConfirmNewPin },
             ].map((field) => (
               <View key={field.label} className="mb-4">
                 <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/70 tracking-widest mb-2">{field.label}</Text>
@@ -930,7 +984,7 @@ export default function VehicleSettingsScreen() {
             ))}
             <View className="flex-row justify-end gap-3 mt-2">
               <TouchableOpacity onPress={closePinModal} disabled={changingPin} className="px-4 py-3 rounded-lg">
-                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleChangePin}
@@ -940,7 +994,7 @@ export default function VehicleSettingsScreen() {
                 {changingPin ? (
                   <ActivityIndicator color="#081421" />
                 ) : (
-                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Change PIN</Text>
+                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('settings.changePin')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -948,12 +1002,12 @@ export default function VehicleSettingsScreen() {
         </View>
       </ProtectedModal>
 
-      <ProtectedModal accessibilityLabel="Disable app PIN dialog" visible={disablePinModalVisible} transparent animationType="fade" onRequestClose={closeDisablePinModal}>
+      <ProtectedModal accessibilityLabel={t('settings.disablePinDialog')} visible={disablePinModalVisible} transparent animationType="fade" onRequestClose={closeDisablePinModal}>
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Disable App PIN</Text>
-            <Text className="font-body text-sm text-secondary/80 mb-6">Enter your current PIN to remove the app lock. Anyone with this device will then be able to open 3azza.</Text>
-            <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/70 tracking-widest mb-2">Current PIN</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.disablePin')}</Text>
+            <Text className="font-body text-sm text-secondary/80 mb-6">{t('settings.disablePinBody')}</Text>
+            <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/70 tracking-widest mb-2">{t('settings.currentPin')}</Text>
             <TextInput
               className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base"
               keyboardType="number-pad"
@@ -961,11 +1015,11 @@ export default function VehicleSettingsScreen() {
               maxLength={4}
               value={disablePinInput}
               onChangeText={(value) => setDisablePinInput(normalizePinInput(value))}
-              accessibilityLabel="Current PIN to disable app lock"
+              accessibilityLabel={t('settings.disablePinA11y')}
             />
             <View className="flex-row justify-end gap-3 mt-6">
               <TouchableOpacity onPress={closeDisablePinModal} disabled={disablingPin} className="px-4 py-3 rounded-lg">
-                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleDisablePin}
@@ -973,7 +1027,7 @@ export default function VehicleSettingsScreen() {
                 className={`px-6 py-3 bg-error rounded-lg ${disablingPin ? 'opacity-60' : ''}`}
               >
                 {disablingPin ? <ActivityIndicator color="#081421" /> : (
-                  <Text className="font-label font-bold text-[#081421] uppercase tracking-wider">Disable PIN</Text>
+                  <Text className="font-label font-bold text-[#081421] uppercase tracking-wider">{t('settings.disablePin')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -982,7 +1036,7 @@ export default function VehicleSettingsScreen() {
       </ProtectedModal>
 
       <ProtectedModal
-        accessibilityLabel="Tank capacity dialog"
+        accessibilityLabel={t('settings.capacityDialog')}
         visible={fuelCapacityModalVisible}
         transparent
         animationType="fade"
@@ -990,18 +1044,18 @@ export default function VehicleSettingsScreen() {
       >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="w-full max-w-xl self-center bg-surface-container-low rounded-2xl p-6 border border-outline-variant/20">
-            <Text className="font-headline text-xl font-bold text-on-surface mb-2">Tank Capacity</Text>
+            <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.tankCapacity')}</Text>
             <Text className="font-body text-sm text-secondary/80 mb-6">
-              Optional. Enter the manufacturer-rated capacity in liters; 3azza never infers it from a fill-up.
+              {t('settings.capacityBody')}
             </Text>
             <TextInput
               className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6"
-              placeholder="e.g. 8.5"
+              placeholder={t('settings.capacityExample')}
               placeholderTextColor="#64748b"
               keyboardType="decimal-pad"
               value={tankCapacityInput}
               onChangeText={setTankCapacityInput}
-              accessibilityLabel="Tank capacity in liters"
+              accessibilityLabel={t('settings.capacityA11y')}
             />
             <View className="flex-row justify-end gap-3">
               <TouchableOpacity
@@ -1009,7 +1063,7 @@ export default function VehicleSettingsScreen() {
                 disabled={savingTankCapacity}
                 className="px-4 py-3 rounded-lg"
               >
-                <Text className="font-label font-bold text-secondary uppercase tracking-wider">Cancel</Text>
+                <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={saveFuelCapacity}
@@ -1017,7 +1071,7 @@ export default function VehicleSettingsScreen() {
                 className={`px-6 py-3 bg-primary rounded-lg ${savingTankCapacity ? 'opacity-60' : ''}`}
               >
                 {savingTankCapacity ? <ActivityIndicator color="#081421" /> : (
-                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">Save</Text>
+                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('common.save')}</Text>
                 )}
               </TouchableOpacity>
             </View>

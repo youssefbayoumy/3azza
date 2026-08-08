@@ -1,4 +1,5 @@
 import type { ServiceLog } from '../types/database.types';
+import { t } from '../i18n/core';
 
 export type ShareSheetOutcome = 'closed' | 'unavailable';
 
@@ -9,7 +10,7 @@ export function escapeCsv(value: string | number | null | undefined): string {
 
 export function buildServiceLogsCsv(logs: ServiceLog[]): string {
   const rows = [
-    ['Date', 'Odometer KM', 'Title', 'Category', 'Service Type', 'Cost', 'Notes'].map(escapeCsv).join(','),
+    [t('export.csv.date'), t('export.csv.odometer'), t('export.csv.title'), t('export.csv.category'), t('export.csv.serviceType'), t('export.csv.cost'), t('export.csv.notes')].map(escapeCsv).join(','),
     ...logs.map((log) =>
       [
         log.date,
@@ -34,8 +35,8 @@ export function getExportCompletionMessage(
   shareSheetOutcome: ShareSheetOutcome
 ): string {
   if (shareSheetOutcome === 'closed') {
-    return `The share sheet was closed. 3azza cannot determine whether another app received the ${format}. A local copy remains at:\n${uri}`;
+    return t('export.shareClosed', { format, uri });
   }
 
-  return `Sharing is unavailable. The ${format} was saved locally at:\n${uri}`;
+  return t('export.shareUnavailable', { format, uri });
 }

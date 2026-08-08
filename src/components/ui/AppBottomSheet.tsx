@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIconButton from './AppIconButton';
+import { useTranslation } from '../../i18n';
 
 type AppBottomSheetProps = {
   children: ReactNode;
@@ -12,6 +13,7 @@ type AppBottomSheetProps = {
 
 /** Shared visual shell for write forms presented from the bottom of a screen. */
 export default function AppBottomSheet({ children, closeDisabled = false, onClose, title }: AppBottomSheetProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -23,7 +25,7 @@ export default function AppBottomSheet({ children, closeDisabled = false, onClos
         <View className="flex-row justify-between items-center mb-6">
           <Text accessibilityRole="header" className="font-headline text-xl font-bold text-on-surface">{title}</Text>
           <AppIconButton
-            accessibilityLabel={`Close ${title}`}
+            accessibilityLabel={t('common.closeTitle', { title })}
             color="#c4c6cc"
             disabled={closeDisabled}
             icon="close"

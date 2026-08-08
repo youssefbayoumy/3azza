@@ -10,10 +10,12 @@ import InventoryScreen from '../screens/InventoryScreen';
 import MaintenanceScheduleScreen from '../screens/MaintenanceScheduleScreen';
 import DocumentsVaultScreen from '../screens/DocumentsVaultScreen';
 import type { TabParamList } from './types';
+import { useTranslation } from '../i18n';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+    const { t, isRTL } = useTranslation();
     const visibleRoutes = state.routes;
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -36,10 +38,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                             route.name === 'Inventory' ? 'inventory-2' :
                                 route.name === 'Maintenance' ? 'build-circle' :
                                     route.name === 'Vault' ? 'folder-special' : 'settings';
-                        const label = route.name === 'Dashboard' ? 'Home' :
-                            route.name === 'Inventory' ? 'Parts' :
-                                route.name === 'Maintenance' ? 'Maintenance' :
-                                    route.name === 'Vault' ? 'Documents' : route.name;
+                        const label = route.name === 'Dashboard' ? t('tabs.home') :
+                            route.name === 'Inventory' ? t('tabs.parts') :
+                                route.name === 'Maintenance' ? t('tabs.maintenance') :
+                                    route.name === 'Vault' ? t('tabs.documents') : route.name;
 
                         const onPress = () => {
                             const event = navigation.emit({
@@ -57,7 +59,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                         <TouchableOpacity
                             key={route.key}
                             accessibilityRole="button"
-                            accessibilityLabel={`${label} tab`}
+                            accessibilityLabel={t('tabs.tab', { label })}
                             accessibilityState={isFocused ? { selected: true } : {}}
                             onPress={onPress}
                             activeOpacity={0.7}
@@ -82,8 +84,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                                 numberOfLines={1}
                                 style={{
                                     fontSize: labelFontSize,
-                                    letterSpacing: labelLetterSpacing,
+                                    letterSpacing: isRTL ? 0 : labelLetterSpacing,
                                     lineHeight: labelFontSize + 4,
+                                    fontFamily: isRTL ? 'Cairo_700Bold' : 'PlusJakartaSans_700Bold',
                                     textAlign: 'center',
                                     width: '100%',
                                 }}

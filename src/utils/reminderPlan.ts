@@ -4,6 +4,7 @@ import { computePredictedOdometer, countServiceWarnings } from './maintenance';
 import { getMaintenanceDueResult } from './maintenanceDue';
 import type { MaintenanceTaskProjection } from '../maintenance/types';
 import { maintenanceComponentGroup } from '../maintenance/presentation';
+import { t } from '../i18n/core';
 
 export const MAINTENANCE_REMINDER_IDS = {
   preRide: '3azza-pre-ride-daily',
@@ -66,8 +67,8 @@ export function buildMaintenanceReminderPlan(
   const plan: DailyReminderPlanItem[] = [
     {
       identifier: MAINTENANCE_REMINDER_IDS.preRide,
-      title: 'Pre-ride check',
-      body: 'Run brakes, tires, lights, and oil checks before the next trip.',
+      title: t('notifications.preRideTitle'),
+      body: t('notifications.preRideBody'),
       route: 'PreRideCheck',
       hour: 8,
       minute: 0,
@@ -77,8 +78,8 @@ export function buildMaintenanceReminderPlan(
   if (dueCount > 0) {
     plan.push({
       identifier: MAINTENANCE_REMINDER_IDS.service,
-      title: `${dueCount} service ${dueCount === 1 ? 'item needs' : 'items need'} attention`,
-      body: 'Open the service planner and log completed work when it is done.',
+      title: t('notifications.serviceTitle', { count: dueCount }),
+      body: t('notifications.serviceBody'),
       route: 'Maintenance',
       hour: 18,
       minute: 0,
@@ -88,8 +89,8 @@ export function buildMaintenanceReminderPlan(
   if (documentAttentionCount > 0) {
     plan.push({
       identifier: MAINTENANCE_REMINDER_IDS.documents,
-      title: `${documentAttentionCount} ${documentAttentionCount === 1 ? 'document needs' : 'documents need'} attention`,
-      body: 'Review expiry dates in your local document records.',
+      title: t('notifications.documentsTitle', { count: documentAttentionCount }),
+      body: t('notifications.documentsBody'),
       route: 'Vault',
       hour: 19,
       minute: 30,
@@ -112,8 +113,8 @@ export function buildDomainMaintenanceReminderPlan(
   ).length;
   const plan: DailyReminderPlanItem[] = [{
     identifier: MAINTENANCE_REMINDER_IDS.preRide,
-    title: 'Pre-ride check',
-    body: 'Run brakes, tires, lights, and oil checks before the next trip.',
+    title: t('notifications.preRideTitle'),
+    body: t('notifications.preRideBody'),
     route: 'PreRideCheck',
     hour: 8,
     minute: 0,
@@ -121,8 +122,8 @@ export function buildDomainMaintenanceReminderPlan(
   if (dueCount > 0) {
     plan.push({
       identifier: MAINTENANCE_REMINDER_IDS.service,
-      title: `${dueCount} maintenance ${dueCount === 1 ? 'area needs' : 'areas need'} attention`,
-      body: 'Open Maintenance and record only the action actually completed.',
+      title: t('notifications.maintenanceTitle', { count: dueCount }),
+      body: t('notifications.maintenanceBody'),
       route: 'Maintenance',
       hour: 18,
       minute: 0,
@@ -131,8 +132,8 @@ export function buildDomainMaintenanceReminderPlan(
   if (documentAttentionCount > 0) {
     plan.push({
       identifier: MAINTENANCE_REMINDER_IDS.documents,
-      title: `${documentAttentionCount} ${documentAttentionCount === 1 ? 'document needs' : 'documents need'} attention`,
-      body: 'Review expiry dates in your local document records.',
+      title: t('notifications.documentsTitle', { count: documentAttentionCount }),
+      body: t('notifications.documentsBody'),
       route: 'Vault',
       hour: 19,
       minute: 30,

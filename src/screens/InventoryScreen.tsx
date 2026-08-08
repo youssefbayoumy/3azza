@@ -17,6 +17,7 @@ import AppListContinuation from '../components/ui/AppListContinuation';
 import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
+import { formatNumber, localizeErrorMessage, useTranslation } from '../i18n';
 
 const ICON_MAP: Record<string, string> = {
     'Oil': 'oil-barrel',
@@ -36,6 +37,7 @@ function getIconName(name: string): string {
 }
 
 export default function InventoryScreen() {
+    const { t } = useTranslation();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [totalUnits, setTotalUnits] = useState(0);
     const { canLoadOlder, limit, loadOlder } = useIncrementalRecordLimit(items.length);
@@ -60,8 +62,7 @@ export default function InventoryScreen() {
 
     const { error: loadError, loading, reload } = useFocusedLoader(
         loadItems,
-        'Inventory could not be loaded. Your saved quantities were not changed.',
-        'Failed to load inventory:'
+        t('inventory.loadError'), t('inventory.loadLog')
     );
 
     const updateQuantity = async (item: InventoryItem, quantity: number) => {
@@ -70,7 +71,7 @@ export default function InventoryScreen() {
             await reload();
         } catch (error) {
             console.error('Failed to update inventory quantity:', error);
-            Alert.alert('Quantity not changed', 'The saved inventory quantity is unchanged. Try again.');
+            Alert.alert(t('inventory.quantityFailed'), t('inventory.quantityFailedBody'));
         }
     };
 
@@ -84,10 +85,10 @@ export default function InventoryScreen() {
     };
 
     const handleDelete = (item: InventoryItem) => {
-        Alert.alert('Delete Item', `Remove "${item.name}" from inventory?`, [
-            { text: 'Cancel', style: 'cancel' },
+        Alert.alert(t('inventory.deleteTitle'), t('inventory.deleteBody', { name: item.name }), [
+            { text: t('common.cancel'), style: 'cancel' },
             {
-                text: 'Delete',
+                text: t('common.delete'),
                 style: 'destructive',
                 onPress: async () => {
                     try {
@@ -95,7 +96,7 @@ export default function InventoryScreen() {
                         await reload();
                     } catch (error) {
                         console.error('Failed to delete inventory item:', error);
-                        Alert.alert('Item not deleted', 'The inventory item is still saved. Try again.');
+                        Alert.alert(t('inventory.deleteFailed'), t('inventory.deleteFailedBody'));
                     }
                 },
             },
@@ -104,11 +105,11 @@ export default function InventoryScreen() {
 
     const handleAddItem = async () => {
         if (!formName.trim()) {
-            Alert.alert('Missing Name', 'Please enter a part name.');
+            Alert.alert(t('inventory.missingName'), t('inventory.missingNameBody'));
             return;
         }
         const quantityResult = formQuantity.trim()
-            ? parseWholeNumberInput(formQuantity, { label: 'Quantity', min: 0 })
+            ? parseWholeNumberInput(formQuantity, { label: t('inventory.quantity'), min: 0 })
             : { ok: true as const, value: 0 };
         if (!quantityResult.ok) {
             setFormQuantityError(quantityResult.message);
@@ -130,14 +131,14 @@ export default function InventoryScreen() {
             setModalVisible(false);
             await reload();
         } catch (error) {
-            setFormQuantityError(error instanceof Error ? error.message : 'Could not save this quantity.');
+            setFormQuantityError(localizeErrorMessage(error, t('inventory.saveQuantityFailed')));
         } finally {
             setSaving(false);
         }
     };
 
     if (loading || loadError) {
-        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title="INVENTORY" />;
+        return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title={t('inventory.title')} />;
     }
 
     return (
@@ -146,7 +147,7 @@ export default function InventoryScreen() {
                 tone="elevated"
                 leading={<MaterialIcons name="precision-manufacturing" size={24} color="#a9c7ff" />}
             >
-                <Text className="text-xl font-bold text-[#C0C0C0] tracking-widest font-headline uppercase" numberOfLines={1}>PARTS</Text>
+                <Text className="text-xl font-bold text-[#C0C0C0] tracking-widest font-headline uppercase" numberOfLines={1}>{t('inventory.title')}</Text>
             </AppTopBar>
 
             <ScrollView
@@ -157,13 +158,13 @@ export default function InventoryScreen() {
                 <View className="mb-10 flex-col gap-6">
                     <View>
                         <ActiveVehicleChip />
-                        <Text className="font-label text-xs font-bold tracking-[0.2em] text-[#a9c7ff] uppercase mb-1">Stock Overview</Text>
-                        <Text className="font-headline text-3xl font-bold tracking-tight text-on-surface">Parts Inventory</Text>
+                        <Text className="font-label text-xs font-bold tracking-[0.2em] text-[#a9c7ff] uppercase mb-1">{t('inventory.overview')}</Text>
+                        <Text className="font-headline text-3xl font-bold tracking-tight text-on-surface">{t('inventory.heading')}</Text>
                     </View>
                     <View className="flex-row gap-4">
                         <View className="bg-surface-container-low px-4 py-3 rounded-xl border border-outline-variant/15 flex-row items-center gap-3">
                             <View className="w-2 h-2 rounded-full bg-primary" />
-                            <Text className="font-label text-xs font-bold tracking-widest uppercase text-on-surface">{totalUnits} TOTAL UNITS</Text>
+                            <Text className="font-label text-xs font-bold tracking-widest uppercase text-on-surface">{t('inventory.totalUnits', { count: formatNumber(totalUnits) })}</Text>
                         </View>
                     </View>
                 </View>
@@ -172,8 +173,8 @@ export default function InventoryScreen() {
                     <EmptyState
                         className="mb-8"
                         icon="inventory-2"
-                        message="Your repository is empty. Catalog your first component."
-                        title="No items found"
+                        message={t('inventory.emptyBody')}
+                        title={t('inventory.emptyTitle')}
                     />
                 ) : (
                     <View className="flex-col gap-6 mb-6">
@@ -193,9 +194,9 @@ export default function InventoryScreen() {
                                             <MaterialIcons name={getIconName(item.name) as any} size={28} color="#a9c7ff" />
                                         </View>
                                         <View className="items-end">
-                                            {isOutOfStock && <StatusBadge className="mb-2" label="Out of Stock" tone="warning" />}
+                                            {isOutOfStock && <StatusBadge className="mb-2" label={t('inventory.out')} tone="warning" />}
                                             {!isOutOfStock && (
-                                                <Text className="font-label text-xs font-bold tracking-[0.2em] text-[#C0C0C0]/40 uppercase">Quantity</Text>
+                                                <Text className="font-label text-xs font-bold tracking-[0.2em] text-[#C0C0C0]/40 uppercase">{t('inventory.quantity')}</Text>
                                             )}
                                             <Text className={`font-headline text-4xl font-bold ${isOutOfStock ? 'text-on-surface/30' : 'text-on-surface'}`}>
                                                 {String(item.quantity).padStart(2, '0')}
@@ -207,7 +208,7 @@ export default function InventoryScreen() {
                                         <TouchableOpacity
                                             disabled={isOutOfStock}
                                             className={`flex-1 items-center justify-center h-12 rounded-lg border border-outline-variant/20 ${isOutOfStock ? 'bg-surface-container-high/50 opacity-50' : 'bg-surface-container-high'}`}
-                                            accessibilityLabel={`Decrease ${item.name} quantity`}
+                                            accessibilityLabel={t('inventory.decrease', { name: item.name })}
                                             accessibilityRole="button"
                                             accessibilityState={{ disabled: isOutOfStock }}
                                             onPress={() => handleDecrement(item)}
@@ -216,7 +217,7 @@ export default function InventoryScreen() {
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             className="flex-1 items-center justify-center h-12 bg-secondary rounded-lg"
-                                            accessibilityLabel={`Increase ${item.name} quantity`}
+                                            accessibilityLabel={t('inventory.increase', { name: item.name })}
                                             accessibilityRole="button"
                                             onPress={() => handleIncrement(item)}
                                         >
@@ -234,20 +235,20 @@ export default function InventoryScreen() {
                     {/* Add New Part */}
                     <TouchableOpacity
                         className="bg-surface-container-low border-2 border-dashed border-outline-variant/30 rounded-xl p-6 flex-col items-center justify-center min-h-[220px] mb-8"
-                        accessibilityLabel="Catalog new component"
+                        accessibilityLabel={t('inventory.catalog')}
                         accessibilityRole="button"
                         onPress={() => setModalVisible(true)}
                     >
                         <View className="w-16 h-16 rounded-full border-2 border-outline-variant/30 items-center justify-center mb-4">
                             <MaterialIcons name="add" size={32} color="#8e9196" />
                         </View>
-                        <Text className="font-label text-xs font-bold tracking-widest text-outline uppercase">Catalog New Component</Text>
+                        <Text className="font-label text-xs font-bold tracking-widest text-outline uppercase">{t('inventory.catalog')}</Text>
                     </TouchableOpacity>
             </ScrollView>
 
             {/* Add Item Modal */}
             <ProtectedModal
-                accessibilityLabel="New inventory component dialog"
+                accessibilityLabel={t('inventory.dialog')}
                 visible={modalVisible}
                 animationType="slide"
                 transparent
@@ -260,19 +261,19 @@ export default function InventoryScreen() {
                 <AppBottomSheet
                     closeDisabled={saving}
                     onClose={() => { setFormQuantityError(null); setModalVisible(false); }}
-                    title="New Component"
+                    title={t('inventory.newComponent')}
                 >
                         <View className="flex-col gap-4 mb-6">
                             <AppTextField
-                                label="Part Name *"
-                                placeholder="e.g. Oil Filter"
+                                label={t('inventory.partName')}
+                                placeholder={t('inventory.partPlaceholder')}
                                 value={formName}
                                 onChangeText={setFormName}
                             />
-                            <AppTextField label="Category" placeholder="e.g. Filter, Oil, Belt" value={formCategory} onChangeText={setFormCategory} />
+                            <AppTextField label={t('inventory.category')} placeholder={t('inventory.categoryPlaceholder')} value={formCategory} onChangeText={setFormCategory} />
                             <AppTextField
                                 error={formQuantityError}
-                                label="Initial Quantity"
+                                label={t('inventory.initialQuantity')}
                                 placeholder="0"
                                 keyboardType="number-pad"
                                 value={formQuantity}
@@ -282,7 +283,7 @@ export default function InventoryScreen() {
                                 }}
                             />
                         </View>
-                        <AppPrimaryButton label="Add to Inventory" loading={saving} onPress={handleAddItem} />
+                        <AppPrimaryButton label={t('inventory.add')} loading={saving} onPress={handleAddItem} />
                 </AppBottomSheet>
             </ProtectedModal>
         </AppScreen>

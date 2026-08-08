@@ -12,9 +12,11 @@ import {
 } from '../../services/auth';
 import { isValidPin, normalizePinInput } from '../../utils/appLock';
 import AppFormScreen from '../../components/ui/AppFormScreen';
+import { useTranslation } from '../../i18n';
 
 export default function LoginScreen() {
     const login = useAppStore((s) => s.login);
+    const { t, tp } = useTranslation();
 
     const [pin, setPin] = useState('');
     const [biometricAvailable, setBiometricAvailable] = useState<boolean | null>(null);
@@ -37,7 +39,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!isValidPin(pin)) {
-            Alert.alert('Invalid PIN', 'Enter the 4-digit app-lock PIN.');
+            Alert.alert(t('lock.invalidTitle'), t('lock.invalidEntry'));
             return;
         }
 
@@ -45,7 +47,7 @@ export default function LoginScreen() {
         try {
             const lockout = await getPinLockout();
             if (lockout.isLocked) {
-                Alert.alert('Locked', `Too many attempts. Try again in ${lockout.secondsRemaining} seconds.`);
+                Alert.alert(t('lock.locked'), t('lock.trySeconds', { seconds: lockout.secondsRemaining }));
                 return;
             }
 
@@ -55,18 +57,18 @@ export default function LoginScreen() {
             } else {
                 const next = await recordFailedPinAttempt();
                 if (next.lockedUntil) {
-                    Alert.alert('Locked', 'Too many incorrect attempts. PIN login is locked for 5 minutes.');
+                    Alert.alert(t('lock.locked'), t('lock.lockedFive'));
                 } else {
                     const remainingAttempts = 5 - next.failedAttempts;
                     Alert.alert(
-                        'Incorrect PIN',
-                        `The PIN is incorrect. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`
+                        t('lock.incorrect'),
+                        tp('lock.attempts', remainingAttempts)
                     );
                 }
             }
         } catch (err) {
             console.error('PIN unlock error:', err);
-            Alert.alert('Unlock failed', '3azza could not check the app-lock PIN. Try again.');
+            Alert.alert(t('lock.unlockFailed'), t('lock.unlockFailedBody'));
         } finally {
             setBusyAction(null);
         }
@@ -76,7 +78,7 @@ export default function LoginScreen() {
         setBusyAction('biometric');
         try {
             if (!(await hasRegisteredPin())) {
-                Alert.alert('App lock unavailable', 'No app-lock PIN is registered on this device.');
+                Alert.alert(t('lock.noPin'), t('lock.noPinBody'));
                 return;
             }
 
@@ -88,18 +90,18 @@ export default function LoginScreen() {
             }
             if (outcome === 'cancelled') return;
             if (outcome === 'failed') {
-                Alert.alert('Not unlocked', 'The biometric did not match. Use your app PIN or try again.');
+                Alert.alert(t('lock.notUnlocked'), t('lock.notUnlockedBody'));
             } else if (outcome === 'locked') {
-                Alert.alert('Biometrics locked', 'The device temporarily locked biometric attempts. Use your app PIN.');
+                Alert.alert(t('lock.biometricLocked'), t('lock.biometricLockedBody'));
             } else if (outcome === 'unavailable') {
                 setBiometricAvailable(false);
-                Alert.alert('Biometrics unavailable', 'Biometric unlock is not available. Use your app PIN.');
+                Alert.alert(t('lock.biometricUnavailableTitle'), t('lock.biometricUnavailableBody'));
             } else {
-                Alert.alert('Biometric error', 'The device could not complete biometric unlock. Use your app PIN.');
+                Alert.alert(t('lock.biometricError'), t('lock.biometricErrorBody'));
             }
         } catch (err) {
             console.error('Biometric unlock error:', err);
-            Alert.alert('Biometric error', 'The device could not complete biometric unlock. Use your app PIN.');
+            Alert.alert(t('lock.biometricError'), t('lock.biometricErrorBody'));
         } finally {
             setBusyAction(null);
         }
@@ -108,13 +110,13 @@ export default function LoginScreen() {
     return (
         <AppFormScreen>
             <View className="mb-12 items-center">
-                <Text className="font-headline text-4xl font-bold text-on-surface mb-2">App Locked</Text>
-                <Text className="font-body text-on-surface-variant/80 text-center">Enter your app PIN to view maintenance records stored on this device.</Text>
+                <Text className="font-headline text-4xl font-bold text-on-surface mb-2">{t('lock.title')}</Text>
+                <Text className="font-body text-on-surface-variant/80 text-center">{t('lock.body')}</Text>
             </View>
 
             <View className="flex-col gap-6">
                 <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">4-Digit PIN</Text>
+                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-3">{t('lock.pinLabel')}</Text>
                     <TextInput
                         className="bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-body text-xl tracking-widest border border-outline-variant/20"
                         placeholder="••••"
@@ -124,7 +126,7 @@ export default function LoginScreen() {
                         maxLength={4}
                         value={pin}
                         onChangeText={(value) => setPin(normalizePinInput(value))}
-                        accessibilityLabel="4-digit app-lock PIN"
+                        accessibilityLabel={t('lock.pinA11y')}
                     />
                 </View>
 
@@ -135,7 +137,7 @@ export default function LoginScreen() {
                     activeOpacity={0.85}
                     accessibilityRole="button"
                 >
-                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">Unlock App</Text>
+                    <Text className="font-label text-base font-bold text-[#081421] uppercase tracking-wider">{t('lock.unlock')}</Text>
                 </TouchableOpacity>
 
                 {biometricAvailable ? (
@@ -146,11 +148,11 @@ export default function LoginScreen() {
                         activeOpacity={0.85}
                         accessibilityRole="button"
                     >
-                        <Text className="font-label text-sm font-bold text-primary uppercase tracking-wider">Unlock with Biometrics</Text>
+                        <Text className="font-label text-sm font-bold text-primary uppercase tracking-wider">{t('lock.unlockBiometric')}</Text>
                     </TouchableOpacity>
                 ) : biometricAvailable === false ? (
                     <Text className="font-body text-xs text-on-surface-variant/70 text-center">
-                        Biometric unlock is not set up on this device. Use your app PIN.
+                        {t('lock.biometricsUnavailable')}
                     </Text>
                 ) : null}
             </View>

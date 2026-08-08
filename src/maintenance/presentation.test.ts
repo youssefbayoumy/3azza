@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { NEW_SYMPHONY_ST_200_PROFILE } from './profiles';
+import { NEW_SYMPHONY_ST_200_PROFILE, UNIVERSAL_MAINTENANCE_CATALOGUE } from './profiles';
 import {
   buildMaintenancePresentation,
   canCustomizeMaintenanceTask,
@@ -13,6 +13,7 @@ import {
 } from './presentation';
 import { projectMaintenanceTasks } from './scheduler';
 import type { MaintenanceEvent, MaintenanceRule, ScooterMaintenanceProfile } from './types';
+import { setActiveLocale } from '../i18n/localeState';
 
 const NOW = new Date(2026, 7, 1, 12, 0, 0);
 
@@ -54,20 +55,24 @@ function project(profile: ScooterMaintenanceProfile, events: MaintenanceEvent[] 
 
 describe('maintenance presentation taxonomy', () => {
   it('uses concise component and action labels', () => {
-    assert.equal(maintenanceComponentGroup('air-cleaner-element').key, 'air-filter');
-    assert.equal(maintenanceComponentGroup('air-cleaner-system').key, 'air-filter');
-    assert.equal(maintenanceComponentGroup('transmission-oil').key, 'gear-oil');
-    assert.equal(maintenanceComponentGroup('steering-bearing-handles').key, 'steering');
-    assert.equal(maintenanceComponentGroup('shock-absorbers').key, 'suspension');
+    assert.equal(maintenanceComponentGroup('air-cleaner-element').key, 'air-cleaner-element');
+    assert.equal(maintenanceComponentGroup('air-cleaner-system').key, 'air-cleaner-system');
+    assert.equal(maintenanceComponentGroup('transmission-oil').key, 'transmission-oil');
+    assert.equal(maintenanceComponentGroup('steering-bearing-handles').key, 'steering-bearing-handles');
+    assert.equal(maintenanceComponentGroup('shock-absorbers').key, 'shock-absorbers');
     assert.equal(maintenanceComponentGroup('suspension').key, 'suspension');
-    assert.equal(maintenanceComponentGroup('general-fasteners').key, 'nuts-and-bolts');
+    assert.equal(maintenanceComponentGroup('general-fasteners').key, 'general-fasteners');
+    assert.equal(maintenanceComponentGroup('oil-filter-screen').label, 'Oil filter screen');
+    assert.equal(maintenanceComponentGroup('transmission').label, 'Transmission');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'engine-oil', action: 'replace' }), 'Engine-oil replacement');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'transmission-oil', action: 'replace' }), 'Gear-oil replacement');
-    assert.equal(naturalMaintenanceActionLabel({ componentId: 'brake-pads', action: 'inspect' }), 'Brake inspection');
+    assert.equal(naturalMaintenanceActionLabel({ componentId: 'brake-pads', action: 'inspect' }), 'Brake-pad inspection');
+    assert.equal(naturalMaintenanceActionLabel({ componentId: 'valve-clearance', action: 'inspect' }), 'Valve clearance inspection');
+    assert.equal(naturalMaintenanceActionLabel({ componentId: 'main-side-stands', action: 'lubricate' }), 'Main and side stands lubrication');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'engine-fasteners', action: 'inspect' }), 'Engine fastener inspection');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'general-fasteners', action: 'inspect' }), 'General fastener inspection');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'shock-absorbers', action: 'inspect' }), 'Shock absorber inspection');
-    assert.equal(naturalMaintenanceActionLabel({ componentId: 'steering-bearing-handles', action: 'inspect' }), 'Steering inspection');
+    assert.equal(naturalMaintenanceActionLabel({ componentId: 'steering-bearing-handles', action: 'inspect' }), 'Steering-bearing and handle inspection');
     assert.equal(naturalMaintenanceActionLabel({ componentId: 'suspension', action: 'inspect' }), 'Suspension inspection');
     assert.equal(naturalRecordActionLabel({ componentId: 'engine-oil', action: 'replace' }), 'Record engine-oil replacement');
     assert.equal(naturalRecordActionLabel({ componentId: 'engine-oil', action: 'replace' }, true), 'Record previous engine-oil replacement');
@@ -77,7 +82,7 @@ describe('maintenance presentation taxonomy', () => {
     assert.equal(naturalRecordActionLabel({ componentId: 'engine-fasteners', action: 'inspect' }), 'Record engine fastener inspection');
     assert.equal(naturalRecordActionLabel({ componentId: 'general-fasteners', action: 'inspect' }), 'Record general fastener inspection');
     assert.equal(naturalRecordActionLabel({ componentId: 'shock-absorbers', action: 'inspect' }), 'Record shock absorber inspection');
-    assert.equal(naturalRecordActionLabel({ componentId: 'steering-bearing-handles', action: 'inspect' }), 'Record steering inspection');
+    assert.equal(naturalRecordActionLabel({ componentId: 'steering-bearing-handles', action: 'inspect' }), 'Record steering-bearing and handle inspection');
     assert.equal(naturalRecordActionLabel({ componentId: 'suspension', action: 'inspect' }), 'Record suspension inspection');
   });
 
@@ -97,7 +102,7 @@ describe('maintenance presentation taxonomy', () => {
     assert.equal(maintenanceSectionForTask(tasks.find((task) => task.isOneTime)!).key, 'scheduled-maintenance');
   });
 
-  it('groups related air-filter actions in one scheduled-maintenance home', () => {
+  it('keeps the air-cleaner element and air-cleaner system as separately named components', () => {
     const profile = profileWithRules(
       'air-cleaner-element.inspect.recurring-1000km-1mo',
       'air-cleaner-element.clean.if-needed',
@@ -105,41 +110,43 @@ describe('maintenance presentation taxonomy', () => {
       'air-cleaner-system.inspect.initial-300'
     );
     const views = buildMaintenancePresentation(project(profile));
-    assert.equal(views.length, 1);
-    assert.equal(views[0].key, 'air-filter');
-    assert.equal(views[0].label, 'Air filter');
-    assert.deepEqual(new Set(views[0].actions.map((action) => action.label)), new Set([
+    assert.equal(views.length, 2);
+    const element = views.find((view) => view.key === 'air-cleaner-element');
+    const system = views.find((view) => view.key === 'air-cleaner-system');
+    assert.ok(element);
+    assert.ok(system);
+    assert.equal(element.label, 'Air cleaner element');
+    assert.deepEqual(new Set(element.actions.map((action) => action.label)), new Set([
       'Air-filter inspection',
       'Air-filter cleaning',
       'Air-filter replacement',
-      'Initial air-filter inspection',
     ]));
-    assert.ok(views[0].actions.every((action) => action.section.key === 'scheduled-maintenance'));
-    assert.equal(views[0].additionalSections.length, 0);
-    assert.ok(views[0].actions.every((action) => action.technicianGuidance === 'Workshop inspection recommended'));
+    assert.equal(system.label, 'Air cleaner system');
+    assert.deepEqual(system.actions.map((action) => action.label), ['Initial air cleaner system inspection']);
+    assert.ok(views.every((view) => view.actions.every((action) => action.section.key === 'scheduled-maintenance')));
+    assert.ok(views.every((view) => view.additionalSections.length === 0));
+    assert.ok(views.every((view) => view.actions.every((action) => action.technicianGuidance === 'Workshop inspection recommended')));
   });
 
-  it('collapses low-level technical checks into one workshop component', () => {
+  it('keeps low-level technical checks as separately named components', () => {
     const profile = profileWithRules(
       'carburetor-idle-speed.inspect.recurring-6000km-6mo',
       'fuel-lines.inspect.recurring-3000km-3mo'
     );
     const views = buildMaintenancePresentation(project(profile));
-    assert.equal(views.length, 1);
-    assert.equal(views[0].key, 'general-workshop-inspection');
-    assert.equal(views[0].label, 'General workshop inspection');
-    assert.equal(views[0].actions.length, 2);
+    assert.equal(views.length, 2);
+    assert.deepEqual(new Set(views.map((view) => view.key)), new Set(['carburetor-idle-speed', 'fuel-lines']));
+    assert.deepEqual(new Set(views.map((view) => view.label)), new Set(['Carburetor idle speed', 'Fuel-tank switch and lines']));
   });
 
-  it('does not present one child interval as a shared schedule when grouped actions differ', () => {
+  it('does not merge separately scheduled fastener components', () => {
     const profile = profileWithRules(
       'engine-fasteners.inspect.recurring-3000km-3mo',
       'general-fasteners.inspect.recurring-1000km-1mo'
     );
-    const summary = maintenanceGroupSummary(project(profile));
-    assert.match(summary, /^Multiple schedules/);
-    assert.doesNotMatch(summary, /^Every 1,000 km/);
-    assert.doesNotMatch(summary, /^Every 3,000 km/);
+    const views = buildMaintenancePresentation(project(profile));
+    assert.equal(views.length, 2);
+    assert.deepEqual(new Set(views.map((view) => view.key)), new Set(['engine-fasteners', 'general-fasteners']));
   });
 
   it('shows override badges only for vehicle-specific settings', () => {
@@ -179,30 +186,36 @@ describe('maintenance presentation taxonomy', () => {
     assert.ok(views.every((view) => view.additionalSections.length === 0));
     assert.ok(views.every((view) => view.actions.every((action) => action.section.key === view.section.key)));
 
-    const expectedHomes = [
-      ['engine-oil', 'engine-oil', 'scheduled-maintenance'],
-      ['oil-filter-screen', 'engine-oil', 'scheduled-maintenance'],
-      ['transmission-oil', 'gear-oil', 'scheduled-maintenance'],
-      ['transmission', 'gear-oil', 'scheduled-maintenance'],
-      ['air-cleaner-element', 'air-filter', 'scheduled-maintenance'],
-      ['spark-plug', 'spark-plug', 'scheduled-maintenance'],
-      ['drive-belt-rollers', 'cvt', 'scheduled-maintenance'],
-      ['clutch-disk', 'cvt', 'scheduled-maintenance'],
-      ['brake-pads', 'brakes', 'wear-and-condition'],
-      ['brake-fluid', 'brakes', 'wear-and-condition'],
-      ['tires', 'tires', 'wear-and-condition'],
-      ['battery', 'battery', 'wear-and-condition'],
-      ['steering-bearing-handles', 'steering', 'general-checks'],
-      ['shock-absorbers', 'suspension', 'general-checks'],
-      ['suspension', 'suspension', 'general-checks'],
-      ['engine-fasteners', 'nuts-and-bolts', 'general-checks'],
-      ['general-fasteners', 'nuts-and-bolts', 'general-checks'],
-      ['fuel-lines', 'general-workshop-inspection', 'general-checks'],
-    ] as const;
-    for (const [componentId, groupKey, sectionKey] of expectedHomes) {
-      const home = maintenanceComponentGroup(componentId);
-      assert.equal(home.key, groupKey, componentId);
-      assert.equal(home.section.key, sectionKey, componentId);
+    for (const componentId of new Set(tasks.map((task) => task.componentId))) {
+      assert.equal(maintenanceComponentGroup(componentId).key, componentId);
+    }
+    assert.equal(maintenanceComponentGroup('general-workshop-inspection').key, 'general-workshop-inspection');
+    assert.equal(maintenanceComponentGroup('brake-system').section.key, 'wear-and-condition');
+  });
+
+  it('gives every known catalogue component its own exact presentation identity', () => {
+    for (const component of UNIVERSAL_MAINTENANCE_CATALOGUE.components) {
+      const presentation = maintenanceComponentGroup(component.id);
+      assert.equal(presentation.key, component.id);
+      assert.notEqual(presentation.label, `[${component.id}]`, component.id);
+    }
+  });
+
+  it('names every Arabic profile component and action without a generic maintenance label', () => {
+    setActiveLocale('ar-EG');
+    try {
+      for (const component of UNIVERSAL_MAINTENANCE_CATALOGUE.components) {
+        const presentation = maintenanceComponentGroup(component.id);
+        assert.match(presentation.label, /[\u0600-\u06ff]/, component.id);
+        assert.doesNotMatch(presentation.label, /صيانة (?:أخرى|تانية)|فحص عام في الورشة/, component.id);
+      }
+      for (const rule of NEW_SYMPHONY_ST_200_PROFILE.rules) {
+        const label = naturalMaintenanceActionLabel(rule);
+        assert.match(label, /[\u0600-\u06ff]/, rule.id);
+        assert.doesNotMatch(label, /صيانة (?:أخرى|تانية)|فحص عام في الورشة|\[[^\]]+\]/, rule.id);
+      }
+    } finally {
+      setActiveLocale('en');
     }
   });
 
@@ -211,17 +224,17 @@ describe('maintenance presentation taxonomy', () => {
     const rules = new Map(tasks.map((task) => [task.ruleId, task]));
     const expectedChildren = [
       ['engine-oil.condition-check.recurring-500km', 'engine-oil'],
-      ['transmission.inspect-leakage.recurring-1000km-1mo', 'gear-oil'],
-      ['air-cleaner-element.inspect.recurring-1000km-1mo', 'air-filter'],
-      ['air-cleaner-element.clean.if-needed', 'air-filter'],
-      ['air-cleaner-element.replace.if-necessary', 'air-filter'],
-      ['brake-pads.inspect.recurring-1000km-1mo', 'brakes'],
-      ['brake-pads.replace.at-wear-limit', 'brakes'],
+      ['transmission.inspect-leakage.recurring-1000km-1mo', 'transmission'],
+      ['air-cleaner-element.inspect.recurring-1000km-1mo', 'air-cleaner-element'],
+      ['air-cleaner-element.clean.if-needed', 'air-cleaner-element'],
+      ['air-cleaner-element.replace.if-necessary', 'air-cleaner-element'],
+      ['brake-pads.inspect.recurring-1000km-1mo', 'brake-pads'],
+      ['brake-pads.replace.at-wear-limit', 'brake-pads'],
       ['tires.inspect.recurring-1000km-1mo', 'tires'],
       ['tires.replace.at-wear-or-damage', 'tires'],
-      ['drive-belt-rollers.inspect.recurring-6000km-6mo', 'cvt'],
-      ['drive-belt-rollers.replace.recurring-12000km-12mo', 'cvt'],
-      ['clutch-disk.inspect.recurring-6000km-6mo', 'cvt'],
+      ['drive-belt-rollers.inspect.recurring-6000km-6mo', 'drive-belt-rollers'],
+      ['drive-belt-rollers.replace.recurring-12000km-12mo', 'drive-belt-rollers'],
+      ['clutch-disk.inspect.recurring-6000km-6mo', 'clutch-disk'],
     ] as const;
     for (const [ruleId, groupKey] of expectedChildren) {
       const task = rules.get(ruleId);
@@ -229,7 +242,7 @@ describe('maintenance presentation taxonomy', () => {
       assert.equal(maintenanceComponentGroup(task.componentId).key, groupKey, ruleId);
     }
     assert.equal(rules.has('air-cleaner-element.replace.paper-recurring-6000km-6mo'), false);
-    const airTasks = tasks.filter((task) => maintenanceComponentGroup(task.componentId).key === 'air-filter');
+    const airTasks = tasks.filter((task) => task.componentId === 'air-cleaner-element');
     assert.equal(maintenanceGroupSummary(airTasks), 'Inspection every 1,000 km · replace when needed');
   });
 });
@@ -255,7 +268,7 @@ describe('production-safe maintenance presentation', () => {
       defaultHistoryKnowledge: 'known_no_prior_completion',
     });
     const views = buildMaintenancePresentation(tasks);
-    assert.equal(views[0].key, 'brakes');
+    assert.equal(views[0].key, 'brake-pads');
     assert.equal(views[0].actions[0].statusLabel, 'Replace now');
     assert.equal(views.find((view) => view.key === 'engine-oil')?.actions[0].statusLabel, 'Overdue');
   });
