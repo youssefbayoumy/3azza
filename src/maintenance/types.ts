@@ -178,6 +178,15 @@ export type MaintenanceComponentDefinition = {
   description: string;
   defaultSafetyCritical: boolean;
   allowedActions: MaintenanceAction[];
+  applicability?: {
+    powertrains?: ('four_stroke' | 'two_stroke' | 'electric')[];
+    transmissions?: ('cvt' | 'manual' | 'automatic_other')[];
+    finalDrives?: ('chain' | 'belt' | 'shaft' | 'integrated')[];
+    cooling?: ('air' | 'liquid')[];
+    brakeSystems?: ('disc' | 'drum' | 'mixed')[];
+    abs?: ('yes' | 'no')[];
+    wheelTypes?: ('cast' | 'spoke' | 'mixed')[];
+  };
 };
 
 export type MaintenanceCatalogue = {

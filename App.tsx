@@ -1,5 +1,4 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
 import { useFonts, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { Manrope_400Regular, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans';
@@ -189,7 +188,6 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.recoveryScreen}>
-          <StatusBar style="light" backgroundColor="#081421" translucent={false} />
           <Text accessibilityRole="header" style={styles.recoveryTitle}>{t('recovery.title')}</Text>
           <Text style={styles.recoveryMessage}>
             {t('recovery.body')}
@@ -210,7 +208,6 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: '#081421' }}>
-        <StatusBar style="light" backgroundColor="#081421" translucent={false} />
         <NavigationContainer ref={navigationRef} onReady={() => setNavigationReady(true)}>
           <RootNavigator />
         </NavigationContainer>

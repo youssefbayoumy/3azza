@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   changeGuidedCatalogSelection,
+  changeGuidedCustomIdentity,
+  changeGuidedVehicleCapability,
   createGuidedSelectionDraft,
   filterIdentificationCandidates,
   getDraftCandidates,
@@ -10,6 +12,7 @@ import {
 } from './guidedScooterIdentification';
 import type { VariantIdentificationProfile } from '../modelData/types';
 import { NEW_SYMPHONY_ST_200_PROFILE } from '../maintenance/profiles';
+import { OTHER_BRAND_ID } from './scooterCatalog';
 
 const value = <T>(input: T | null) => ({
   value: input,
@@ -72,5 +75,19 @@ describe('guided scooter identification profile gate', () => {
         .map((item) => item.variantId),
       ['carb', 'unknown']
     );
+  });
+
+  it('creates a confirmable basic-tracking identity for Other brand', () => {
+    let draft = changeGuidedCatalogSelection(createGuidedSelectionDraft(), 'brandId', OTHER_BRAND_ID);
+    assert.equal(isGuidedSelectionConfirmable(draft), false);
+    draft = changeGuidedCustomIdentity(draft, 'customBrandName', 'Dayun');
+    draft = changeGuidedCustomIdentity(draft, 'customModelName', 'DY 150');
+    draft = changeGuidedVehicleCapability(draft, 'powertrain', 'four_stroke');
+    draft = changeGuidedVehicleCapability(draft, 'transmission', 'manual');
+    assert.equal(isGuidedSelectionConfirmable(draft), true);
+    assert.equal(draft.selection.capabilities?.powertrain, 'four_stroke');
+    assert.equal(draft.selection.capabilities?.transmission, 'manual');
+    assert.deepEqual(getDraftCandidates(draft), []);
+    assert.equal(getNextIdentificationQuestion(draft), null);
   });
 });

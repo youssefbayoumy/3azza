@@ -1,4 +1,9 @@
-export const CURRENT_SCHEMA_VERSION = 18;
+import {
+  UNKNOWN_VEHICLE_CAPABILITIES_JSON,
+  VEHICLE_CAPABILITIES_SCHEMA_VERSION,
+} from '../catalog/vehicleCapabilities';
+
+export const CURRENT_SCHEMA_VERSION = 20;
 
 /**
  * Installs the narrow database capability used by the dedicated odometer-correction
@@ -90,6 +95,43 @@ export const ODOMETER_CORRECTION_SCHEMA_SQL = `
   END;
 `;
 
+export const CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL = `
+  DROP TRIGGER IF EXISTS prevent_invalid_vehicle_identity_insert;
+  DROP TRIGGER IF EXISTS prevent_invalid_vehicle_identity_update;
+
+  CREATE TRIGGER prevent_invalid_vehicle_identity_insert
+  BEFORE INSERT ON vehicle_profile
+  WHEN NEW.vehicle_selection_mode NOT IN ('catalog', 'custom_brand')
+    OR (NEW.vehicle_selection_mode = 'custom_brand' AND (
+      NEW.custom_brand_name IS NULL OR length(trim(NEW.custom_brand_name)) = 0
+      OR length(trim(NEW.custom_brand_name)) > 80
+      OR NEW.custom_model_name IS NULL OR length(trim(NEW.custom_model_name)) = 0
+      OR length(trim(NEW.custom_model_name)) > 80
+    ))
+    OR (NEW.vehicle_selection_mode = 'catalog' AND (
+      NEW.custom_brand_name IS NOT NULL OR NEW.custom_model_name IS NOT NULL
+    ))
+  BEGIN
+    SELECT RAISE(ABORT, 'Vehicle identity is invalid');
+  END;
+
+  CREATE TRIGGER prevent_invalid_vehicle_identity_update
+  BEFORE UPDATE OF vehicle_selection_mode, custom_brand_name, custom_model_name ON vehicle_profile
+  WHEN NEW.vehicle_selection_mode NOT IN ('catalog', 'custom_brand')
+    OR (NEW.vehicle_selection_mode = 'custom_brand' AND (
+      NEW.custom_brand_name IS NULL OR length(trim(NEW.custom_brand_name)) = 0
+      OR length(trim(NEW.custom_brand_name)) > 80
+      OR NEW.custom_model_name IS NULL OR length(trim(NEW.custom_model_name)) = 0
+      OR length(trim(NEW.custom_model_name)) > 80
+    ))
+    OR (NEW.vehicle_selection_mode = 'catalog' AND (
+      NEW.custom_brand_name IS NOT NULL OR NEW.custom_model_name IS NOT NULL
+    ))
+  BEGIN
+    SELECT RAISE(ABORT, 'Vehicle identity is invalid');
+  END;
+`;
+
 /** Canonical schema for a new install. Existing databases continue through versioned migrations. */
 export const CURRENT_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS app_meta (
@@ -117,8 +159,15 @@ export const CURRENT_SCHEMA_SQL = `
     scooter_brand_id TEXT,
     scooter_model_id TEXT,
     scooter_version_id TEXT,
-    scooter_variant_id TEXT
+    scooter_variant_id TEXT,
+    vehicle_selection_mode TEXT NOT NULL DEFAULT 'catalog',
+    custom_brand_name TEXT,
+    custom_model_name TEXT,
+    vehicle_capabilities_version INTEGER NOT NULL DEFAULT ${VEHICLE_CAPABILITIES_SCHEMA_VERSION},
+    vehicle_capabilities_json TEXT NOT NULL DEFAULT '${UNKNOWN_VEHICLE_CAPABILITIES_JSON}'
   );
+
+  ${CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL}
 
   CREATE TABLE vehicle_vitals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

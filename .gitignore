@@ -29,6 +29,9 @@ release-build.*.log
 
 # local QA captures
 .qa-*/
+/artifacts/
+/qa-artifacts/
+/tmp/
 
 # macOS
 .DS_Store

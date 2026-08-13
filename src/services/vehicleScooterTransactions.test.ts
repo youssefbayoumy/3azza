@@ -43,6 +43,11 @@ describe('vehicle scooter identity transaction', () => {
         scooter_model_id TEXT,
         scooter_version_id TEXT,
         scooter_variant_id TEXT,
+        vehicle_selection_mode TEXT NOT NULL DEFAULT 'catalog',
+        custom_brand_name TEXT,
+        custom_model_name TEXT,
+        vehicle_capabilities_version INTEGER NOT NULL DEFAULT 1,
+        vehicle_capabilities_json TEXT NOT NULL DEFAULT '{"schemaVersion":1,"powertrain":"unknown","transmission":"unknown","finalDrive":"unknown","cooling":"unknown","brakeSystem":"unknown","abs":"unknown","wheelType":"unknown"}',
         maintenance_history_level TEXT NOT NULL DEFAULT 'not_asked',
         service_history_setup_completed INTEGER NOT NULL DEFAULT 0
       );
@@ -56,7 +61,10 @@ describe('vehicle scooter identity transaction', () => {
         is_applicable INTEGER NOT NULL
       );
       CREATE TABLE service_logs (id INTEGER PRIMARY KEY, vehicle_id INTEGER NOT NULL, title TEXT NOT NULL);
-      INSERT INTO vehicle_profile VALUES
+      INSERT INTO vehicle_profile (
+        id, scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id,
+        maintenance_history_level, service_history_setup_completed
+      ) VALUES
         (1, 'sym', 'first-model', 'first-version', 'first-variant', 'detailed_records', 1),
         (2, 'sym', 'old-model', 'old-version', 'old-variant', 'recent_memory', 1);
       INSERT INTO service_intervals VALUES
@@ -122,6 +130,42 @@ describe('vehicle scooter identity transaction', () => {
     ).get() as { level: string; completed: number };
     assert.equal(target.level, 'recent_memory');
     assert.equal(target.completed, 1);
+  });
+
+  it('stores a custom brand and model without borrowing a catalog variant', async () => {
+    const customSelection = {
+      selectionMode: 'custom_brand' as const,
+      brandId: 'other',
+      modelId: 'other:custom-model',
+      versionId: 'other:custom-model:basic-tracking',
+      variantId: null,
+      customBrandName: '  Haojin ',
+      customModelName: ' HJ 150 ',
+      capabilities: {
+        schemaVersion: 1 as const,
+        powertrain: 'four_stroke' as const,
+        transmission: 'manual' as const,
+        finalDrive: 'chain' as const,
+        cooling: 'air' as const,
+        brakeSystem: 'disc' as const,
+        abs: 'no' as const,
+        wheelType: 'spoke' as const,
+      },
+    };
+    await inTransaction(database, () => updateVehicleScooterIdentityInTransaction(
+      executor,
+      2,
+      customSelection,
+      async () => undefined
+    ));
+
+    const target = database.prepare('SELECT * FROM vehicle_profile WHERE id = 2').get() as Record<string, unknown>;
+    assert.equal(target.vehicle_selection_mode, 'custom_brand');
+    assert.equal(target.custom_brand_name, 'Haojin');
+    assert.equal(target.custom_model_name, 'HJ 150');
+    assert.equal(target.scooter_variant_id, null);
+    assert.equal(target.vehicle_capabilities_version, 1);
+    assert.match(String(target.vehicle_capabilities_json), /"transmission":"manual"/);
   });
 
   it('rolls back identity and maintenance together when reapplication fails', async () => {

@@ -22,7 +22,7 @@ import {
   deleteServiceLogInTransaction,
   insertServiceCompletionInTransaction,
   type ServiceCompletionTransactionInput,
-} from './maintenanceTransactions';
+} from './maintenance/maintenanceTransactions';
 import {
   getInventoryStatus,
   validateInventoryQuantity,
@@ -32,7 +32,7 @@ import {
   validateWholeNumber,
   type VehicleVitalField,
 } from '../utils/recordValidation';
-import { validateDatabaseBackupData } from '../utils/backupFormat';
+import { validateDatabaseBackupData } from './backupFormat';
 import { assertSupportedDatabaseVersion } from '../utils/databaseVersion';
 import { resetPreRideStateForNewLocalDay } from '../utils/preRide';
 import { validateFuelLogFields, validateTankCapacityLiters } from '../utils/fuel';
@@ -41,7 +41,11 @@ import {
   getRecordListBounds,
   type RecordListOptions,
 } from '../utils/recordList';
-import { CURRENT_SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './databaseSchema';
+import {
+  CURRENT_SCHEMA_SQL,
+  CURRENT_SCHEMA_VERSION,
+  CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL,
+} from './databaseSchema';
 import {
   isScooterSelectionComplete,
   selectionFromProfile,
@@ -49,6 +53,11 @@ import {
 } from '../catalog/scooterCatalog';
 import { updateVehicleScooterIdentityInTransaction } from './vehicleScooterTransactions';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import {
+  serializeVehicleCapabilities,
+  UNKNOWN_VEHICLE_CAPABILITIES_JSON,
+  VEHICLE_CAPABILITIES_SCHEMA_VERSION,
+} from '../catalog/vehicleCapabilities';
 import type { InspectionResult, MaintenanceAction, MaintenanceEvent } from '../maintenance/types';
 import {
   deleteMaintenanceRecordInTransaction,
@@ -60,18 +69,18 @@ import {
   type MaintenanceRecordMutationResult,
   type PreparedMaintenanceRecordAction,
   type PreparedMaintenanceRecordInput,
-} from './maintenanceRecordTransactions';
+} from './maintenance/maintenanceRecordTransactions';
 import {
   buildServiceLogListQuery,
   MAINTENANCE_INSIGHTS_QUERY,
-} from './maintenanceRecordQueries';
+} from './maintenance/maintenanceRecordQueries';
 import {
   restoreMaintenancePreferenceInTransaction,
   setMaintenancePreferenceInTransaction,
   setMaintenanceTrackedInTransaction,
   type SetMaintenancePreferenceInput,
-} from './maintenancePreferenceTransactions';
-import { applyMaintenanceStorageMigration } from './maintenanceStorageMigration';
+} from './maintenance/maintenancePreferenceTransactions';
+import { applyMaintenanceStorageMigration } from './maintenance/maintenanceStorageMigration';
 import { applyOdometerCorrectionMigration } from './odometerCorrectionMigration';
 import {
   correctOdometerReadingInTransaction,
@@ -82,7 +91,7 @@ import {
   setMaintenanceHistoryLevelInTransaction,
   setMaintenanceHistoryStateInTransaction,
   type SetMaintenanceHistoryStateInput,
-} from './maintenanceHistoryTransactions';
+} from './maintenance/maintenanceHistoryTransactions';
 
 let db: SQLite.SQLiteDatabase | null = null;
 const ACTIVE_VEHICLE_KEY = 'active_vehicle_id';
@@ -957,8 +966,50 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
     await setSchemaVersion(database, version);
   }
 
+  if (version < 19) {
+    await addCustomVehicleIdentity(database);
+    version = 19;
+    await setSchemaVersion(database, version);
+  } else {
+    await database.execAsync(CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL);
+  }
+
+  if (version < 20) {
+    await addVehicleCapabilities(database);
+    version = 20;
+    await setSchemaVersion(database, version);
+  } else {
+    await addVehicleCapabilities(database);
+  }
+
   if (version < CURRENT_SCHEMA_VERSION) {
     await setSchemaVersion(database, CURRENT_SCHEMA_VERSION);
+  }
+}
+
+async function addCustomVehicleIdentity(database: SQLite.SQLiteDatabase): Promise<void> {
+  if (!(await columnExists(database, 'vehicle_profile', 'vehicle_selection_mode'))) {
+    await database.execAsync("ALTER TABLE vehicle_profile ADD COLUMN vehicle_selection_mode TEXT NOT NULL DEFAULT 'catalog';");
+  }
+  if (!(await columnExists(database, 'vehicle_profile', 'custom_brand_name'))) {
+    await database.execAsync('ALTER TABLE vehicle_profile ADD COLUMN custom_brand_name TEXT;');
+  }
+  if (!(await columnExists(database, 'vehicle_profile', 'custom_model_name'))) {
+    await database.execAsync('ALTER TABLE vehicle_profile ADD COLUMN custom_model_name TEXT;');
+  }
+  await database.execAsync(CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL);
+}
+
+async function addVehicleCapabilities(database: SQLite.SQLiteDatabase): Promise<void> {
+  if (!(await columnExists(database, 'vehicle_profile', 'vehicle_capabilities_version'))) {
+    await database.execAsync(
+      `ALTER TABLE vehicle_profile ADD COLUMN vehicle_capabilities_version INTEGER NOT NULL DEFAULT ${VEHICLE_CAPABILITIES_SCHEMA_VERSION};`
+    );
+  }
+  if (!(await columnExists(database, 'vehicle_profile', 'vehicle_capabilities_json'))) {
+    await database.execAsync(
+      `ALTER TABLE vehicle_profile ADD COLUMN vehicle_capabilities_json TEXT NOT NULL DEFAULT '${UNKNOWN_VEHICLE_CAPABILITIES_JSON}';`
+    );
   }
 }
 
@@ -1206,8 +1257,10 @@ export async function createVehicleProfile(
       `INSERT INTO vehicle_profile (
          name, current_mileage, total_km_range, has_completed_setup, daily_average_km,
          last_odometer_update_timestamp, service_history_setup_completed,
-         scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id
-       ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?)`,
+         scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id,
+         vehicle_selection_mode, custom_brand_name, custom_model_name,
+         vehicle_capabilities_version, vehicle_capabilities_json
+       ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         trimmedName,
         currentMileage,
@@ -1217,6 +1270,11 @@ export async function createVehicleProfile(
         scooterSelection.modelId,
         scooterSelection.versionId,
         scooterSelection.variantId ?? null,
+        scooterSelection.selectionMode ?? 'catalog',
+        scooterSelection.customBrandName?.trim() || null,
+        scooterSelection.customModelName?.trim() || null,
+        VEHICLE_CAPABILITIES_SCHEMA_VERSION,
+        serializeVehicleCapabilities(scooterSelection.capabilities),
       ]
     );
     vehicleId = result.lastInsertRowId;
@@ -1348,7 +1406,17 @@ export async function getOdometerEvents(): Promise<OdometerEvent[]> {
 export async function saveVehicleProfile(
   profile: Partial<Omit<
     VehicleProfile,
-    'id' | 'created_at' | 'scooter_brand_id' | 'scooter_model_id' | 'scooter_version_id' | 'scooter_variant_id'
+    | 'id'
+    | 'created_at'
+    | 'scooter_brand_id'
+    | 'scooter_model_id'
+    | 'scooter_version_id'
+    | 'scooter_variant_id'
+    | 'vehicle_selection_mode'
+    | 'custom_brand_name'
+    | 'custom_model_name'
+    | 'vehicle_capabilities_version'
+    | 'vehicle_capabilities_json'
   >>
 ): Promise<void> {
   const database = await getDb();
@@ -1430,7 +1498,9 @@ export async function saveInitialVehicleSetup(input: {
       `UPDATE vehicle_profile
        SET current_mileage = ?, daily_average_km = ?, total_km_range = 0,
            has_completed_setup = 1, last_odometer_update_timestamp = ?,
-           scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?
+           scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?,
+           vehicle_selection_mode = ?, custom_brand_name = ?, custom_model_name = ?,
+           vehicle_capabilities_version = ?, vehicle_capabilities_json = ?
        WHERE id = ?`,
       [
         input.currentMileage,
@@ -1440,6 +1510,11 @@ export async function saveInitialVehicleSetup(input: {
         input.selection.modelId,
         input.selection.versionId,
         input.selection.variantId ?? null,
+        input.selection.selectionMode ?? 'catalog',
+        input.selection.customBrandName?.trim() || null,
+        input.selection.customModelName?.trim() || null,
+        VEHICLE_CAPABILITIES_SCHEMA_VERSION,
+        serializeVehicleCapabilities(input.selection.capabilities),
         vehicleId,
       ]
     );
@@ -2063,12 +2138,7 @@ const MAINTENANCE_ACTIONS = new Set<MaintenanceAction>([
 ]);
 
 function selectableMaintenanceProfileForVehicle(vehicle: VehicleProfile) {
-  const profile = getMaintenanceProfileForSelection({
-    brandId: vehicle.scooter_brand_id,
-    modelId: vehicle.scooter_model_id,
-    versionId: vehicle.scooter_version_id,
-    variantId: vehicle.scooter_variant_id,
-  });
+  const profile = getMaintenanceProfileForSelection(selectionFromProfile(vehicle));
   return profile?.status === 'validated' || profile?.status === 'production_ready' ? profile : null;
 }
 
@@ -2740,8 +2810,10 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
         `INSERT INTO vehicle_profile (
           id, name, current_mileage, total_km_range, has_completed_setup, created_at,
           daily_average_km, last_odometer_update_timestamp, service_history_setup_completed, tank_capacity_liters,
-          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id, maintenance_history_level
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id, maintenance_history_level,
+          vehicle_selection_mode, custom_brand_name, custom_model_name,
+          vehicle_capabilities_version, vehicle_capabilities_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           vehicle.id,
           vehicle.name,
@@ -2758,6 +2830,11 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           vehicle.scooter_version_id,
           vehicle.scooter_variant_id ?? null,
           vehicle.maintenance_history_level ?? 'not_asked',
+          vehicle.vehicle_selection_mode ?? 'catalog',
+          vehicle.custom_brand_name ?? null,
+          vehicle.custom_model_name ?? null,
+          vehicle.vehicle_capabilities_version ?? VEHICLE_CAPABILITIES_SCHEMA_VERSION,
+          vehicle.vehicle_capabilities_json ?? UNKNOWN_VEHICLE_CAPABILITIES_JSON,
         ]
       );
     }

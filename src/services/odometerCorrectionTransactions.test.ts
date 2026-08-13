@@ -5,7 +5,7 @@ import { CURRENT_SCHEMA_SQL } from './databaseSchema';
 import type {
   MaintenanceRecordSqlValue,
   MaintenanceRecordTransactionExecutor,
-} from './maintenanceRecordTransactions';
+} from './maintenance/maintenanceRecordTransactions';
 import {
   correctOdometerReadingInTransaction,
   getOdometerCorrectionFloorInTransaction,

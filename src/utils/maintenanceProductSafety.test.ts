@@ -26,9 +26,9 @@ const MAINTENANCE_UI_FILES = [
   'screens/PreRideCheckScreen.tsx',
   'screens/TechSpecsScreen.tsx',
   'screens/setup/VehicleSetupScreen.tsx',
-  'components/MaintenanceHistoryOnboarding.tsx',
-  'components/MaintenanceRecordForm.tsx',
-  'components/ScooterSelectionFields.tsx',
+  'components/maintenance/MaintenanceHistoryOnboarding.tsx',
+  'components/maintenance/MaintenanceRecordForm.tsx',
+  'components/vehicle/ScooterSelectionFields.tsx',
   'components/SourceProvenance.tsx',
 ] as const;
 
@@ -345,7 +345,7 @@ describe('production maintenance UI safety', () => {
   });
 
   it('offers the compact owner-knowledge and high-value baseline choices', () => {
-    const { source } = sourceFile('components/MaintenanceHistoryOnboarding.tsx');
+    const { source } = sourceFile('components/maintenance/MaintenanceHistoryOnboarding.tsx');
     for (const key of [
       'history.knowledgeDetailed',
       'history.knowledgeRecent',
@@ -374,7 +374,7 @@ describe('production maintenance UI safety', () => {
   });
 
   it('announces onboarding stage and validation changes with component-specific labels', () => {
-    const { source } = sourceFile('components/MaintenanceHistoryOnboarding.tsx');
+    const { source } = sourceFile('components/maintenance/MaintenanceHistoryOnboarding.tsx');
 
     assert.match(source, /AccessibilityInfo\.announceForAccessibility/);
     assert.match(source, /accessibilityLabel=\{t\('history\.optionA11y'/);
@@ -384,7 +384,7 @@ describe('production maintenance UI safety', () => {
 
   it('explains edit scope and delete-triggered reminder recalculation', () => {
     const logs = sourceFile('screens/ServiceLogsScreen.tsx').source;
-    const form = sourceFile('components/MaintenanceRecordForm.tsx').source;
+    const form = sourceFile('components/maintenance/MaintenanceRecordForm.tsx').source;
 
     assert.match(logs, /affectedActionLabels\s*\(/);
     assert.match(logs, /logs\.deleteBody/);
@@ -410,8 +410,8 @@ describe('production maintenance UI safety', () => {
   it('keeps reminder controls behind compact action rows and an action-specific menu', () => {
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
     const oil = sourceFile('screens/OilChangeDetailsScreen.tsx').source;
-    const row = sourceFile('components/MaintenanceActionRow.tsx').source;
-    const menu = sourceFile('components/MaintenanceActionMenu.tsx').source;
+    const row = sourceFile('components/maintenance/MaintenanceActionRow.tsx').source;
+    const menu = sourceFile('components/maintenance/MaintenanceActionMenu.tsx').source;
 
     assert.match(maintenance, /<MaintenanceActionRow[^>]*onPress=\{setMenuTask\}[^>]*task=\{task\}/);
     assert.match(oil, /<MaintenanceActionRow[^>]*onPress=\{setMenuTask\}[^>]*task=\{task\}/);
@@ -441,7 +441,7 @@ describe('production maintenance UI safety', () => {
   it('keeps historical one-time milestones out of daily menus and current oil details', () => {
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
     const oil = sourceFile('screens/OilChangeDetailsScreen.tsx').source;
-    const menu = sourceFile('components/MaintenanceActionMenu.tsx').source;
+    const menu = sourceFile('components/maintenance/MaintenanceActionMenu.tsx').source;
     const customization = sourceFile('screens/MaintenanceReminderCustomizationScreen.tsx').source;
 
     assert.match(maintenance, /task\.status !== 'historical_unverified'/);

@@ -8,18 +8,22 @@ import { syncMaintenanceNotifications } from '../../services/notifications';
 import AppFormScreen from '../../components/ui/AppFormScreen';
 import AppScreen from '../../components/ui/AppScreen';
 import { parseWholeNumberInput } from '../../utils/recordValidation';
-import ScooterSelectionFields from '../../components/ScooterSelectionFields';
-import MaintenanceHistoryOnboarding from '../../components/MaintenanceHistoryOnboarding';
+import ScooterSelectionFields from '../../components/vehicle/ScooterSelectionFields';
+import MaintenanceHistoryOnboarding from '../../components/maintenance/MaintenanceHistoryOnboarding';
 import {
     saveMaintenanceHistorySetup,
     skipMaintenanceHistorySetup,
-} from '../../services/maintenanceHistoryOnboarding';
+} from '../../services/maintenance/maintenanceHistoryOnboarding';
 import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile } from '../../catalog/scooterCatalog';
 import {
     createGuidedSelectionDraft,
     type GuidedScooterSelectionDraft,
 } from '../../catalog/guidedScooterIdentification';
 import { getMaintenanceProfileForSelection } from '../../maintenance/profiles';
+import {
+    maintenanceHistoryBaselineKeysForProfile,
+    type MaintenanceHistoryBaselineKey,
+} from '../../services/maintenance/maintenanceHistoryPlan';
 import { localizeErrorMessage, useTranslation } from '../../i18n';
 
 type SetupFormData = {
@@ -33,6 +37,7 @@ export default function VehicleSetupScreen() {
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
     const [savedOdometerKm, setSavedOdometerKm] = useState<number | null>(null);
+    const [historyBaselineKeys, setHistoryBaselineKeys] = useState<MaintenanceHistoryBaselineKey[]>(['general_inspection']);
     const [selectionDraft, setSelectionDraft] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
     const [showSelectionErrors, setShowSelectionErrors] = useState(false);
 
@@ -50,7 +55,9 @@ export default function VehicleSetupScreen() {
             setSelectionDraft(createGuidedSelectionDraft(selectionFromProfile(profile) ?? {}));
             if (profile.has_completed_setup === 1) {
                 const selection = selectionFromProfile(profile);
-                if (selection && getMaintenanceProfileForSelection(selection)) {
+                const maintenanceProfile = selection ? getMaintenanceProfileForSelection(selection) : null;
+                if (maintenanceProfile) {
+                    setHistoryBaselineKeys(maintenanceHistoryBaselineKeysForProfile(maintenanceProfile));
                     setSavedOdometerKm(profile.current_mileage);
                 } else {
                     completeVehicleSetup();
@@ -80,7 +87,9 @@ export default function VehicleSetupScreen() {
                 dailyAverageKm: dailyAverageResult.value,
                 selection: resolvedSelection,
             });
-            if (getMaintenanceProfileForSelection(resolvedSelection)) {
+            const maintenanceProfile = getMaintenanceProfileForSelection(resolvedSelection);
+            if (maintenanceProfile) {
+                setHistoryBaselineKeys(maintenanceHistoryBaselineKeysForProfile(maintenanceProfile));
                 setSavedOdometerKm(mileageResult.value);
             } else {
                 await syncMaintenanceNotifications(maintenanceReminders);
@@ -115,6 +124,7 @@ export default function VehicleSetupScreen() {
         return (
             <AppScreen edges={['top', 'bottom', 'left', 'right']}>
                 <MaintenanceHistoryOnboarding
+                    baselineKeys={historyBaselineKeys}
                     currentOdometerKm={savedOdometerKm}
                     onComplete={(draft) => finishHistorySetup(() => saveMaintenanceHistorySetup(draft))}
                     onSkip={() => finishHistorySetup(skipMaintenanceHistorySetup)}

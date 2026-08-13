@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Alert, Linking, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -35,9 +35,9 @@ import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
-import { parseDecimalNumberInput, parseWholeNumberInput } from '../utils/recordValidation';
-import ScooterSelectionFields from '../components/ScooterSelectionFields';
-import OnlineManualAction from '../components/OnlineManualAction';
+import { parseDecimalNumberInput } from '../utils/recordValidation';
+import ScooterSelectionFields from '../components/vehicle/ScooterSelectionFields';
+import OnlineManualAction from '../components/vehicle/OnlineManualAction';
 import {
   formatScooterSelection,
   isScooterSelectionComplete,
@@ -48,6 +48,7 @@ import {
   createGuidedSelectionDraft,
   type GuidedScooterSelectionDraft,
 } from '../catalog/guidedScooterIdentification';
+import { createVehicleCreationGuard, prepareVehicleCreation } from './vehicleCreation';
 
 function showNotificationFailure(result: Pick<NotificationSyncResult, 'blocked' | 'failed' | 'unsupported'>): void {
   const title = result.unsupported
@@ -96,6 +97,8 @@ export default function VehicleSettingsScreen() {
   const [vehicleDailyAverage, setVehicleDailyAverage] = useState('');
   const [newVehicleSelection, setNewVehicleSelection] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
   const [showNewVehicleSelectionErrors, setShowNewVehicleSelectionErrors] = useState(false);
+  const [creatingVehicle, setCreatingVehicle] = useState(false);
+  const vehicleCreationGuard = useRef(createVehicleCreationGuard());
   const [scooterModalVisible, setScooterModalVisible] = useState(false);
   const [scooterSelection, setScooterSelection] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
   const [scooterTargetVehicleId, setScooterTargetVehicleId] = useState<number | null>(null);
@@ -243,21 +246,32 @@ export default function VehicleSettingsScreen() {
     );
   };
 
+  const vehicleCreation = prepareVehicleCreation({
+    name: vehicleName,
+    mileage: vehicleMileage,
+    dailyAverage: vehicleDailyAverage,
+    selection: newVehicleSelection.selection,
+  }, {
+    startingOdometer: t('settings.startingOdometer'),
+    dailyAverage: t('settings.dailyAverage'),
+  });
+
   const handleCreateVehicle = async () => {
-    const name = vehicleName.trim();
-    const mileageResult = parseWholeNumberInput(vehicleMileage, { label: t('settings.startingOdometer') });
-    const dailyAverageResult = parseWholeNumberInput(vehicleDailyAverage, { label: t('settings.dailyAverage') });
-    const resolvedSelection = resolveScooterSelection(newVehicleSelection.selection);
-    if (!name || !mileageResult.ok || !dailyAverageResult.ok || !resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection)) {
-      setShowNewVehicleSelectionErrors(!resolvedSelection || !isScooterSelectionComplete(newVehicleSelection.selection));
+    if (!vehicleCreation) {
+      setShowNewVehicleSelectionErrors(!resolveScooterSelection(newVehicleSelection.selection) || !isScooterSelectionComplete(newVehicleSelection.selection));
       Alert.alert(t('settings.completeVehicle'), t('settings.completeVehicleBody'));
       return;
     }
-    const mileage = mileageResult.value;
-    const dailyAverage = dailyAverageResult.value;
+    if (!vehicleCreationGuard.current.tryStart()) return;
 
+    setCreatingVehicle(true);
     try {
-      await createVehicleProfile(name, mileage, dailyAverage, resolvedSelection);
+      await createVehicleProfile(
+        vehicleCreation.name,
+        vehicleCreation.currentMileage,
+        vehicleCreation.dailyAverageKm,
+        vehicleCreation.selection
+      );
       setVehicleName('');
       setVehicleMileage('');
       setVehicleDailyAverage('');
@@ -268,6 +282,9 @@ export default function VehicleSettingsScreen() {
     } catch (error) {
       console.error('Failed to create vehicle:', error);
       Alert.alert(t('settings.vehicleNotAdded'), localizeErrorMessage(error, t('settings.vehicleNotAddedBody')));
+    } finally {
+      vehicleCreationGuard.current.finish();
+      setCreatingVehicle(false);
     }
   };
 
@@ -296,6 +313,7 @@ export default function VehicleSettingsScreen() {
   };
 
   const closeVehicleModal = () => {
+    if (vehicleCreationGuard.current.isCreating()) return;
     setVehicleModalVisible(false);
     setNewVehicleSelection(createGuidedSelectionDraft());
     setShowNewVehicleSelectionErrors(false);
@@ -311,7 +329,9 @@ export default function VehicleSettingsScreen() {
 
     Alert.alert(
       t('settings.changeScooterTitle'),
-      t('settings.changeScooterBody', { scooter: formatScooterSelection(resolved) }),
+      resolved.selectionMode === 'custom_brand'
+        ? t('settings.changeCustomVehicleBody', { vehicle: formatScooterSelection(resolved) })
+        : t('settings.changeScooterBody', { scooter: formatScooterSelection(resolved) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -517,7 +537,9 @@ export default function VehicleSettingsScreen() {
     }
     setFileAction(null);
 
-    const includesPhotos = archive.source_schema === '3azza-local-backup/v4';
+    const includesPhotos = archive.source_schema === '3azza-local-backup/v4'
+      || archive.source_schema === '3azza-local-backup/v5'
+      || archive.source_schema === '3azza-local-backup/v6';
     const photoDisclosure = includesPhotos
       ? tp('settings.photosIncluded', archive.document_files.length)
       : t('settings.olderBackupPhotos');
@@ -878,14 +900,16 @@ export default function VehicleSettingsScreen() {
             <Text className="font-headline text-xl font-bold text-on-surface mb-2">{t('settings.addVehicle')}</Text>
             <Text className="font-body text-sm text-secondary/80 mb-6">{t('settings.addVehicleBody')}</Text>
             <ScrollView className="max-h-[520px]" keyboardShouldPersistTaps="handled">
-            <ScooterSelectionFields
-              value={newVehicleSelection}
-              onChange={(next) => {
-                setNewVehicleSelection(next);
-                setShowNewVehicleSelectionErrors(false);
-              }}
-              showErrors={showNewVehicleSelectionErrors}
-            />
+            <View pointerEvents={creatingVehicle ? 'none' : 'auto'}>
+              <ScooterSelectionFields
+                value={newVehicleSelection}
+                onChange={(next) => {
+                  setNewVehicleSelection(next);
+                  setShowNewVehicleSelectionErrors(false);
+                }}
+                showErrors={showNewVehicleSelectionErrors}
+              />
+            </View>
             <View className="h-5" />
             <TextInput
               className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4"
@@ -893,16 +917,29 @@ export default function VehicleSettingsScreen() {
               placeholderTextColor="#64748b"
               value={vehicleName}
               onChangeText={setVehicleName}
+              editable={!creatingVehicle}
             />
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4" placeholder={t('settings.startingOdometerPlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleMileage} onChangeText={setVehicleMileage} />
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder={t('settings.dailyAveragePlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} />
+            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4" placeholder={t('settings.startingOdometerPlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleMileage} onChangeText={setVehicleMileage} editable={!creatingVehicle} />
+            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder={t('settings.dailyAveragePlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} editable={!creatingVehicle} />
             </ScrollView>
             <View className="flex-row justify-end gap-3">
-              <TouchableOpacity onPress={closeVehicleModal} className="px-4 py-2 rounded-lg">
+              <TouchableOpacity onPress={closeVehicleModal} disabled={creatingVehicle} className={`px-4 py-2 rounded-lg ${creatingVehicle ? 'opacity-60' : ''}`} accessibilityState={{ disabled: creatingVehicle }}>
                 <Text className="font-label font-bold text-secondary uppercase tracking-wider">{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleCreateVehicle} className="px-6 py-2 bg-primary rounded-lg">
-                <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('settings.create')}</Text>
+              <TouchableOpacity
+                onPress={() => void handleCreateVehicle()}
+                disabled={creatingVehicle || vehicleCreation === null}
+                className={`px-6 py-2 bg-primary rounded-lg min-w-24 items-center ${creatingVehicle || vehicleCreation === null ? 'opacity-60' : ''}`}
+                accessibilityState={{ busy: creatingVehicle, disabled: creatingVehicle || vehicleCreation === null }}
+              >
+                {creatingVehicle ? (
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIndicator size="small" color="#081421" />
+                    <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('settings.creating')}</Text>
+                  </View>
+                ) : (
+                  <Text className="font-label font-bold text-on-primary uppercase tracking-wider">{t('settings.create')}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

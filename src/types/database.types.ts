@@ -57,6 +57,11 @@ export interface VehicleProfile {
   scooter_model_id: string | null;
   scooter_version_id: string | null;
   scooter_variant_id?: string | null;
+  vehicle_selection_mode?: 'catalog' | 'custom_brand';
+  custom_brand_name?: string | null;
+  custom_model_name?: string | null;
+  vehicle_capabilities_version: number;
+  vehicle_capabilities_json: string;
 }
 
 export interface VehicleVitals {

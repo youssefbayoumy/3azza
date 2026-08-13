@@ -1,6 +1,6 @@
 import type { OdometerEvent } from '../types/database.types';
 import { formatNumber } from '../i18n/core';
-import type { MaintenanceRecordTransactionExecutor } from './maintenanceRecordTransactions';
+import type { MaintenanceRecordTransactionExecutor } from './maintenance/maintenanceRecordTransactions';
 
 export type CorrectOdometerReadingInput = {
   correctedMileageKm: number;

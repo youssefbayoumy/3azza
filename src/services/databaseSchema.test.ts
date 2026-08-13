@@ -13,7 +13,7 @@ describe('fresh-install database schema', () => {
   it('creates the current multi-vehicle tables directly', () => {
     const database = createCurrentDatabase();
     try {
-      assert.equal(CURRENT_SCHEMA_VERSION, 18);
+      assert.equal(CURRENT_SCHEMA_VERSION, 20);
       const profileColumns = database.prepare('PRAGMA table_info(vehicle_profile)').all()
         .map((column) => (column as { name: string }).name);
       const expectedProfileColumns = [
@@ -32,6 +32,11 @@ describe('fresh-install database schema', () => {
         'scooter_model_id',
         'scooter_version_id',
         'scooter_variant_id',
+        'vehicle_selection_mode',
+        'custom_brand_name',
+        'custom_model_name',
+        'vehicle_capabilities_version',
+        'vehicle_capabilities_json',
       ];
       assert.deepEqual(profileColumns, expectedProfileColumns);
 
@@ -39,6 +44,16 @@ describe('fresh-install database schema', () => {
       const second = database.prepare("INSERT INTO vehicle_profile (name, current_mileage) VALUES ('Second', 2000)").run();
       assert.equal(Number(first.lastInsertRowid), 1);
       assert.equal(Number(second.lastInsertRowid), 2);
+      database.prepare(
+        `INSERT INTO vehicle_profile (
+          name, scooter_brand_id, scooter_model_id, scooter_version_id,
+          vehicle_selection_mode, custom_brand_name, custom_model_name
+        ) VALUES ('Custom', 'other', 'other:custom-model', 'other:custom-model:basic-tracking',
+          'custom_brand', 'Keeway', 'RKS 150')`
+      ).run();
+      assert.throws(() => database.prepare(
+        "INSERT INTO vehicle_profile (name, vehicle_selection_mode) VALUES ('Invalid', 'custom_brand')"
+      ).run(), /Vehicle identity is invalid/);
 
       database.prepare(
         "INSERT INTO service_intervals (vehicle_id, name, interval_km, type) VALUES (?, 'Oil Change', 1000, 'replace')"

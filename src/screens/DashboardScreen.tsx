@@ -37,6 +37,7 @@ import type {
     MaintenanceTaskProjection,
 } from '../maintenance/types';
 import { formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
 
 const HOME_COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
     'engine-oil': 'opacity',
@@ -307,12 +308,9 @@ export default function DashboardScreen() {
         ]);
         if (!isCurrent()) return;
         setProfile(profileData);
-        const domainProfile = getMaintenanceProfileForSelection(profileData ? {
-            brandId: profileData.scooter_brand_id,
-            modelId: profileData.scooter_model_id,
-            versionId: profileData.scooter_version_id,
-            variantId: profileData.scooter_variant_id,
-        } : null);
+        const domainProfile = getMaintenanceProfileForSelection(
+            profileData ? selectionFromProfile(profileData) : null
+        );
         const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
         const projectedTasks = profileData && domainProfile ? projectMaintenanceTasks({
             profile: domainProfile,
@@ -342,12 +340,9 @@ export default function DashboardScreen() {
     const { mileage: computedMileage, predictedAdded, diffDays } = computePredictedOdometer(profile);
     // Maintenance stays on the confirmed reading until the owner accepts or adjusts the prediction.
     const mileage = profile?.current_mileage ?? 0;
-    const hasSelectableMaintenanceProfile = Boolean(getMaintenanceProfileForSelection(profile ? {
-        brandId: profile.scooter_brand_id,
-        modelId: profile.scooter_model_id,
-        versionId: profile.scooter_version_id,
-        variantId: profile.scooter_variant_id,
-    } : null));
+    const hasSelectableMaintenanceProfile = Boolean(getMaintenanceProfileForSelection(
+        profile ? selectionFromProfile(profile) : null
+    ));
     const setupNeeded = hasSelectableMaintenanceProfile && (
         profile?.maintenance_history_level === undefined
         || profile.maintenance_history_level === 'not_asked'
@@ -411,6 +406,7 @@ export default function DashboardScreen() {
             || task.status === 'condition_attention')
         .map((task) => homeGroup(task).id)).size;
     const modelProfile = getModelProfileForVehicle(profile);
+    const vehicleSelection = profile ? selectionFromProfile(profile) : null;
     const selectedVariant = getSelectedVariant(profile, modelProfile);
     const breakInGuidance = getApplicableBreakInGuidance(profile);
     const breakInLimits = breakInGuidance.flatMap((record) =>
@@ -488,12 +484,18 @@ export default function DashboardScreen() {
                 <View className="w-full bg-surface-container-lowest border border-primary/20 rounded-xl p-5 mb-5">
                     <Text className="font-label text-xs uppercase tracking-[0.2em] text-primary font-bold">{tr('dashboard.activeScooter')}</Text>
                     <Text className="font-headline text-xl font-bold text-on-surface mt-1">
-                        {modelProfile ? `${modelProfile.brandName} ${modelProfile.modelName}` : tr('dashboard.scooterNotSelected')}
+                        {modelProfile
+                            ? `${modelProfile.brandName} ${modelProfile.modelName}`
+                            : vehicleSelection
+                                ? `${vehicleSelection.brand.name} ${vehicleSelection.model.name}`
+                                : tr('dashboard.scooterNotSelected')}
                     </Text>
                     <Text className="font-body text-xs text-on-surface-variant mt-1">
                         {modelProfile
                             ? `${selectedVariant?.name ?? (modelProfile.requiresVariant ? tr('dashboard.variantNotSelected') : modelProfile.manualVersion)} / ${modelProfile.manualYears}`
-                            : tr('dashboard.chooseManual')}
+                            : vehicleSelection
+                                ? tr('dashboard.basicTracking')
+                                : tr('dashboard.chooseManual')}
                     </Text>
                     {isInBreakIn ? (
                         <TouchableOpacity

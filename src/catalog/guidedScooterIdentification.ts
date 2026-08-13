@@ -6,8 +6,20 @@ import {
   type IdentificationFeatureKey,
 } from '../modelData/variantIdentification';
 import type { VariantIdentificationProfile } from '../modelData/types';
-import { isScooterSelectionComplete, type ScooterSelection } from './scooterCatalog';
+import {
+  CUSTOM_MODEL_ID,
+  CUSTOM_VERSION_ID,
+  isCustomBrandSelection,
+  isScooterSelectionComplete,
+  OTHER_BRAND_ID,
+  type ScooterSelection,
+} from './scooterCatalog';
 import { getSelectableMaintenanceProfiles } from '../maintenance/profiles';
+import {
+  normalizeVehicleCapabilities,
+  type VehicleCapabilities,
+  type VehicleCapabilityKey,
+} from './vehicleCapabilities';
 import { t } from '../i18n/core';
 
 export type IdentificationAnswers = Partial<Record<IdentificationFeatureKey, string>>;
@@ -48,8 +60,25 @@ function questionCopy(key: IdentificationFeatureKey): Pick<IdentificationQuestio
 export function createGuidedSelectionDraft(
   selection: Partial<ScooterSelection> = {}
 ): GuidedScooterSelectionDraft {
+  if (isCustomBrandSelection(selection)) {
+    return {
+      selection: {
+        selectionMode: 'custom_brand',
+        brandId: OTHER_BRAND_ID,
+        modelId: CUSTOM_MODEL_ID,
+        versionId: CUSTOM_VERSION_ID,
+        variantId: null,
+        customBrandName: selection.customBrandName ?? '',
+        customModelName: selection.customModelName ?? '',
+        capabilities: normalizeVehicleCapabilities(selection.capabilities),
+      },
+      answers: {},
+      unsureFeatures: [],
+    };
+  }
   const draft: GuidedScooterSelectionDraft = {
     selection: {
+      selectionMode: 'catalog',
       brandId: selection.brandId,
       modelId: selection.modelId,
       versionId: selection.versionId,
@@ -75,13 +104,47 @@ export function changeGuidedCatalogSelection(
   key: 'brandId' | 'modelId' | 'versionId',
   id: string
 ): GuidedScooterSelectionDraft {
-  if (key === 'brandId') return createGuidedSelectionDraft({ brandId: id });
+  if (key === 'brandId') {
+    return id === OTHER_BRAND_ID
+      ? createGuidedSelectionDraft({ selectionMode: 'custom_brand', brandId: OTHER_BRAND_ID })
+      : createGuidedSelectionDraft({ selectionMode: 'catalog', brandId: id });
+  }
   if (key === 'modelId') return createGuidedSelectionDraft({ brandId: draft.selection.brandId, modelId: id });
   return createGuidedSelectionDraft({
     brandId: draft.selection.brandId,
     modelId: draft.selection.modelId,
     versionId: id,
   });
+}
+
+export function changeGuidedCustomIdentity(
+  draft: GuidedScooterSelectionDraft,
+  key: 'customBrandName' | 'customModelName',
+  value: string
+): GuidedScooterSelectionDraft {
+  if (!isCustomBrandSelection(draft.selection)) return draft;
+  return {
+    ...draft,
+    selection: { ...draft.selection, [key]: value },
+  };
+}
+
+export function changeGuidedVehicleCapability<K extends VehicleCapabilityKey>(
+  draft: GuidedScooterSelectionDraft,
+  key: K,
+  value: VehicleCapabilities[K]
+): GuidedScooterSelectionDraft {
+  if (!isCustomBrandSelection(draft.selection)) return draft;
+  return {
+    ...draft,
+    selection: {
+      ...draft.selection,
+      capabilities: {
+        ...normalizeVehicleCapabilities(draft.selection.capabilities),
+        [key]: value,
+      },
+    },
+  };
 }
 
 function keepBefore<T>(values: Partial<Record<IdentificationFeatureKey, T>>, key: IdentificationFeatureKey) {

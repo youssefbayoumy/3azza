@@ -18,6 +18,8 @@ const profile: VehicleProfile = {
   scooter_brand_id: 'sym',
   scooter_model_id: 'sym:new-symphony-st',
   scooter_version_id: 'sym:new-symphony-st:2021-present',
+  vehicle_capabilities_version: 1,
+  vehicle_capabilities_json: '{"schemaVersion":1,"powertrain":"unknown","transmission":"unknown","finalDrive":"unknown","cooling":"unknown","brakeSystem":"unknown","abs":"unknown","wheelType":"unknown"}',
 };
 
 function interval(overrides: Partial<ServiceInterval> = {}): ServiceInterval {

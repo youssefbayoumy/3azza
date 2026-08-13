@@ -6,9 +6,9 @@ import type { TabParamList, VitalsNavigationProp } from '../navigation/types';
 import MaintenanceRecordForm, {
   type MaintenanceRecordActionOption,
   type MaintenanceRecordDraft,
-} from '../components/MaintenanceRecordForm';
-import MaintenanceActionMenu from '../components/MaintenanceActionMenu';
-import MaintenanceActionRow from '../components/MaintenanceActionRow';
+} from '../components/maintenance/MaintenanceRecordForm';
+import MaintenanceActionMenu from '../components/maintenance/MaintenanceActionMenu';
+import MaintenanceActionRow from '../components/maintenance/MaintenanceActionRow';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppScreen from '../components/ui/AppScreen';
 import AppTopBar from '../components/ui/AppTopBar';
@@ -68,6 +68,7 @@ const COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   'air-cleaner-system': 'air',
   'spark-plug': 'bolt',
   'drive-belt-rollers': 'settings-input-component',
+  'drive-chain-sprockets': 'link',
   'clutch-disk': 'settings-input-component',
   'fuel-pump-filter': 'filter-alt',
   'cooling-system': 'ac-unit',
@@ -152,7 +153,7 @@ function statusPresentation(task: MaintenanceTaskProjection): {
   if (task.status === 'history_unknown_request_record' || task.status === 'unknown') return { label: t('oil.lastCheckUnknown'), color: 'text-secondary', background: 'bg-secondary/15' };
   if (task.status === 'historical_unverified') return { label: t('oil.pastMilestone'), color: 'text-secondary', background: 'bg-secondary/15' };
   if (task.status === 'not_applicable') return { label: t('maintenance.statusNotApplicable'), color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return { label: t('oil.byCondition'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'no_fixed_interval' || task.status === 'informational') return { label: t('maintenance.noFixedInterval'), color: 'text-secondary', background: 'bg-secondary/15' };
   return { label: t('maintenance.upcoming'), color: 'text-primary', background: 'bg-primary/15' };
 }
 
@@ -234,12 +235,9 @@ export default function MaintenanceScheduleScreen() {
     ]);
     if (!isCurrent()) return;
     setVehicle(profileData);
-    const domainProfile = getMaintenanceProfileForSelection(profileData ? {
-      brandId: profileData.scooter_brand_id,
-      modelId: profileData.scooter_model_id,
-      versionId: profileData.scooter_version_id,
-      variantId: profileData.scooter_variant_id,
-    } : null);
+    const domainProfile = getMaintenanceProfileForSelection(
+      profileData ? selectionFromProfile(profileData) : null
+    );
     setMaintenanceProfile(domainProfile);
     if (!profileData || !domainProfile) {
       setTasks([]);
@@ -428,6 +426,7 @@ export default function MaintenanceScheduleScreen() {
 
   const scooterSelection = selectionFromProfile(vehicle);
   const selectable = Boolean(maintenanceProfile);
+  const basicTracking = scooterSelection?.selectionMode === 'custom_brand';
   const setupNeeded = selectable && (
     vehicle.maintenance_history_level === undefined
     || vehicle.maintenance_history_level === 'not_asked'
@@ -566,16 +565,32 @@ export default function MaintenanceScheduleScreen() {
         {!selectable ? (
           <View className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 mt-6">
             <MaterialIcons name="two-wheeler" size={24} color="#f59e0b" />
-            <Text className="font-headline text-lg font-bold text-on-surface mt-3">{tr('plan.selectSupported')}</Text>
-            <Text className="font-body text-sm text-on-surface-variant mt-2 leading-6">
-              {tr('plan.selectSupportedBody')}
+            <Text className="font-headline text-lg font-bold text-on-surface mt-3">
+              {tr(basicTracking ? 'plan.basicTrackingTitle' : 'plan.selectSupported')}
             </Text>
-            <TouchableOpacity className="mt-4 min-h-12 rounded-lg bg-primary items-center justify-center px-4" onPress={() => navigation.navigate('VehicleSettings')}>
-              <Text className="font-label font-bold text-on-primary">{tr('plan.openSettings')}</Text>
+            <Text className="font-body text-sm text-on-surface-variant mt-2 leading-6">
+              {tr(basicTracking ? 'plan.basicTrackingBody' : 'plan.selectSupportedBody')}
+            </Text>
+            <TouchableOpacity
+              className="mt-4 min-h-12 rounded-lg bg-primary items-center justify-center px-4"
+              onPress={() => navigation.navigate(basicTracking ? 'ServiceLogs' : 'VehicleSettings')}
+            >
+              <Text className="font-label font-bold text-on-primary">
+                {tr(basicTracking ? 'plan.openServiceHistory' : 'plan.openSettings')}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
+            {basicTracking ? (
+              <View className="rounded-xl border border-primary/30 bg-primary/10 p-4 mt-6 flex-row items-start gap-3">
+                <MaterialIcons name="tune" size={22} color="#a9c7ff" />
+                <View className="flex-1">
+                  <Text className="font-headline text-base font-bold text-on-surface">{tr('plan.basicTrackingTitle')}</Text>
+                  <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{tr('plan.basicTrackingBody')}</Text>
+                </View>
+              </View>
+            ) : null}
             {dueNow.length > 0 ? (
               <View className="mt-7">
                 <Text className="font-label text-xs font-bold uppercase tracking-[0.16em] text-error mb-3">{tr('maintenance.dueNow')}</Text>

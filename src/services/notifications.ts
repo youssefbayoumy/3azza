@@ -21,6 +21,7 @@ import {
   maintenancePreferencesForScheduler,
 } from '../maintenance/storageProjection';
 import { t } from '../i18n/core';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
 
 const CHANNEL_ID = '3azza-maintenance';
 const BACKUP_ID = '3azza-backup-weekly';
@@ -104,12 +105,9 @@ async function reconcileMaintenanceNotifications(enabled: boolean): Promise<Noti
     const documents = await getDocuments();
     const preferences = await getMaintenancePreferences();
     const historyStates = await getMaintenanceHistoryStates();
-    const domainProfile = getMaintenanceProfileForSelection(profile ? {
-      brandId: profile.scooter_brand_id,
-      modelId: profile.scooter_model_id,
-      versionId: profile.scooter_version_id,
-      variantId: profile.scooter_variant_id,
-    } : null);
+    const domainProfile = getMaintenanceProfileForSelection(
+      profile ? selectionFromProfile(profile) : null
+    );
     const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
     const projectedTasks = profile && domainProfile ? projectMaintenanceTasks({
       profile: domainProfile,

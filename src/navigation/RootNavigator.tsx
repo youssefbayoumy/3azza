@@ -126,7 +126,11 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     lockOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        bottom: 0,
+        left: 0,
+        position: 'absolute',
+        right: 0,
+        top: 0,
         backgroundColor: '#081421',
         elevation: 100,
         zIndex: 100,

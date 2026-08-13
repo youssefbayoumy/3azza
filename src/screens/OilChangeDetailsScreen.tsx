@@ -6,9 +6,9 @@ import type { VehicleProfile } from '../types/database.types';
 import MaintenanceRecordForm, {
   type MaintenanceRecordActionOption,
   type MaintenanceRecordDraft,
-} from '../components/MaintenanceRecordForm';
-import MaintenanceActionMenu from '../components/MaintenanceActionMenu';
-import MaintenanceActionRow from '../components/MaintenanceActionRow';
+} from '../components/maintenance/MaintenanceRecordForm';
+import MaintenanceActionMenu from '../components/maintenance/MaintenanceActionMenu';
+import MaintenanceActionRow from '../components/maintenance/MaintenanceActionRow';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
@@ -41,6 +41,7 @@ import {
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { formatKilometres, formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
 
 function statusLabel(task: MaintenanceTaskProjection): string {
   if (task.reminderDisabled) return t('oil.disabled');
@@ -95,12 +96,9 @@ export default function OilChangeDetailsScreen() {
       getMaintenancePreferences(),
       getMaintenanceHistoryStates(),
     ]);
-    const domainProfile = getMaintenanceProfileForSelection(vehicleData ? {
-      brandId: vehicleData.scooter_brand_id,
-      modelId: vehicleData.scooter_model_id,
-      versionId: vehicleData.scooter_version_id,
-      variantId: vehicleData.scooter_variant_id,
-    } : null);
+    const domainProfile = getMaintenanceProfileForSelection(
+      vehicleData ? selectionFromProfile(vehicleData) : null
+    );
     if (!isCurrent()) return;
     setVehicle(vehicleData);
     setProfile(domainProfile);
@@ -126,7 +124,7 @@ export default function OilChangeDetailsScreen() {
   const recurringReplacement = oilTasks.find((task) =>
     task.action === 'replace'
     && !task.isOneTime
-    && task.scheduleType === 'recurring_distance'
+    && task.scheduleType !== 'condition_based'
   ) ?? null;
 
   const ruleById = useMemo(() => new Map(

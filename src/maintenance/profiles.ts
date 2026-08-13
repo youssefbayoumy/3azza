@@ -1,5 +1,8 @@
 import catalogueJson from '../../maintenance-data/universal-maintenance-catalogue.json';
 import newSymphonySt200Json from '../../maintenance-data/new-symphony-st-200.profile.json';
+import { OTHER_BRAND_ID, CUSTOM_MODEL_ID, CUSTOM_VERSION_ID } from '../catalog/customVehicleIdentity';
+import type { VehicleCapabilities } from '../catalog/vehicleCapabilities';
+import { getUniversalCustomMaintenanceProfile } from './universalProfile';
 import type { MaintenanceCatalogue, ScooterMaintenanceProfile } from './types';
 
 export const UNIVERSAL_MAINTENANCE_CATALOGUE = catalogueJson as MaintenanceCatalogue;
@@ -11,12 +14,20 @@ export type MaintenanceProfileSelection = {
   modelId?: string | null;
   versionId?: string | null;
   variantId?: string | null;
+  capabilities?: VehicleCapabilities;
 };
 
 export function getMaintenanceProfileForSelection(
   selection: MaintenanceProfileSelection | null | undefined
 ): ScooterMaintenanceProfile | null {
   if (!selection) return null;
+  if (
+    selection.brandId === OTHER_BRAND_ID
+    && selection.modelId === CUSTOM_MODEL_ID
+    && selection.versionId === CUSTOM_VERSION_ID
+  ) {
+    return getUniversalCustomMaintenanceProfile(selection.capabilities);
+  }
   return MAINTENANCE_PROFILES.find((profile) =>
     profile.catalogSelection.brandId === selection.brandId
     && profile.catalogSelection.modelId === selection.modelId
@@ -37,4 +48,3 @@ export function getSelectableMaintenanceProfiles(): ScooterMaintenanceProfile[] 
     (profile) => profile.status === 'validated' || profile.status === 'production_ready'
   );
 }
-

@@ -23,6 +23,7 @@ import AppTopBar from '../components/ui/AppTopBar';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import { formatNumber, localizeErrorMessage, t, tp, useTranslation, vehicleDisplayName } from '../i18n';
 import { maintenanceComponentGroup, naturalMaintenanceActionLabel } from '../maintenance/presentation';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
 
 type CustomizationRoute = RouteProp<MainStackParamList, 'MaintenanceReminderCustomization'>;
 
@@ -67,12 +68,9 @@ export default function MaintenanceReminderCustomizationScreen() {
       getVehicleProfile(),
       getMaintenancePreferences(),
     ]);
-    const profile = getMaintenanceProfileForSelection(vehicleData ? {
-      brandId: vehicleData.scooter_brand_id,
-      modelId: vehicleData.scooter_model_id,
-      versionId: vehicleData.scooter_version_id,
-      variantId: vehicleData.scooter_variant_id,
-    } : null);
+    const profile = getMaintenanceProfileForSelection(
+      vehicleData ? selectionFromProfile(vehicleData) : null
+    );
     const selectedRule = profile?.rules.find((candidate) => candidate.id === route.params.ruleId) ?? null;
     if (!vehicleData || !profile || !selectedRule) {
       throw new Error(tr('reminder.unavailable'));
@@ -117,11 +115,14 @@ export default function MaintenanceReminderCustomizationScreen() {
   );
   const original = useMemo(() => rule ? originalScheduleForRule(rule) : null, [rule]);
   const isConditionBased = original?.conditionBased ?? false;
+  const ownerDefinedVehicle = vehicle?.vehicle_selection_mode === 'custom_brand';
   const controlsVisible = reminderEnabled && (!isConditionBased || conditionReminderEnabled);
 
   const currentSetting = useMemo(() => {
     if (!preference || preference.interval_source === 'profile_default') {
-      return isConditionBased ? tr('reminder.conditionReplacement') : tr('reminder.usingOriginal');
+      return isConditionBased
+        ? tr('reminder.conditionReplacement')
+        : ownerDefinedVehicle ? tr('reminder.noStartingReminder') : tr('reminder.usingOriginal');
     }
     if (!reminderEnabled) return tr('reminder.disabledByYou');
     const distance = preference.distance_enabled === 1 ? preference.effective_interval_km : null;
@@ -130,7 +131,7 @@ export default function MaintenanceReminderCustomizationScreen() {
       return tr('reminder.userCreated', { schedule: scheduleText(distance, months) });
     }
     return tr('reminder.customByYou', { schedule: scheduleText(distance, months) });
-  }, [isConditionBased, preference, reminderEnabled, tr]);
+  }, [isConditionBased, ownerDefinedVehicle, preference, reminderEnabled, tr]);
 
   const persist = useCallback(async (confirmLonger: boolean) => {
     if (!rule || !original || saving) return;

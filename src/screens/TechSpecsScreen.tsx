@@ -11,7 +11,7 @@ import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
-import OnlineManualAction from '../components/OnlineManualAction';
+import OnlineManualAction from '../components/vehicle/OnlineManualAction';
 import {
   formatKnowledgeValue,
   getApplicableBreakInGuidance,

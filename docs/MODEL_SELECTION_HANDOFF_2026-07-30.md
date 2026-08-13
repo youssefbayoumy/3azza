@@ -4,7 +4,7 @@ Snapshot date: 2026-07-30
 Application repository: `C:\Users\youss\Desktop\Vibe coding\3azza2\app`  
 Android package: `com.youssefbayoumy.x3azza`
 
-This is the authoritative handover for the next update to choosing and changing a scooter model. It supersedes the older root `CODEX_HANDOFF.md` for current branch, build, catalog, and test state. The older file remains useful only as historical product context.
+This is the authoritative handover for the next update to choosing and changing a scooter model. It supersedes the older [`CODEX_HANDOFF.md`](./handoffs/CODEX_HANDOFF.md) for current branch, build, catalog, and test state. The older file remains useful only as historical product context.
 
 ## 1. User objective
 
@@ -266,7 +266,7 @@ Read these before editing:
 7. `src/components/ScooterSelectionFields.tsx`.
 8. `src/screens/setup/VehicleSetupScreen.tsx` and the selection/create/change portions of `src/screens/VehicleSettingsScreen.tsx`.
 9. Selection migrations and `createVehicleProfile`, `saveInitialVehicleSetup`, `saveVehicleScooterSelection`, and maintenance-template application in `src/services/database.ts`.
-10. `README.md`, `PRODUCT_UX_AUDIT.md`, and `docs/ANDROID_RELEASE_CHECKLIST.md` for product and release boundaries.
+10. `README.md`, [`PRODUCT_UX_AUDIT.md`](./qa/PRODUCT_UX_AUDIT.md), and `docs/ANDROID_RELEASE_CHECKLIST.md` for product and release boundaries.
 
 ## 11. Scope boundaries
 

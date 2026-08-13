@@ -2,6 +2,10 @@
 
 3azza is an offline-first, manual scooter-maintenance tracker for scooter and delivery-bike owners. It keeps separate local records for multiple vehicles while preserving the app's navy, silver, and electric-blue industrial interface.
 
+> Repository orientation: `C:\Users\youss\Desktop\Vibe coding\3azza2\app` is the canonical application repository. Its parent directory is a workspace containing source manuals and extraction material used by generation scripts; it is not part of this application repository's source layout. See [the architecture map](./docs/architecture/ARCHITECTURE.md) before making structural changes.
+
+> Before substantial product work, read [PRODUCT_SCOPE.md](./docs/PRODUCT_SCOPE.md), [CURRENT_STATE.md](./docs/CURRENT_STATE.md), [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md), and [NEXT_TASK.md](./docs/NEXT_TASK.md), in that order. Update the control document that matches any completed change.
+
 ## Product boundaries
 
 3azza is a record-keeping tool, not a connected vehicle system or workshop manual.
@@ -89,16 +93,17 @@ The test suite uses Node's test runner through `tsx`. Transaction tests use the 
 App.tsx                         startup, fonts, database, reminders
 src/navigation/                onboarding/app-lock/setup/main routing
 src/screens/                   product screens
-src/components/                focused reusable flows
+src/components/ui/             shared UI primitives
+src/components/maintenance/    maintenance-owned flows
+src/components/vehicle/        vehicle/manual-selection flows
 src/services/database.ts       vehicle-scoped SQLite service
+src/services/maintenance/      maintenance persistence internals
 src/services/auth.ts           local PIN and biometric app-lock service
 src/services/notifications.ts  on-device reminder reconciliation
 src/services/export.ts         self-contained backup/restore and CSV export
-src/services/maintenanceTransactions.ts
-                                tested transactional service mutations
 src/store/useAppStore.ts       transient session and persisted preferences
 src/utils/                     pure selectors, validation, and tests
-PRODUCT_UX_AUDIT.md            prioritized findings and verification record
+docs/                          architecture, maintenance, QA, and handoffs
 ```
 
 ## Data and safety notes
@@ -127,4 +132,4 @@ npx --yes eas-cli@21.2.0 build --platform android --profile production
 
 The automated gate includes TypeScript, Expo lint, unit tests, Expo Doctor, and a zero-Critical Android dependency policy. See [docs/ANDROID_RELEASE_CHECKLIST.md](./docs/ANDROID_RELEASE_CHECKLIST.md) for candidate evidence, signing, manual QA, Play Console, and rollback requirements.
 
-See [PRODUCT_UX_AUDIT.md](./PRODUCT_UX_AUDIT.md) for evidence, open risks, and the remaining smoke matrix.
+See [the product UX audit](./docs/qa/PRODUCT_UX_AUDIT.md) for evidence, open risks, and the remaining smoke matrix.

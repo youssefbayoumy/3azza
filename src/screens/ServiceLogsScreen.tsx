@@ -7,7 +7,7 @@ import MaintenanceRecordForm, {
   type MaintenanceRecordActionOption,
   type MaintenanceRecordDraft,
   type MaintenanceRecordFormInitialValue,
-} from '../components/MaintenanceRecordForm';
+} from '../components/maintenance/MaintenanceRecordForm';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppListContinuation from '../components/ui/AppListContinuation';
 import AppScreen from '../components/ui/AppScreen';
@@ -33,6 +33,8 @@ import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import type { ServiceLog, VehicleProfile } from '../types/database.types';
 import { formatDate, formatEgp, formatKilometres, localizeErrorMessage, t, useTranslation, type TranslationKey } from '../i18n';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
+import { UNIVERSAL_CUSTOM_PROFILE_ID } from '../maintenance/universalProfile';
 
 const CURATED_RULE_IDS = [
   'engine-oil.replace.recurring-1000km',
@@ -150,6 +152,19 @@ function optionForRule(
 
 function curatedActionOptions(profile: ScooterMaintenanceProfile | null): MaintenanceRecordActionOption[] {
   if (!profile) return [generalInspectionOption()];
+  if (profile.id === UNIVERSAL_CUSTOM_PROFILE_ID) {
+    const applicableOptions = profile.rules
+      .filter((rule) => rule.applicable)
+      .map((rule): MaintenanceRecordActionOption => ({
+        ruleId: rule.id,
+        componentId: rule.componentId,
+        action: rule.action,
+        label: naturalMaintenanceActionLabel({ componentId: rule.componentId, action: rule.action }),
+        requiresConditionResult: Boolean(rule.conditionFollowUp),
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+    return [...applicableOptions, generalInspectionOption()];
+  }
   return [
     ...CURATED_RULE_IDS.map((ruleId) => optionForRule(profile, ruleId)).filter(
       (option): option is MaintenanceRecordActionOption => option !== null
@@ -305,12 +320,7 @@ export default function ServiceLogsScreen() {
     if (!isCurrent()) return;
     setLogs(records);
     setVehicle(activeVehicle);
-    setProfile(getMaintenanceProfileForSelection({
-      brandId: activeVehicle.scooter_brand_id,
-      modelId: activeVehicle.scooter_model_id,
-      versionId: activeVehicle.scooter_version_id,
-      variantId: activeVehicle.scooter_variant_id,
-    }));
+    setProfile(getMaintenanceProfileForSelection(selectionFromProfile(activeVehicle)));
   }, [limit, tr]);
   const { error, loading, reload } = useFocusedLoader(
     load,

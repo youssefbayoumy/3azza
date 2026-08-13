@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import MaintenanceHistoryOnboarding from '../components/MaintenanceHistoryOnboarding';
+import MaintenanceHistoryOnboarding from '../components/maintenance/MaintenanceHistoryOnboarding';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppScreen from '../components/ui/AppScreen';
 import AppTopBar from '../components/ui/AppTopBar';
@@ -13,11 +13,19 @@ import { getVehicleProfile } from '../services/database';
 import {
   saveMaintenanceHistorySetup,
   skipMaintenanceHistorySetup,
-} from '../services/maintenanceHistoryOnboarding';
+} from '../services/maintenance/maintenanceHistoryOnboarding';
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
-import { isMaintenanceProfileSelectable } from '../maintenance/profiles';
+import {
+  getMaintenanceProfileForSelection,
+  isMaintenanceProfileSelectable,
+} from '../maintenance/profiles';
 import { localizeErrorMessage, useTranslation } from '../i18n';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
+import {
+  maintenanceHistoryBaselineKeysForProfile,
+  type MaintenanceHistoryBaselineKey,
+} from '../services/maintenance/maintenanceHistoryPlan';
 
 export default function MaintenanceHistorySetupScreen() {
   const { isRTL, t } = useTranslation();
@@ -25,19 +33,18 @@ export default function MaintenanceHistorySetupScreen() {
   const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
   const [odometerKm, setOdometerKm] = useState<number | null>(null);
   const [hasSupportedProfile, setHasSupportedProfile] = useState<boolean | null>(null);
+  const [baselineKeys, setBaselineKeys] = useState<MaintenanceHistoryBaselineKey[]>(['general_inspection']);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (isCurrent: () => boolean) => {
     const vehicle = await getVehicleProfile();
     if (!vehicle) throw new Error(t('history.activeVehicleMissing'));
     if (isCurrent()) {
+      const selection = selectionFromProfile(vehicle);
+      const profile = getMaintenanceProfileForSelection(selection);
       setOdometerKm(vehicle.current_mileage);
-      setHasSupportedProfile(isMaintenanceProfileSelectable({
-        brandId: vehicle.scooter_brand_id,
-        modelId: vehicle.scooter_model_id,
-        versionId: vehicle.scooter_version_id,
-        variantId: vehicle.scooter_variant_id,
-      }));
+      setHasSupportedProfile(isMaintenanceProfileSelectable(selection));
+      if (profile) setBaselineKeys(maintenanceHistoryBaselineKeysForProfile(profile));
     }
   }, [t]);
   const { error, loading, reload } = useFocusedLoader(
@@ -115,6 +122,7 @@ export default function MaintenanceHistorySetupScreen() {
         <Text className="font-headline text-sm font-bold text-on-surface">{t('history.screenTitle')}</Text>
       </AppTopBar>
       <MaintenanceHistoryOnboarding
+        baselineKeys={baselineKeys}
         currentOdometerKm={odometerKm}
         onComplete={(draft) => finish(() => saveMaintenanceHistorySetup(draft))}
         onSkip={() => finish(skipMaintenanceHistorySetup)}

@@ -13,7 +13,7 @@ import {
   type BackupSnapshot,
   type EmbeddedDocumentFile,
   type NormalizedBackupArchive,
-} from '../utils/backupFormat';
+} from './backupFormat';
 import { buildServiceLogsCsv, type ShareSheetOutcome } from '../utils/exportFormat';
 
 export type ExportResult = {
@@ -88,7 +88,7 @@ export async function buildBackupSnapshot(): Promise<BackupSnapshot> {
   const data = await getDatabaseBackupData();
   const snapshot: BackupSnapshot = {
     exported_at: new Date().toISOString(),
-    schema: '3azza-local-backup/v4',
+    schema: '3azza-local-backup/v6',
     data,
     document_files: await buildEmbeddedDocumentFiles(data.documents_vault),
   };
@@ -125,7 +125,11 @@ export async function restorePreparedBackup(archive: NormalizedBackupArchive): P
 
   try {
     let data = archive.data;
-    if (archive.source_schema === '3azza-local-backup/v4') {
+    if (
+      archive.source_schema === '3azza-local-backup/v4'
+      || archive.source_schema === '3azza-local-backup/v5'
+      || archive.source_schema === '3azza-local-backup/v6'
+    ) {
       const directory = FileSystem.documentDirectory;
       if (!directory) throw new Error('App document storage is unavailable.');
       const restoredUris = new Map<number, string>();

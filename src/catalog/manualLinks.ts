@@ -31,7 +31,7 @@ export function formatManualYears(value: string): string {
 export function getOnlineManualReference(
   selection: ResolvedScooterSelection | null
 ): OnlineManualReference | null {
-  if (!selection) return null;
+  if (!selection || !selection.version.manualId) return null;
   return {
     manualId: selection.version.manualId,
     manualName: `${selection.brand.name} ${selection.model.name} owner manual`,

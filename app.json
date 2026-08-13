@@ -2,43 +2,46 @@
   "expo": {
     "name": "3azza",
     "slug": "3azza",
-    "version": "2.3.3",
-    "orientation": "portrait",
+    "version": "2.3.4",
+    "orientation": "default",
     "icon": "./assets/chatgpt-image-aug-9-2026-app-icon.png",
     "backgroundColor": "#081421",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/android-icon-foreground.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#081421"
-    },
     "ios": {
       "supportsTablet": true,
       "backgroundColor": "#081421"
     },
     "android": {
       "backgroundColor": "#081421",
+      "icon": "./assets/chatgpt-image-aug9-icon-adaptive-balanced-v3.png",
       "adaptiveIcon": {
-        "backgroundColor": "#081421",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundImage": "./assets/chatgpt-image-aug9-icon-adaptive-balanced-v3.png",
+        "foregroundImage": "./assets/transparent-adaptive-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 12,
+      "versionCode": 15,
       "package": "com.youssefbayoumy.x3azza",
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
       ]
     },
-    "androidStatusBar": {
-      "barStyle": "light-content"
-    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "./plugins/with-https-url-queries",
+      "./plugins/with-android-material-compatibility",
+      "./plugins/with-android-launcher-alias",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#081421",
+          "image": "./assets/scooter-logo-splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
       "expo-font",
       "expo-sqlite",
       "expo-secure-store",
@@ -62,17 +65,19 @@
       [
         "expo-navigation-bar",
         {
-          "barStyle": "light",
+          "style": "light",
           "enforceContrast": false
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-status-bar",
+        {
+          "style": "light"
+        }
+      ]
     ],
     "extra": {
-      "expo-navigation-bar": {
-        "barStyle": "light",
-        "enforceContrast": false
-      },
       "eas": {
         "projectId": "a845f95b-c48a-454e-b10a-d01ea5b76a45"
       }

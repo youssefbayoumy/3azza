@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  CUSTOM_MODEL_ID,
+  CUSTOM_VERSION_ID,
+  formatScooterSelection,
   isScooterSelectionComplete,
+  OTHER_BRAND_ID,
   resolveScooterSelection,
   scooterCatalog,
 } from './scooterCatalog';
@@ -79,5 +83,35 @@ describe('generated scooter catalog', () => {
       modelId: 'sym:new-symphony-st',
       versionId: 'sym:new-symphony-st:2021-present',
     }), false);
+  });
+
+  it('accepts a named Other-brand vehicle without attaching a catalog manual', () => {
+    const resolved = resolveScooterSelection({
+      selectionMode: 'custom_brand',
+      brandId: OTHER_BRAND_ID,
+      modelId: CUSTOM_MODEL_ID,
+      versionId: CUSTOM_VERSION_ID,
+      customBrandName: '  Keeway ',
+      customModelName: ' RKS 150  ',
+    });
+
+    assert.ok(resolved);
+    assert.equal(resolved.selectionMode, 'custom_brand');
+    assert.equal(resolved.brand.name, 'Keeway');
+    assert.equal(resolved.model.name, 'RKS 150');
+    assert.equal(resolved.version.manualId, '');
+    assert.equal(isScooterSelectionComplete(resolved), true);
+    assert.equal(formatScooterSelection(resolved), 'Keeway RKS 150');
+  });
+
+  it('requires both a custom brand and model name for Other', () => {
+    assert.equal(resolveScooterSelection({
+      selectionMode: 'custom_brand',
+      brandId: OTHER_BRAND_ID,
+      modelId: CUSTOM_MODEL_ID,
+      versionId: CUSTOM_VERSION_ID,
+      customBrandName: 'Keeway',
+      customModelName: '   ',
+    }), null);
   });
 });

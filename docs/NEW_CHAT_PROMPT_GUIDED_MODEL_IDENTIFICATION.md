@@ -9,7 +9,7 @@ Your task is to design, implement, test, version, and install a guided exact-sco
 First read this handover completely and treat it as the current source of truth:
 C:\Users\youss\Desktop\Vibe coding\3azza2\app\docs\MODEL_SELECTION_HANDOFF_2026-07-30.md
 
-The root CODEX_HANDOFF.md is historical and stale for current branch/build state. Then inspect git status/log and all files listed in section 10 of the new handover. Do not ask me to repeat the context that is already documented.
+The historical [`CODEX_HANDOFF.md`](./handoffs/CODEX_HANDOFF.md) is stale for current branch/build state. Then inspect git status/log and all files listed in section 10 of the new handover. Do not ask me to repeat the context that is already documented.
 
 Current safe app state:
 - Version 2.0.1, Android build 6.
