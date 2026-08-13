@@ -44,8 +44,8 @@ On every cold launch, the unlocked session starts locked again. Existing users u
 
 ## Tech stack
 
-- Expo 55 and React Native 0.83
-- React 19 and TypeScript 5.9
+- Expo 57 and React Native 0.86
+- React 19.2 and TypeScript 6.0
 - React Navigation 7
 - NativeWind 4 / Tailwind CSS
 - `expo-sqlite` for local domain records
@@ -55,7 +55,7 @@ On every cold launch, the unlocked session starts locked again. Existing users u
 
 ## Development
 
-Prerequisites are Node.js, npm, Android Studio, and an Android device or emulator. This repository's verified Android development target is `Medium_Phone_API_35`; the package is `com.youssefbayoumy.x3azza`.
+Prerequisites are Node.js 22, npm, Android Studio, and an Android device or emulator. This repository's verified Android development target is `Medium_Phone_API_35`; the package is `com.youssefbayoumy.x3azza`. Git LFS is required when adding future APK, AAB, or APKS build artifacts.
 
 Install dependencies:
 
@@ -80,12 +80,10 @@ Adding or changing a native dependency requires another native build. A stale in
 Run the quality gates:
 
 ```bash
-npm run typecheck
-npm test
-npm run lint
+npm run check
 ```
 
-The test suite uses Node's test runner through `tsx`. Transaction tests use the `node:sqlite` API available in the verified Node 22 environment.
+The full check validates generated catalog and model data, maintenance profiles, TypeScript, lint, and the test suite. Tests use Node's test runner through `tsx`; transaction tests use the `node:sqlite` API available in the verified Node 22 environment.
 
 ## Source layout
 
@@ -116,13 +114,13 @@ docs/                          architecture, maintenance, QA, and handoffs
 
 ## Known limitations
 
-- Android is the only release-qualified platform. A remotely signed EAS Android App Bundle has passed clean-install, upgrade, phone, tablet-width, notification, app-lock, and final log checks. iOS/App Store and web support are intentionally unverified and outside the current release claim.
+- Android is the only historically qualified platform. The latest connected-device evidence covers version 2.3.3 / code 12; the current version 2.3.4 / code 15 source has not yet completed device or release qualification. The retained QA APKs are diagnostic/debug-certificate artifacts, not store-production-signed builds. iOS/App Store and web support remain intentionally unverified and outside the current release claim.
 - Biometric denied/cancelled/success paths require enrolled hardware and are not covered by the Android emulator.
 - TalkBack on physical hardware and Play Console pre-launch reports remain final distribution checks.
 
 ## Android release gate
 
-Use Node 22, install from the committed lockfile, and run:
+Use Node 22 and install from the committed lockfile. The current `npm run release:check` stops at Expo Doctor because five Expo SDK 57 packages are not aligned to the expected patch versions; resolve that release blocker before treating a new build as a candidate. Then run:
 
 ```bash
 npm ci
