@@ -14,9 +14,13 @@ type ExpoConfig = {
       package: string;
       versionCode: number;
       adaptiveIcon: {
-        backgroundImage: string;
+        backgroundColor: string;
         foregroundImage: string;
+        monochromeImage: string;
       };
+    };
+    web: {
+      favicon: string;
     };
   };
 };
@@ -38,11 +42,11 @@ describe('Android package identity and branding', () => {
   it('keeps regular and QA package IDs explicit and versioned for a safe update', () => {
     assert.equal(appConfig.expo.android.package, 'com.youssefbayoumy.x3azza');
     assert.equal(appConfig.expo.version, '2.3.4');
-    assert.equal(appConfig.expo.android.versionCode, 15);
+    assert.equal(appConfig.expo.android.versionCode, 16);
     assert.match(gradle, /applicationId 'com\.youssefbayoumy\.x3azza'/);
     assert.match(gradle, /applicationIdSuffix "\.qa"/);
     assert.match(gradle, /versionNameSuffix "-qa"/);
-    assert.match(gradle, /versionCode 15/);
+    assert.match(gradle, /versionCode 16/);
     assert.match(gradle, /versionName "2\.3\.4"/);
     assert.match(gradle, /com\.google\.android\.material:material:1\.14\.0/);
     assert.ok(
@@ -52,6 +56,10 @@ describe('Android package identity and branding', () => {
     assert.ok(
       appConfig.expo.plugins.includes('./plugins/with-android-launcher-alias'),
       'clean Expo builds must preserve the launcher alias and icon cache fix',
+    );
+    assert.ok(
+      appConfig.expo.plugins.includes('./plugins/with-android-qa-build-type'),
+      'clean Expo builds must preserve the side-by-side QA package',
     );
   });
 
@@ -64,32 +72,31 @@ describe('Android package identity and branding', () => {
     assert.match(manifest, /android:targetActivity="\.MainActivity"/);
     assert.match(launcherPlugin, /const LAUNCHER_ALIAS = '\.MainActivityLauncher'/);
     assert.match(launcherPlugin, /'android:icon': '@mipmap\/ic_launcher'/);
-    assert.match(adaptiveIcon, /@mipmap\/ic_launcher_background/);
+    assert.match(adaptiveIcon, /@color\/iconBackground/);
     assert.match(adaptiveIcon, /@mipmap\/ic_launcher_foreground/);
-    assert.doesNotMatch(adaptiveIcon, /monochrome/);
+    assert.match(adaptiveIcon, /@mipmap\/ic_launcher_monochrome/);
     assert.doesNotMatch(qaManifest, /android:(?:icon|roundIcon)=/);
     for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
       assert.ok(existsSync(resolve(root, `android/app/src/main/res/mipmap-${density}/ic_launcher.webp`)));
       assert.ok(existsSync(resolve(root, `android/app/src/main/res/mipmap-${density}/ic_launcher_round.webp`)));
-      assert.ok(existsSync(resolve(root, `android/app/src/main/res/mipmap-${density}/ic_launcher_background.webp`)));
       assert.ok(existsSync(resolve(root, `android/app/src/main/res/mipmap-${density}/ic_launcher_foreground.webp`)));
+      assert.ok(existsSync(resolve(root, `android/app/src/main/res/mipmap-${density}/ic_launcher_monochrome.webp`)));
     }
   });
 
   it('references only the approved 3azza icon sources and generated launcher resources', () => {
-    assert.equal(appConfig.expo.icon, './assets/chatgpt-image-aug-9-2026-app-icon.png');
-    assert.equal(
-      appConfig.expo.android.icon,
-      './assets/chatgpt-image-aug9-icon-adaptive-balanced-v3.png',
-    );
-    assert.equal(
-      appConfig.expo.android.adaptiveIcon.backgroundImage,
-      './assets/chatgpt-image-aug9-icon-adaptive-balanced-v3.png',
-    );
+    assert.equal(appConfig.expo.icon, './assets/branding/app-icon.png');
+    assert.equal(appConfig.expo.android.icon, './assets/branding/app-icon.png');
+    assert.equal(appConfig.expo.android.adaptiveIcon.backgroundColor, '#081421');
     assert.equal(
       appConfig.expo.android.adaptiveIcon.foregroundImage,
-      './assets/transparent-adaptive-foreground.png',
+      './assets/branding/adaptive-icon-foreground.png',
     );
+    assert.equal(
+      appConfig.expo.android.adaptiveIcon.monochromeImage,
+      './assets/branding/adaptive-icon-monochrome.png',
+    );
+    assert.equal(appConfig.expo.web.favicon, './assets/branding/favicon.png');
     assert.notEqual(appConfig.expo.icon, './assets/icon.png');
     assert.notEqual(appConfig.expo.icon, './assets/splash-icon.png');
 
@@ -106,21 +113,33 @@ describe('Android package identity and branding', () => {
     };
     assert.deepEqual(splashConfig, {
       backgroundColor: '#081421',
-      image: './assets/scooter-logo-splash.png',
+      image: './assets/branding/splash-logo.png',
       imageWidth: 200,
       resizeMode: 'contain',
+    });
+
+    const notificationsPlugin = appConfig.expo.plugins.find(
+      (plugin): plugin is [string, Record<string, unknown>] =>
+        Array.isArray(plugin) && plugin[0] === 'expo-notifications',
+    );
+    assert.ok(notificationsPlugin, 'expo-notifications must provide its Android small icon');
+    assert.deepEqual(notificationsPlugin[1], {
+      icon: './assets/branding/notification-icon.png',
+      color: '#0B75E5',
     });
 
     for (const path of [
       appConfig.expo.icon,
       appConfig.expo.android.icon,
       splashConfig.image,
-      appConfig.expo.android.adaptiveIcon.backgroundImage,
       appConfig.expo.android.adaptiveIcon.foregroundImage,
+      appConfig.expo.android.adaptiveIcon.monochromeImage,
+      appConfig.expo.web.favicon,
+      './assets/branding/notification-icon.png',
       'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp',
       'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp',
-      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.webp',
       'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp',
+      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.webp',
       'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',
       'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml',
     ]) {
@@ -131,8 +150,8 @@ describe('Android package identity and branding', () => {
       appConfig.expo.icon,
       appConfig.expo.android.icon,
       splashConfig.image,
-      appConfig.expo.android.adaptiveIcon.backgroundImage,
       appConfig.expo.android.adaptiveIcon.foregroundImage,
+      appConfig.expo.android.adaptiveIcon.monochromeImage,
     ].join('\n');
     assert.doesNotMatch(configuredIconPaths, /react[-_ ]?native|expo(?:-go)?[-_ ]?icon/i);
   });
