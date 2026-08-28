@@ -293,6 +293,18 @@ export function validateDatabaseBackupData(value: unknown): asserts value is Dat
     requireNumber(profile, 'total_km_range', path, { integer: true, min: 0 });
     requireBooleanFlag(profile, 'has_completed_setup', path);
     requireBooleanFlag(profile, 'service_history_setup_completed', path);
+    if (profile.purchase_condition !== undefined) {
+      const condition = requireString(profile, 'purchase_condition', path, { nonEmpty: true });
+      if (!['new', 'used', 'unknown'].includes(condition as string)) {
+        invalid(`${path}.purchase_condition`, 'must be new, used, or unknown');
+      }
+    }
+    if (profile.maintenance_started_at !== undefined && profile.maintenance_started_at !== null) {
+      requireDateTime(
+        requireString(profile, 'maintenance_started_at', path, { nonEmpty: true }),
+        `${path}.maintenance_started_at`
+      );
+    }
     if (profile.maintenance_history_level !== undefined) {
       const historyLevel = requireString(profile, 'maintenance_history_level', path, { nonEmpty: true });
       if (!MAINTENANCE_HISTORY_LEVELS.has(historyLevel as string)) {
@@ -938,6 +950,8 @@ function normalizePriorBackupData(data: PriorDatabaseBackupData): DatabaseBackup
       parseVehicleCapabilities(vehicle.vehicle_capabilities_json)
     ),
     maintenance_history_level: vehicle.maintenance_history_level ?? 'not_asked',
+    purchase_condition: vehicle.purchase_condition ?? 'unknown',
+    maintenance_started_at: vehicle.maintenance_started_at ?? null,
   }));
 
   const gasLogs: GasLog[] = data.gas_logs.map((log) => ({

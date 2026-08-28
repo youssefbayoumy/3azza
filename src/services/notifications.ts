@@ -15,13 +15,11 @@ import {
   type NotificationIntent,
 } from '../utils/notificationRouting';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
-import { isTaskTracked, projectMaintenanceTasks } from '../maintenance/scheduler';
-import {
-  maintenanceHistoryByAction,
-  maintenancePreferencesForScheduler,
-} from '../maintenance/storageProjection';
+import { isTaskTracked } from '../maintenance/scheduler';
+import { maintenancePreferencesForScheduler } from '../maintenance/storageProjection';
 import { t } from '../i18n/core';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
+import { projectVehicleMaintenance } from '../maintenance/lifecycle';
 
 const CHANNEL_ID = '3azza-maintenance';
 const BACKUP_ID = '3azza-backup-weekly';
@@ -109,22 +107,22 @@ async function reconcileMaintenanceNotifications(enabled: boolean): Promise<Noti
       profile ? selectionFromProfile(profile) : null
     );
     const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
-    const projectedTasks = profile && domainProfile ? projectMaintenanceTasks({
+    const maintenancePlan = profile && domainProfile ? projectVehicleMaintenance({
+      vehicle: profile,
       profile: domainProfile,
-      currentOdometerKm: profile.current_mileage,
       now: new Date(),
       events,
-      preferences: schedulerPreferences,
-      historyByAction: maintenanceHistoryByAction(historyStates),
-      defaultHistoryKnowledge: 'unknown',
-      vehicleInServiceDate: profile.created_at.slice(0, 10),
-    }) : [];
-    const tasks = projectedTasks.filter((task) => isTaskTracked(task, {
+      preferences,
+      historyStates,
+    }) : null;
+    const tasks = (maintenancePlan?.tasks ?? []).filter((task) => isTaskTracked(task, {
       preferences: schedulerPreferences,
       events,
       vehicleId: profile?.id,
     }));
-    const plan = buildDomainMaintenanceReminderPlan(tasks, documents);
+    const checkpoint = maintenancePlan?.firstServiceCheckpoint ?? null;
+    const checkpointDue = checkpoint?.status === 'overdue' || checkpoint?.status === 'due' ? 1 : 0;
+    const plan = buildDomainMaintenanceReminderPlan(tasks, documents, new Date(), checkpointDue);
     for (const reminder of plan) {
       await Notifications.scheduleNotificationAsync({
         identifier: reminder.identifier,

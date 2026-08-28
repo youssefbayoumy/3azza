@@ -3,7 +3,7 @@ import {
   VEHICLE_CAPABILITIES_SCHEMA_VERSION,
 } from '../catalog/vehicleCapabilities';
 
-export const CURRENT_SCHEMA_VERSION = 20;
+export const CURRENT_SCHEMA_VERSION = 21;
 
 /**
  * Installs the narrow database capability used by the dedicated odometer-correction
@@ -164,7 +164,9 @@ export const CURRENT_SCHEMA_SQL = `
     custom_brand_name TEXT,
     custom_model_name TEXT,
     vehicle_capabilities_version INTEGER NOT NULL DEFAULT ${VEHICLE_CAPABILITIES_SCHEMA_VERSION},
-    vehicle_capabilities_json TEXT NOT NULL DEFAULT '${UNKNOWN_VEHICLE_CAPABILITIES_JSON}'
+    vehicle_capabilities_json TEXT NOT NULL DEFAULT '${UNKNOWN_VEHICLE_CAPABILITIES_JSON}',
+    purchase_condition TEXT NOT NULL DEFAULT 'unknown',
+    maintenance_started_at TEXT
   );
 
   ${CUSTOM_VEHICLE_IDENTITY_SCHEMA_SQL}
@@ -410,6 +412,20 @@ export const CURRENT_SCHEMA_SQL = `
   )
   BEGIN
     SELECT RAISE(ABORT, 'Maintenance history level is invalid');
+  END;
+
+  CREATE TRIGGER prevent_invalid_purchase_condition_insert
+  BEFORE INSERT ON vehicle_profile
+  WHEN NEW.purchase_condition NOT IN ('new', 'used', 'unknown')
+  BEGIN
+    SELECT RAISE(ABORT, 'Vehicle purchase condition is invalid');
+  END;
+
+  CREATE TRIGGER prevent_invalid_purchase_condition_update
+  BEFORE UPDATE OF purchase_condition ON vehicle_profile
+  WHEN NEW.purchase_condition NOT IN ('new', 'used', 'unknown')
+  BEGIN
+    SELECT RAISE(ABORT, 'Vehicle purchase condition is invalid');
   END;
 
   CREATE TRIGGER prevent_invalid_service_baseline_flag_insert

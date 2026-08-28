@@ -26,7 +26,6 @@ const MAINTENANCE_UI_FILES = [
   'screens/PreRideCheckScreen.tsx',
   'screens/TechSpecsScreen.tsx',
   'screens/setup/VehicleSetupScreen.tsx',
-  'components/maintenance/MaintenanceHistoryOnboarding.tsx',
   'components/maintenance/MaintenanceRecordForm.tsx',
   'components/vehicle/ScooterSelectionFields.tsx',
   'components/SourceProvenance.tsx',
@@ -247,16 +246,15 @@ function task(
 describe('maintenance product priority policy', () => {
   it('implements the complete deterministic Home ordering', () => {
     const unordered = [
-      task('info', 'informational'),
-      task('unknown-check', 'history_unknown_request_record'),
+      task('info', 'no_fixed_interval'),
+      task('unknown-check', 'unknown_history'),
       task('due-inspection', 'due', { action: 'inspect' }),
-      task('upcoming', 'upcoming'),
+      task('ok', 'ok'),
       task('safety-service-soon', 'condition_attention', {
         conditionResult: 'service_soon',
         safetyCritical: true,
       }),
-      task('unknown-fixed-change', 'history_unknown_recommend_service', { action: 'replace' }),
-      task('historical-initial', 'historical_unverified', { isOneTime: true }),
+      task('unknown-fixed-change', 'unknown_history', { action: 'replace' }),
       task('due-replacement', 'due', { action: 'replace' }),
       task('due-soon', 'due_soon'),
       task('confirmed-overdue', 'overdue'),
@@ -276,23 +274,20 @@ describe('maintenance product priority policy', () => {
         'due-replacement',
         'due-inspection',
         'due-soon',
-        'upcoming',
+        'ok',
         'unknown-fixed-change',
         'unknown-check',
-        'historical-initial',
         'info',
       ]
     );
   });
 
-  it('keeps historical initial and informational work below every current priority', () => {
-    const current = ['overdue', 'due', 'due_soon', 'history_unknown_recommend_service', 'upcoming']
+  it('keeps no-fixed-interval guidance below current scheduled work', () => {
+    const current = ['overdue', 'due', 'due_soon', 'unknown_history', 'ok']
       .map((status, index) => task(`current-${index}`, status as TaskStatus));
-    const historical = task('historical', 'historical_unverified', { isOneTime: true });
     const informational = task('informational', 'no_fixed_interval');
 
     for (const item of current) {
-      assert.ok(maintenancePriorityScore(item) < maintenancePriorityScore(historical));
       assert.ok(maintenancePriorityScore(item) < maintenancePriorityScore(informational));
     }
   });
@@ -331,36 +326,29 @@ describe('production maintenance UI safety', () => {
     assert.deepEqual(failures, []);
   });
 
-  it('keeps one compact history-setup entry point on each current-priority surface', () => {
-    for (const [relativePath, translationKey] of [
-      ['screens/DashboardScreen.tsx', 'dashboard.finishHistory'],
-      ['screens/MaintenanceScheduleScreen.tsx', 'plan.finishHistory'],
+  it('keeps one first-service entry point without reviving the history questionnaire', () => {
+    for (const relativePath of [
+      'screens/DashboardScreen.tsx',
+      'screens/MaintenanceScheduleScreen.tsx',
     ] as const) {
       const { source } = sourceFile(relativePath);
-      const copyCount = [...source.matchAll(new RegExp(`['"]${translationKey.replaceAll('.', '\\.')}['"]`, 'g'))].length;
       const routeCount = [...source.matchAll(/navigate\('MaintenanceHistorySetup'\)/g)].length;
-      assert.equal(copyCount, 1, `${relativePath} must render the setup reminder once`);
       assert.equal(routeCount, 1, `${relativePath} must expose one setup entry point`);
+      assert.doesNotMatch(source, /maintenance_history_level|finishHistory/);
     }
   });
 
-  it('offers the compact owner-knowledge and high-value baseline choices', () => {
-    const { source } = sourceFile('components/maintenance/MaintenanceHistoryOnboarding.tsx');
+  it('asks only the ownership question needed by the lifecycle model', () => {
+    const { source } = sourceFile('screens/setup/VehicleSetupScreen.tsx');
     for (const key of [
-      'history.knowledgeDetailed',
-      'history.knowledgeRecent',
-      'history.knowledgeLittle',
-      'history.skip',
-      'history.engineOil',
-      'history.gearOil',
-      'history.airFilter',
-      'history.generalInspection',
-      'history.unknown',
+      'setup.purchaseCondition',
+      'setup.boughtNew',
+      'setup.boughtUsed',
     ]) {
       assert.ok(source.includes(`'${key}'`), `missing onboarding translation key: ${key}`);
       assert.ok(en[key as keyof typeof en], `missing English resource: ${key}`);
     }
-    assert.doesNotMatch(source, /approximate/i);
+    assert.doesNotMatch(source, /MaintenanceHistoryOnboarding|dailyAvg/);
   });
 
   it('keeps exact history setup behind the supported-profile gate', () => {
@@ -370,16 +358,14 @@ describe('production maintenance UI safety', () => {
     assert.match(setup, /isMaintenanceProfileSelectable\s*\(/);
     assert.match(setup, /history\.unavailable/);
     assert.match(setup, /if \(!hasSupportedProfile\)/);
-    assert.match(maintenance, /const setupNeeded = selectable && \(/);
+    assert.match(maintenance, /projectVehicleMaintenance/);
+    assert.doesNotMatch(maintenance, /maintenance_history_level/);
   });
 
-  it('announces onboarding stage and validation changes with component-specific labels', () => {
-    const { source } = sourceFile('components/maintenance/MaintenanceHistoryOnboarding.tsx');
-
-    assert.match(source, /AccessibilityInfo\.announceForAccessibility/);
-    assert.match(source, /accessibilityLabel=\{t\('history\.optionA11y'/);
-    assert.match(source, /accessibilityLabel=\{t\('history\.mileageA11y'/);
-    assert.match(source, /accessibilityRole="alert"/);
+  it('exposes new and used choices as accessible radios', () => {
+    const { source } = sourceFile('screens/setup/VehicleSetupScreen.tsx');
+    assert.match(source, /accessibilityRole="radio"/);
+    assert.match(source, /accessibilityState=\{\{ checked: selected \}\}/);
   });
 
   it('explains edit scope and delete-triggered reminder recalculation', () => {
@@ -438,17 +424,30 @@ describe('production maintenance UI safety', () => {
     assert.doesNotMatch(maintenance, /maintenanceSectionForTask/);
   });
 
-  it('keeps historical one-time milestones out of daily menus and current oil details', () => {
+  it('routes current plan consumers through the lifecycle engine and removes historical task branches', () => {
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
     const oil = sourceFile('screens/OilChangeDetailsScreen.tsx').source;
     const menu = sourceFile('components/maintenance/MaintenanceActionMenu.tsx').source;
-    const customization = sourceFile('screens/MaintenanceReminderCustomizationScreen.tsx').source;
-
-    assert.match(maintenance, /task\.status !== 'historical_unverified'/);
-    assert.match(oil, /task\.status !== 'historical_unverified'/);
-    assert.match(menu, /const historical = task\.status === 'historical_unverified'/);
+    assert.match(maintenance, /projectVehicleMaintenance/);
+    assert.match(oil, /projectVehicleMaintenance/);
+    assert.doesNotMatch(menu, /historical_unverified/);
+    assert.match(menu, /maintenance\.changedNow/);
+    assert.match(menu, /maintenance\.enterPrevious/);
     assert.match(menu, /\{customizable \? \(/);
-    assert.match(customization, /reminder\.pastCannotCustomize/);
+  });
+
+  it('keeps generic maintenance recording ownership-neutral and confines the new-only guard to first service', () => {
+    const database = sourceFile('services/database.ts').source;
+    const genericStart = database.indexOf('export async function createMaintenanceRecord');
+    const checkpointStart = database.indexOf('export async function resolveInitialServiceCheckpoint');
+    assert.ok(genericStart >= 0 && checkpointStart > genericStart);
+
+    const genericRecord = database.slice(genericStart, checkpointStart);
+    assert.match(genericRecord, /prepareMaintenanceRecordInput\(vehicle, input/);
+    assert.doesNotMatch(genericRecord, /purchase_condition|first-service checkpoint/i);
+
+    const checkpoint = database.slice(checkpointStart);
+    assert.match(checkpoint, /vehicle\.purchase_condition !== 'new'/);
   });
 
   it('keeps every customization mode accessible after the hierarchy pass', () => {

@@ -24,13 +24,13 @@ import AppIconButton from '../components/ui/AppIconButton';
 import AppTopBar from '../components/ui/AppTopBar';
 import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
+import InitialServiceCheckpointCard from '../components/maintenance/InitialServiceCheckpointCard';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { getApplicableBreakInGuidance, getModelProfileForVehicle, getSelectedVariant } from '../modelData/modelKnowledge';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
-import { isTaskTracked, projectMaintenanceTasks } from '../maintenance/scheduler';
+import { isTaskTracked } from '../maintenance/scheduler';
 import { maintenanceComponentGroup, naturalMaintenanceActionLabel } from '../maintenance/presentation';
 import {
-    maintenanceHistoryByAction,
     maintenancePreferencesForScheduler,
 } from '../maintenance/storageProjection';
 import type {
@@ -38,6 +38,8 @@ import type {
 } from '../maintenance/types';
 import { formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
+import type { InitialServiceCheckpoint } from '../maintenance/initialServiceCheckpoint';
+import { projectVehicleMaintenance, type MaintenanceLifecycle } from '../maintenance/lifecycle';
 
 const HOME_COMPONENT_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
     'engine-oil': 'opacity',
@@ -75,8 +77,8 @@ function isHomePriority(task: MaintenanceTaskProjection): boolean {
         || task.status === 'overdue'
         || task.status === 'due'
         || task.status === 'due_soon'
-        || task.status === 'history_unknown_recommend_service'
-        || task.status === 'upcoming';
+        || task.status === 'unknown_history'
+        || task.status === 'ok';
 }
 
 function homePriorityCopy(task: MaintenanceTaskProjection): string {
@@ -88,7 +90,7 @@ function homePriorityCopy(task: MaintenanceTaskProjection): string {
         if (task.conditionResult === 'unable_to_inspect') return t('dashboard.statusWorkshop');
         return t('dashboard.statusCondition');
     }
-    if (task.status === 'history_unknown_recommend_service') return t('maintenance.statusLastChange');
+    if (task.status === 'unknown_history') return t('maintenance.statusHistory');
     if (task.remainingKm !== null) {
         if (task.remainingKm < 0) return t('maintenance.overdueKm', { km: formatNumber(Math.abs(task.remainingKm)) });
         if (task.remainingKm === 0) return t('maintenance.dueNow');
@@ -105,7 +107,7 @@ function homePriorityCopy(task: MaintenanceTaskProjection): string {
 function homePriorityColor(task: MaintenanceTaskProjection): string {
     if (task.status === 'overdue' || task.status === 'due' || task.conditionResult === 'replace_now') return 'text-error';
     if (task.status === 'due_soon' || task.status === 'condition_attention') return 'text-amber-400';
-    if (task.status === 'history_unknown_recommend_service') return 'text-secondary';
+    if (task.status === 'unknown_history') return 'text-secondary';
     return 'text-primary';
 }
 
@@ -116,6 +118,9 @@ export default function DashboardScreen() {
     const { locale, isRTL, t: tr, tp } = useTranslation();
     const [profile, setProfile] = useState<VehicleProfile | null>(null);
     const [maintenanceTasks, setMaintenanceTasks] = useState<MaintenanceTaskProjection[]>([]);
+    const [initialServiceCheckpoint, setInitialServiceCheckpoint] = useState<InitialServiceCheckpoint | null>(null);
+    const [maintenanceLifecycle, setMaintenanceLifecycle] = useState<MaintenanceLifecycle>('normal');
+    const openMaintenanceHistorySetup = () => navigation.navigate('MaintenanceHistorySetup');
 
     const [isOdoModalVisible, setIsOdoModalVisible] = useState(false);
     const [newOdoValue, setNewOdoValue] = useState('');
@@ -312,18 +317,17 @@ export default function DashboardScreen() {
             profileData ? selectionFromProfile(profileData) : null
         );
         const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
-        const projectedTasks = profileData && domainProfile ? projectMaintenanceTasks({
+        const plan = profileData && domainProfile ? projectVehicleMaintenance({
+            vehicle: profileData,
             profile: domainProfile,
-            currentOdometerKm: profileData.current_mileage,
-            vehicleId: profileData.id,
             now: new Date(),
             events,
-            preferences: schedulerPreferences,
-            historyByAction: maintenanceHistoryByAction(historyStates),
-            defaultHistoryKnowledge: 'unknown',
-            vehicleInServiceDate: profileData.created_at.slice(0, 10),
-        }) : [];
-        setMaintenanceTasks(projectedTasks.filter((task) => isTaskTracked(task, {
+            preferences,
+            historyStates,
+        }) : null;
+        setInitialServiceCheckpoint(plan?.firstServiceCheckpoint ?? null);
+        setMaintenanceLifecycle(plan?.lifecycle ?? 'normal');
+        setMaintenanceTasks((plan?.tasks ?? []).filter((task) => isTaskTracked(task, {
             preferences: schedulerPreferences,
             events,
             vehicleId: profileData?.id,
@@ -340,15 +344,6 @@ export default function DashboardScreen() {
     const { mileage: computedMileage, predictedAdded, diffDays } = computePredictedOdometer(profile);
     // Maintenance stays on the confirmed reading until the owner accepts or adjusts the prediction.
     const mileage = profile?.current_mileage ?? 0;
-    const hasSelectableMaintenanceProfile = Boolean(getMaintenanceProfileForSelection(
-        profile ? selectionFromProfile(profile) : null
-    ));
-    const setupNeeded = hasSelectableMaintenanceProfile && (
-        profile?.maintenance_history_level === undefined
-        || profile.maintenance_history_level === 'not_asked'
-        || profile.maintenance_history_level === 'skipped'
-    );
-
     // Status logic: if we've added at least 1 KM via prediction, show the verify banner
     const isPredicted = predictedAdded >= 1;
 
@@ -360,17 +355,13 @@ export default function DashboardScreen() {
         if (!isHomePriority(task)) return items;
         // The compact setup prompt outranks purely informational upcoming work.
         // Confirmed due work and important unknown fixed changes still stay first.
-        if (setupNeeded && task.status === 'upcoming') return items;
         const group = homeGroup(task);
         if (!items.some((item) => item.group.id === group.id)) items.push({ group, task });
         return items;
     }, []).slice(0, 3);
     const nextService = maintenanceTasks.find((task) =>
         task.dueAtKm !== null
-        && task.status !== 'historical_unverified'
-        && task.status !== 'history_unknown_recommend_service'
-        && task.status !== 'history_unknown_request_record'
-        && task.status !== 'unknown'
+        && task.status !== 'unknown_history'
     );
     const remainingToNext = nextService?.remainingKm ?? null;
     const gaugeStartKm = nextService?.lastPerformedAtKm
@@ -404,7 +395,8 @@ export default function DashboardScreen() {
             || task.status === 'due'
             || task.status === 'due_soon'
             || task.status === 'condition_attention')
-        .map((task) => homeGroup(task).id)).size;
+        .map((task) => homeGroup(task).id)).size
+        + (initialServiceCheckpoint?.status === 'overdue' || initialServiceCheckpoint?.status === 'due' ? 1 : 0);
     const modelProfile = getModelProfileForVehicle(profile);
     const vehicleSelection = profile ? selectionFromProfile(profile) : null;
     const selectedVariant = getSelectedVariant(profile, modelProfile);
@@ -415,7 +407,7 @@ export default function DashboardScreen() {
             .filter((value) => Number.isFinite(value) && value > 0)
     );
     const breakInLimit = breakInLimits.length > 0 ? Math.max(...breakInLimits) : null;
-    const isInBreakIn = breakInLimit !== null && mileage <= breakInLimit;
+    const isInBreakIn = maintenanceLifecycle === 'break_in';
     if (loading || loadError) {
         return <ScreenLoadState error={loadError} loading={loading} onRetry={reload} title={tr('dashboard.title')} />;
     }
@@ -506,11 +498,17 @@ export default function DashboardScreen() {
                             <MaterialCommunityIcons name="engine-outline" size={20} color="#f2ca50" />
                             <View className="flex-1">
                                 <Text className="font-label text-xs font-bold text-tertiary uppercase tracking-wider">{tr('dashboard.breakInActive')}</Text>
-                                <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('dashboard.breakInBody', { km: formatNumber(breakInLimit ?? 0, locale) })}</Text>
+                                <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('dashboard.breakInBody', { km: formatNumber(breakInLimit ?? initialServiceCheckpoint?.actionableUntilKm ?? 0, locale) })}</Text>
                             </View>
                         </TouchableOpacity>
                     ) : null}
                 </View>
+
+                {initialServiceCheckpoint ? (
+                    <View className="mb-4">
+                        <InitialServiceCheckpointCard checkpoint={initialServiceCheckpoint} onPress={openMaintenanceHistorySetup} />
+                    </View>
+                ) : null}
 
                 {homePriorities.length > 0 ? (
                     <View className="w-full bg-surface-container-low border border-outline-variant/15 rounded-xl p-5 mb-4">
@@ -540,21 +538,6 @@ export default function DashboardScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                ) : null}
-
-                {setupNeeded ? (
-                    <TouchableOpacity
-                        accessibilityRole="button"
-                        className="w-full min-h-20 bg-primary/10 border border-primary/25 rounded-xl p-4 mb-6 flex-row items-center gap-3"
-                        onPress={() => navigation.navigate('MaintenanceHistorySetup')}
-                    >
-                        <MaterialIcons name="playlist-add-check" size={22} color="#a9c7ff" />
-                        <View className="flex-1">
-                            <Text className="font-headline text-sm font-bold text-on-surface">{tr('dashboard.finishHistory')}</Text>
-                            <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('dashboard.finishHistoryBody')}</Text>
-                        </View>
-                        <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={20} color="#a9c7ff" />
-                    </TouchableOpacity>
                 ) : null}
 
                 {/* Kinetic Gauge Section */}

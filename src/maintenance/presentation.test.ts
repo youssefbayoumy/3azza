@@ -3,7 +3,6 @@ import { describe, it } from 'node:test';
 import { NEW_SYMPHONY_ST_200_PROFILE, UNIVERSAL_MAINTENANCE_CATALOGUE } from './profiles';
 import {
   buildMaintenancePresentation,
-  canCustomizeMaintenanceTask,
   maintenanceComponentGroup,
   maintenanceGroupSummary,
   maintenanceOverrideBadge,
@@ -162,7 +161,7 @@ describe('maintenance presentation taxonomy', () => {
     }), 'User-created reminder');
   });
 
-  it('does not allow a historical one-time milestone to expose customization', () => {
+  it('retires a past one-time milestone before presentation', () => {
     const profile = profileWithRules('engine-oil.replace.initial-300');
     const task = projectMaintenanceTasks({
       profile,
@@ -171,9 +170,8 @@ describe('maintenance presentation taxonomy', () => {
       now: NOW,
       events: [],
       defaultHistoryKnowledge: 'unknown',
-    })[0];
-    assert.equal(task.status, 'historical_unverified');
-    assert.equal(canCustomizeMaintenanceTask(task), false);
+    });
+    assert.deepEqual(task, []);
   });
 
   it('gives every component exactly one deterministic top-level home', () => {

@@ -15,7 +15,7 @@ type MaintenanceActionMenuProps = {
   onClose: () => void;
   onCustomize: (task: MaintenanceTaskProjection) => void;
   onHistory: () => void;
-  onRecord: (task: MaintenanceTaskProjection) => void;
+  onRecord: (task: MaintenanceTaskProjection, mode: 'now' | 'previous') => void;
   onRestore: (task: MaintenanceTaskProjection) => void;
   onStopTracking?: (task: MaintenanceTaskProjection) => void;
   task: MaintenanceTaskProjection | null;
@@ -58,7 +58,6 @@ export default function MaintenanceActionMenu({
   const { t } = useTranslation();
   if (!task) return null;
 
-  const historical = task.status === 'historical_unverified';
   const overrideBadge = maintenanceOverrideBadge(task);
   const customizable = canCustomizeMaintenanceTask(task);
   const hasActiveReminder = !task.reminderDisabled && (
@@ -82,11 +81,24 @@ export default function MaintenanceActionMenu({
       <View className="flex-1 bg-black/55">
         <AppBottomSheet onClose={onClose} title={naturalMaintenanceActionLabel(task)}>
           <View className="gap-1">
-            {!historical && task.status !== 'not_applicable' ? (
+            {task.status === 'unknown_history' ? (
+              <>
+                <MenuRow
+                  icon="done-all"
+                  label={t('maintenance.changedNow')}
+                  onPress={() => closeThen(() => onRecord(task, 'now'))}
+                />
+                <MenuRow
+                  icon="history"
+                  label={t('maintenance.enterPrevious')}
+                  onPress={() => closeThen(() => onRecord(task, 'previous'))}
+                />
+              </>
+            ) : task.status !== 'not_applicable' ? (
               <MenuRow
                 icon="edit-note"
-                label={naturalRecordActionLabel(task, task.status === 'history_unknown_recommend_service' || task.status === 'history_unknown_request_record' || task.status === 'unknown')}
-                onPress={() => closeThen(() => onRecord(task))}
+                label={naturalRecordActionLabel(task)}
+                onPress={() => closeThen(() => onRecord(task, 'now'))}
               />
             ) : null}
             {customizable ? (
@@ -112,7 +124,7 @@ export default function MaintenanceActionMenu({
                 onPress={() => closeThen(() => onRestore(task))}
               />
             ) : null}
-            {onStopTracking && !historical && task.status !== 'not_applicable' ? (
+            {onStopTracking && task.status !== 'not_applicable' ? (
               <MenuRow
                 icon="remove-circle-outline"
                 label={t('maintenance.stopTracking')}
@@ -121,11 +133,6 @@ export default function MaintenanceActionMenu({
               />
             ) : null}
           </View>
-          {historical ? (
-            <Text className="font-body text-xs text-on-surface-variant mt-3 leading-5">
-              {t('maintenance.pastMilestoneHelp')}
-            </Text>
-          ) : null}
         </AppBottomSheet>
       </View>
     </ProtectedModal>

@@ -61,6 +61,8 @@ describe('backup format', () => {
     assert.equal(normalized.service_intervals[0].has_known_odometer_baseline, 1);
     assert.equal(normalized.service_logs[0].sets_odometer_baseline, 1);
     assert.equal(normalized.vehicle_profiles[0].maintenance_history_level, 'not_asked');
+    assert.equal(normalized.vehicle_profiles[0].purchase_condition, 'unknown');
+    assert.equal(normalized.vehicle_profiles[0].maintenance_started_at, null);
     assert.deepEqual(normalized.maintenance_preferences, []);
     assert.deepEqual(normalized.maintenance_history_states, []);
   });

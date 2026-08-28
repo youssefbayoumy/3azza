@@ -94,7 +94,7 @@ export default function VehicleSettingsScreen() {
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [vehicleName, setVehicleName] = useState('');
   const [vehicleMileage, setVehicleMileage] = useState('');
-  const [vehicleDailyAverage, setVehicleDailyAverage] = useState('');
+  const [vehiclePurchaseCondition, setVehiclePurchaseCondition] = useState<'new' | 'used' | null>(null);
   const [newVehicleSelection, setNewVehicleSelection] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
   const [showNewVehicleSelectionErrors, setShowNewVehicleSelectionErrors] = useState(false);
   const [creatingVehicle, setCreatingVehicle] = useState(false);
@@ -249,11 +249,10 @@ export default function VehicleSettingsScreen() {
   const vehicleCreation = prepareVehicleCreation({
     name: vehicleName,
     mileage: vehicleMileage,
-    dailyAverage: vehicleDailyAverage,
+    purchaseCondition: vehiclePurchaseCondition,
     selection: newVehicleSelection.selection,
   }, {
     startingOdometer: t('settings.startingOdometer'),
-    dailyAverage: t('settings.dailyAverage'),
   });
 
   const handleCreateVehicle = async () => {
@@ -269,12 +268,12 @@ export default function VehicleSettingsScreen() {
       await createVehicleProfile(
         vehicleCreation.name,
         vehicleCreation.currentMileage,
-        vehicleCreation.dailyAverageKm,
-        vehicleCreation.selection
+        vehicleCreation.selection,
+        vehicleCreation.purchaseCondition
       );
       setVehicleName('');
       setVehicleMileage('');
-      setVehicleDailyAverage('');
+      setVehiclePurchaseCondition(null);
       setNewVehicleSelection(createGuidedSelectionDraft());
       setShowNewVehicleSelectionErrors(false);
       setVehicleModalVisible(false);
@@ -306,7 +305,7 @@ export default function VehicleSettingsScreen() {
   const openVehicleModal = () => {
     setVehicleName('');
     setVehicleMileage('');
-    setVehicleDailyAverage('');
+    setVehiclePurchaseCondition(null);
     setNewVehicleSelection(createGuidedSelectionDraft());
     setShowNewVehicleSelectionErrors(false);
     setVehicleModalVisible(true);
@@ -315,6 +314,7 @@ export default function VehicleSettingsScreen() {
   const closeVehicleModal = () => {
     if (vehicleCreationGuard.current.isCreating()) return;
     setVehicleModalVisible(false);
+    setVehiclePurchaseCondition(null);
     setNewVehicleSelection(createGuidedSelectionDraft());
     setShowNewVehicleSelectionErrors(false);
   };
@@ -920,7 +920,25 @@ export default function VehicleSettingsScreen() {
               editable={!creatingVehicle}
             />
             <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-4" placeholder={t('settings.startingOdometerPlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleMileage} onChangeText={setVehicleMileage} editable={!creatingVehicle} />
-            <TextInput className="bg-surface-container-highest px-4 py-3 rounded-xl border border-outline-variant/10 text-on-surface font-body text-base mb-6" placeholder={t('settings.dailyAveragePlaceholder')} placeholderTextColor="#64748b" keyboardType="numeric" value={vehicleDailyAverage} onChangeText={setVehicleDailyAverage} editable={!creatingVehicle} />
+            <Text className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">{t('setup.purchaseCondition')}</Text>
+            <View className="gap-2 mb-6">
+              {(['new', 'used'] as const).map((condition) => {
+                const selected = vehiclePurchaseCondition === condition;
+                return (
+                  <TouchableOpacity
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    className={`min-h-12 rounded-xl border px-4 flex-row items-center gap-3 ${selected ? 'border-primary bg-primary/10' : 'border-outline-variant/20 bg-surface-container-highest'}`}
+                    disabled={creatingVehicle}
+                    key={condition}
+                    onPress={() => setVehiclePurchaseCondition(condition)}
+                  >
+                    <MaterialIcons color={selected ? '#a9c7ff' : '#8e9196'} name={selected ? 'radio-button-checked' : 'radio-button-unchecked'} size={20} />
+                    <Text className="font-body text-sm text-on-surface">{t(condition === 'new' ? 'setup.boughtNew' : 'setup.boughtUsed')}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             </ScrollView>
             <View className="flex-row justify-end gap-3">
               <TouchableOpacity onPress={closeVehicleModal} disabled={creatingVehicle} className={`px-4 py-2 rounded-lg ${creatingVehicle ? 'opacity-60' : ''}`} accessibilityState={{ disabled: creatingVehicle }}>

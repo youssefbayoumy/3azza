@@ -242,7 +242,7 @@ export function naturalRecordActionLabel(
 export function canCustomizeMaintenanceTask(
   task: Pick<MaintenanceTaskProjection, 'status'>
 ): boolean {
-  return task.status !== 'historical_unverified';
+  return task.status !== 'not_applicable';
 }
 
 export function maintenanceOverrideBadge(
@@ -284,8 +284,7 @@ function scheduleSignature(
 /** Prevents a component header from presenting one child's interval as a shared schedule. */
 export function maintenanceGroupSummary(tasks: MaintenanceTaskProjection[]): string {
   const active = tasks.filter((task) =>
-    task.status !== 'historical_unverified'
-    && task.status !== 'not_applicable'
+    task.status !== 'not_applicable'
     && !task.reminderDisabled
   );
   if (active.length === 0) return t(tasks.some((task) => task.reminderDisabled)
@@ -342,7 +341,7 @@ export function maintenanceGroupSummary(tasks: MaintenanceTaskProjection[]): str
 
 export function maintenanceNearestActionSummary(tasks: MaintenanceTaskProjection[]): string | null {
   const nearest = [...tasks]
-    .filter((task) => task.status !== 'historical_unverified' && task.status !== 'not_applicable')
+    .filter((task) => task.status !== 'not_applicable')
     .sort(compareMaintenanceTaskPriority)[0];
   if (!nearest) return null;
   if (nearest.status === 'overdue') {
@@ -356,11 +355,11 @@ export function maintenanceNearestActionSummary(tasks: MaintenanceTaskProjection
   if (nearest.conditionResult === 'healthy') return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.conditionHealthy') });
   if (nearest.remainingKm !== null) return t('maintenance.nearestDueKm', { label: naturalMaintenanceActionLabel(nearest), km: formatNumber(nearest.remainingKm) });
   if (nearest.remainingDays !== null) return t('maintenance.nearestDueDays', { label: naturalMaintenanceActionLabel(nearest), days: formatNumber(nearest.remainingDays) });
-  if (nearest.status === 'history_unknown_recommend_service') {
-    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.lastReplacementUnknown') });
-  }
-  if (nearest.status === 'history_unknown_request_record' || nearest.status === 'unknown') {
-    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status: t('maintenance.lastInspectionUnknown') });
+  if (nearest.status === 'unknown_history') {
+    const status = nearest.action === 'replace'
+      ? t('maintenance.lastReplacementUnknown')
+      : t('maintenance.lastInspectionUnknown');
+    return t('maintenance.nearestStatus', { label: naturalMaintenanceActionLabel(nearest), status });
   }
   return null;
 }
@@ -373,13 +372,13 @@ export function maintenanceSectionForTask(
 
 function statusLabel(task: MaintenanceTaskProjection): string {
   const labels: Partial<Record<MaintenanceTaskProjection['status'], TranslationKey>> = {
-    upcoming: 'maintenance.upcoming', due_soon: 'maintenance.dueSoon', due: 'maintenance.dueNow', overdue: 'maintenance.overdue',
+    ok: 'maintenance.upcoming', due_soon: 'maintenance.dueSoon', due: 'maintenance.dueNow', overdue: 'maintenance.overdue',
     condition_attention: task.conditionResult === 'replace_now' ? 'maintenance.statusReplaceNow'
       : task.conditionResult === 'replace_soon' ? 'maintenance.statusReplaceSoon'
         : task.conditionResult === 'service_soon' ? 'maintenance.statusServiceSoon'
           : task.conditionResult === 'cleaning_needed' ? 'maintenance.statusCleaning'
           : task.conditionResult === 'monitor' ? 'maintenance.statusMonitor' : 'maintenance.statusInspection',
-    history_unknown_recommend_service: 'maintenance.statusLastChange', history_unknown_request_record: 'maintenance.statusLastCheck', historical_unverified: 'maintenance.statusPast', no_fixed_interval: 'maintenance.noFixedInterval', completed_confirmed: 'maintenance.statusCompleted', not_applicable: 'maintenance.statusNotApplicable', unknown: 'maintenance.statusHistory', informational: 'maintenance.statusGuidance',
+    unknown_history: 'maintenance.statusHistory', no_fixed_interval: 'maintenance.noFixedInterval', not_applicable: 'maintenance.statusNotApplicable',
   };
   return t(labels[task.status] ?? 'maintenance.statusMaintenance');
 }
@@ -387,20 +386,13 @@ function statusLabel(task: MaintenanceTaskProjection): string {
 function tone(task: MaintenanceTaskProjection): ProductionMaintenanceActionView['tone'] {
   if (task.status === 'overdue' || task.status === 'due'
     || (task.status === 'condition_attention' && task.conditionResult === 'replace_now')) return 'critical';
-  if (['due_soon', 'condition_attention', 'history_unknown_recommend_service'].includes(task.status)) return 'attention';
-  if (task.status === 'completed_confirmed') return 'positive';
+  if (['due_soon', 'condition_attention', 'unknown_history'].includes(task.status)) return 'attention';
   return 'neutral';
 }
 
 function safeSummary(task: MaintenanceTaskProjection): string {
-  if (task.status === 'historical_unverified') {
-    return t('maintenance.safePast');
-  }
-  if (task.status === 'history_unknown_recommend_service') {
-    return t('maintenance.safeService');
-  }
-  if (task.status === 'history_unknown_request_record') {
-    return t('maintenance.safeRecord');
+  if (task.status === 'unknown_history') {
+    return task.action === 'replace' ? t('maintenance.safeService') : t('maintenance.safeRecord');
   }
   if (task.status === 'no_fixed_interval') return t('maintenance.safeCondition');
   if (task.status === 'condition_attention') return statusLabel(task);

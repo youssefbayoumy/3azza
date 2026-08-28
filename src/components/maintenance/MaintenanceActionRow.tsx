@@ -27,10 +27,8 @@ function compactStatus(task: MaintenanceTaskProjection): string {
   if (task.conditionResult === 'replace_soon') return t('maintenance.replaceSoon');
   if (task.conditionResult === 'replace_now') return t('maintenance.replaceNow');
   if (task.status === 'condition_attention') return t('maintenance.needsAttention');
-  if (task.status === 'history_unknown_recommend_service') return task.action === 'replace'
-    ? t('maintenance.lastReplacementUnknown')
-    : t('maintenance.lastServiceUnknown');
-  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') {
+  if (task.status === 'unknown_history') {
+    if (task.action === 'replace') return t('maintenance.lastReplacementUnknown');
     return task.action === 'inspect' || task.action === 'condition_check' || task.action === 'test'
       ? t('maintenance.lastInspectionUnknown')
       : t('maintenance.lastActionUnknown');
@@ -42,7 +40,7 @@ function compactStatus(task: MaintenanceTaskProjection): string {
   if (task.lastPerformedOn !== null) return t('maintenance.lastOn', { action: lastAction, date: task.lastPerformedOn });
   if (task.remainingKm !== null) return t('maintenance.kmRemaining', { km: formatNumber(task.remainingKm) });
   if (task.remainingDays !== null) return t('maintenance.daysRemaining', { days: formatNumber(task.remainingDays) });
-  return task.status === 'no_fixed_interval' || task.status === 'informational' ? t('maintenance.checkCondition') : t('maintenance.upcoming');
+  return task.status === 'no_fixed_interval' ? t('maintenance.checkCondition') : t('maintenance.upcoming');
 }
 
 function statusColor(task: MaintenanceTaskProjection): string {

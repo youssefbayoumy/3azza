@@ -5,6 +5,8 @@ export type MaintenanceHistoryLevel =
   | 'little_or_none'
   | 'skipped';
 
+export type VehiclePurchaseCondition = 'new' | 'used' | 'unknown';
+
 export type MaintenanceRecordConfidence =
   | 'confirmed'
   | 'estimated'
@@ -62,6 +64,10 @@ export interface VehicleProfile {
   custom_model_name?: string | null;
   vehicle_capabilities_version: number;
   vehicle_capabilities_json: string;
+  /** Missing only while normalizing pre-v21 backups. */
+  purchase_condition?: VehiclePurchaseCondition;
+  /** Missing only while normalizing pre-v21 backups. */
+  maintenance_started_at?: string | null;
 }
 
 export interface VehicleVitals {

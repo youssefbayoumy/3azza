@@ -4,10 +4,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import {
   getInsightsRecordSummary,
-  getServiceIntervals,
+  getMaintenanceEvents,
+  getMaintenanceHistoryStates,
+  getMaintenancePreferences,
   getVehicleProfile,
 } from '../services/database';
-import { computePredictedOdometer, countServiceWarnings } from '../utils/maintenance';
+import { computePredictedOdometer } from '../utils/maintenance';
 import { toIsoDate } from '../utils/dates';
 import type { MainStackNavigationProp } from '../navigation/types';
 import AppIconButton from '../components/ui/AppIconButton';
@@ -16,6 +18,11 @@ import AppScreen from '../components/ui/AppScreen';
 import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import { formatEgp, formatNumber, useTranslation } from '../i18n';
+import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import { projectVehicleMaintenance } from '../maintenance/lifecycle';
+import { isTaskTracked, maintenanceAttentionCount } from '../maintenance/scheduler';
+import { maintenancePreferencesForScheduler } from '../maintenance/storageProjection';
+import { selectionFromProfile } from '../catalog/scooterCatalog';
 
 const AMBER = '#FFB100';
 
@@ -63,10 +70,12 @@ export default function InsightsScreen() {
     const expiryCutoff = new Date(now);
     expiryCutoff.setDate(expiryCutoff.getDate() + 30);
     const currentMonth = monthKey(now.toISOString());
-    const [recordSummary, intervals, profile] = await Promise.all([
+    const [recordSummary, profile, events, preferences, historyStates] = await Promise.all([
       getInsightsRecordSummary(currentMonth, toIsoDate(expiryCutoff)),
-      getServiceIntervals(),
       getVehicleProfile(),
+      getMaintenanceEvents(),
+      getMaintenancePreferences(),
+      getMaintenanceHistoryStates(),
     ]);
 
     const totalFuelCost = recordSummary.totalFuelCost;
@@ -75,6 +84,21 @@ export default function InsightsScreen() {
     const currentMileage = computePredictedOdometer(profile).mileage;
     const firstKnownMileage = recordSummary.firstKnownMileage ?? currentMileage;
     const distance = Math.max(0, currentMileage - firstKnownMileage);
+    const maintenanceProfile = getMaintenanceProfileForSelection(profile ? selectionFromProfile(profile) : null);
+    const plan = profile && maintenanceProfile ? projectVehicleMaintenance({
+      vehicle: profile,
+      profile: maintenanceProfile,
+      events,
+      preferences,
+      historyStates,
+      now,
+    }) : null;
+    const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
+    const trackedTasks = (plan?.tasks ?? []).filter((task) => isTaskTracked(task, {
+      preferences: schedulerPreferences,
+      events,
+      vehicleId: profile?.id,
+    }));
 
     if (!isCurrent()) return;
     setInsights({
@@ -85,7 +109,8 @@ export default function InsightsScreen() {
       gasLogCount: recordSummary.gasLogCount,
       serviceLogCount: recordSummary.serviceLogCount,
       inventoryCount: recordSummary.inventoryCount,
-      serviceWarningCount: countServiceWarnings(intervals, currentMileage),
+      serviceWarningCount: maintenanceAttentionCount(trackedTasks)
+        + (plan?.firstServiceCheckpoint && ['due', 'overdue'].includes(plan.firstServiceCheckpoint.status) ? 1 : 0),
       expiringDocumentCount: recordSummary.expiringDocumentCount,
       monthFuelCost: recordSummary.monthFuelCost,
       monthMaintenanceCost: recordSummary.monthMaintenanceCost,

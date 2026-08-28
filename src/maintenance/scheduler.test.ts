@@ -70,20 +70,16 @@ describe('initial-service lifecycle', () => {
   const profile = profileWithRules(OIL_INITIAL);
 
   it('keeps the 300 km milestone actionable through the explicit 1,000 km window', () => {
-    assert.equal(taskAt(profile, 0)[0].status, 'upcoming');
+    assert.equal(taskAt(profile, 0)[0].status, 'ok');
     assert.equal(taskAt(profile, 299)[0].status, 'due_soon');
     assert.equal(taskAt(profile, 300)[0].status, 'due');
     assert.equal(taskAt(profile, 500)[0].status, 'overdue');
     assert.equal(taskAt(profile, 1000)[0].status, 'overdue');
   });
 
-  it('makes a missed milestone historical immediately after the window, including at 18,080 km', () => {
+  it('retires a missed one-time milestone after its configured window', () => {
     for (const odometer of [1001, 18080]) {
-      const task = taskAt(profile, odometer)[0];
-      assert.equal(task.status, 'historical_unverified');
-      assert.equal(task.lastPerformedAtKm, null);
-      assert.equal(task.lastPerformedOn, null);
-      assert.equal(task.dueAtKm, 300);
+      assert.deepEqual(taskAt(profile, odometer), []);
     }
   });
 
@@ -103,10 +99,9 @@ describe('initial-service lifecycle', () => {
       now: NOW,
       events: [],
       defaultHistoryKnowledge: 'unknown',
-    })[0];
-    assert.equal(lowMileage.status, 'history_unknown_request_record');
-    assert.equal(highMileage.status, 'historical_unverified');
-    assert.equal(highMileage.lastPerformedAtKm, null);
+    });
+    assert.equal(lowMileage.status, 'unknown_history');
+    assert.deepEqual(highMileage, []);
   });
 
   it('removes only an exactly completed one-time task and never repeats it', () => {
@@ -192,7 +187,7 @@ describe('authoritative New Symphony ST 200 engine-oil replacement', () => {
       now: NOW,
       events: [],
     })[0];
-    assert.equal(task.status, 'history_unknown_recommend_service');
+    assert.equal(task.status, 'unknown_history');
     assert.equal(task.lastPerformedAtKm, null);
     assert.equal(task.dueAtKm, null);
     assert.equal(task.remainingKm, null);
@@ -247,13 +242,13 @@ describe('vehicle-specific interval preferences', () => {
     const tasks = projectMaintenanceTasks({
       profile: fullProfile,
       vehicleId: 1,
-      currentOdometerKm: 18060,
+      currentOdometerKm: 500,
       now: NOW,
-      events: [event(recurringRule, { odometerKm: 17000 })],
+      events: [event(recurringRule, { odometerKm: 400 })],
       preferences: [preference({ customIntervalKm: 700 })],
     });
 
-    assert.equal(tasks.find((task) => task.ruleId === OIL_RECURRING)?.dueAtKm, 17700);
+    assert.equal(tasks.find((task) => task.ruleId === OIL_RECURRING)?.dueAtKm, 1100);
     const initial = tasks.find((task) => task.ruleId === OIL_INITIAL);
     assert.equal(initial?.effectiveIntervalKm, 300);
     assert.equal(initial?.intervalSource, 'profile_default');
@@ -276,7 +271,7 @@ describe('vehicle-specific interval preferences', () => {
       })],
       defaultHistoryKnowledge: 'unknown',
     }).find((task) => task.ruleId === OIL_INITIAL);
-    assert.equal(historical?.status, 'historical_unverified');
+    assert.equal(historical, undefined);
   });
 
   it('scopes a preference to one vehicle', () => {
@@ -458,8 +453,8 @@ describe('action-specific and confidence-aware history', () => {
     assert.equal(historyStateKey('engine-oil', 'replace'), 'engine-oil:replace');
     const profile = profileWithRules(OIL_RECURRING, 'spark-plug.inspect.recurring-3000km-3mo');
     const tasks = projectMaintenanceTasks({ profile, vehicleId: 1, currentOdometerKm: 5000, now: NOW, events: [] });
-    assert.equal(tasks.find((task) => task.ruleId === OIL_RECURRING)?.status, 'history_unknown_recommend_service');
-    assert.equal(tasks.find((task) => task.action === 'inspect')?.status, 'history_unknown_request_record');
+    assert.equal(tasks.find((task) => task.ruleId === OIL_RECURRING)?.status, 'unknown_history');
+    assert.equal(tasks.find((task) => task.action === 'inspect')?.status, 'unknown_history');
   });
 
   it('honours an explicit not-applicable onboarding answer without creating a due value', () => {
@@ -490,7 +485,7 @@ describe('action-specific and confidence-aware history', () => {
       now: NOW,
       events: [legacy, otherVehicle, otherProfile],
     })[0];
-    assert.equal(task.status, 'history_unknown_recommend_service');
+    assert.equal(task.status, 'unknown_history');
     assert.equal(task.lastPerformedAtKm, null);
   });
 });
@@ -617,7 +612,7 @@ describe('time and unsupported schedules', () => {
     assert.equal(task.scheduleType, 'manual_only_or_no_fixed_interval');
     assert.equal(task.effectiveIntervalKm, 777);
     assert.equal(task.dueAtKm, 777);
-    assert.equal(task.status, 'upcoming');
+    assert.equal(task.status, 'ok');
   });
 
   it('never projects non-applicable cooling rules', () => {

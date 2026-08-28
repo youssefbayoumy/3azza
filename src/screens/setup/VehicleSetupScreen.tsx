@@ -6,29 +6,18 @@ import { useAppStore } from '../../store/useAppStore';
 import { getVehicleProfile, saveInitialVehicleSetup } from '../../services/database';
 import { syncMaintenanceNotifications } from '../../services/notifications';
 import AppFormScreen from '../../components/ui/AppFormScreen';
-import AppScreen from '../../components/ui/AppScreen';
 import { parseWholeNumberInput } from '../../utils/recordValidation';
 import ScooterSelectionFields from '../../components/vehicle/ScooterSelectionFields';
-import MaintenanceHistoryOnboarding from '../../components/maintenance/MaintenanceHistoryOnboarding';
-import {
-    saveMaintenanceHistorySetup,
-    skipMaintenanceHistorySetup,
-} from '../../services/maintenance/maintenanceHistoryOnboarding';
 import { isScooterSelectionComplete, resolveScooterSelection, selectionFromProfile } from '../../catalog/scooterCatalog';
 import {
     createGuidedSelectionDraft,
     type GuidedScooterSelectionDraft,
 } from '../../catalog/guidedScooterIdentification';
-import { getMaintenanceProfileForSelection } from '../../maintenance/profiles';
-import {
-    maintenanceHistoryBaselineKeysForProfile,
-    type MaintenanceHistoryBaselineKey,
-} from '../../services/maintenance/maintenanceHistoryPlan';
-import { localizeErrorMessage, useTranslation } from '../../i18n';
+import type { VehiclePurchaseCondition } from '../../types/database.types';
+import { useTranslation } from '../../i18n';
 
 type SetupFormData = {
     mileage: string;
-    dailyAvg: string;
 };
 
 export default function VehicleSetupScreen() {
@@ -36,13 +25,12 @@ export default function VehicleSetupScreen() {
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
     const [saving, setSaving] = useState(false);
-    const [savedOdometerKm, setSavedOdometerKm] = useState<number | null>(null);
-    const [historyBaselineKeys, setHistoryBaselineKeys] = useState<MaintenanceHistoryBaselineKey[]>(['general_inspection']);
+    const [purchaseCondition, setPurchaseCondition] = useState<Exclude<VehiclePurchaseCondition, 'unknown'> | null>(null);
     const [selectionDraft, setSelectionDraft] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
     const [showSelectionErrors, setShowSelectionErrors] = useState(false);
 
     const { control, handleSubmit, reset, formState: { errors } } = useForm<SetupFormData>({
-        defaultValues: { mileage: '', dailyAvg: '' }
+        defaultValues: { mileage: '' }
     });
 
     useEffect(() => {
@@ -50,18 +38,13 @@ export default function VehicleSetupScreen() {
             if (!profile) return;
             reset({
                 mileage: String(profile.current_mileage),
-                dailyAvg: String(profile.daily_average_km),
             });
             setSelectionDraft(createGuidedSelectionDraft(selectionFromProfile(profile) ?? {}));
+            if (profile.purchase_condition === 'new' || profile.purchase_condition === 'used') {
+                setPurchaseCondition(profile.purchase_condition);
+            }
             if (profile.has_completed_setup === 1) {
-                const selection = selectionFromProfile(profile);
-                const maintenanceProfile = selection ? getMaintenanceProfileForSelection(selection) : null;
-                if (maintenanceProfile) {
-                    setHistoryBaselineKeys(maintenanceHistoryBaselineKeysForProfile(maintenanceProfile));
-                    setSavedOdometerKm(profile.current_mileage);
-                } else {
-                    completeVehicleSetup();
-                }
+                completeVehicleSetup();
             }
         }).catch((error) => console.info('Existing vehicle setup could not be prefilled:', error));
     }, [completeVehicleSetup, reset]);
@@ -74,9 +57,12 @@ export default function VehicleSetupScreen() {
             return;
         }
         const mileageResult = parseWholeNumberInput(data.mileage, { label: t('setup.currentOdometer') });
-        const dailyAverageResult = parseWholeNumberInput(data.dailyAvg, { label: t('setup.dailyAverage') });
-        if (!mileageResult.ok || !dailyAverageResult.ok) {
+        if (!mileageResult.ok) {
             Alert.alert(t('setup.invalidTitle'), t('setup.invalidBody'));
+            return;
+        }
+        if (!purchaseCondition) {
+            Alert.alert(t('setup.purchaseCondition'), t('setup.purchaseConditionRequired'));
             return;
         }
         
@@ -84,17 +70,11 @@ export default function VehicleSetupScreen() {
         try {
             await saveInitialVehicleSetup({
                 currentMileage: mileageResult.value,
-                dailyAverageKm: dailyAverageResult.value,
                 selection: resolvedSelection,
+                purchaseCondition,
             });
-            const maintenanceProfile = getMaintenanceProfileForSelection(resolvedSelection);
-            if (maintenanceProfile) {
-                setHistoryBaselineKeys(maintenanceHistoryBaselineKeysForProfile(maintenanceProfile));
-                setSavedOdometerKm(mileageResult.value);
-            } else {
-                await syncMaintenanceNotifications(maintenanceReminders);
-                completeVehicleSetup();
-            }
+            await syncMaintenanceNotifications(maintenanceReminders);
+            completeVehicleSetup();
         } catch (err) {
             console.error('Setup error:', err);
             Alert.alert(t('documents.saveErrorTitle'), t('setup.saveFailed'));
@@ -102,37 +82,6 @@ export default function VehicleSetupScreen() {
             setSaving(false);
         }
     };
-
-    const finishHistorySetup = async (operation: () => Promise<void>) => {
-        setSaving(true);
-        try {
-            await operation();
-            await syncMaintenanceNotifications(maintenanceReminders);
-            completeVehicleSetup();
-        } catch (error) {
-            console.error('Maintenance history setup error:', error);
-            Alert.alert(
-                t('history.setupSaveFailed'),
-                localizeErrorMessage(error, t('setup.historySavedRetry'))
-            );
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (savedOdometerKm !== null) {
-        return (
-            <AppScreen edges={['top', 'bottom', 'left', 'right']}>
-                <MaintenanceHistoryOnboarding
-                    baselineKeys={historyBaselineKeys}
-                    currentOdometerKm={savedOdometerKm}
-                    onComplete={(draft) => finishHistorySetup(() => saveMaintenanceHistorySetup(draft))}
-                    onSkip={() => finishHistorySetup(skipMaintenanceHistorySetup)}
-                    saving={saving}
-                />
-            </AppScreen>
-        );
-    }
 
     return (
         <AppFormScreen>
@@ -193,33 +142,28 @@ export default function VehicleSetupScreen() {
                 )}
             </View>
 
-            <View className="flex-col gap-2 mb-8">
-                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1">{t('setup.dailyAverage')}</Text>
-                
-                <Controller
-                    control={control}
-                    rules={{
-                        required: t('setup.averageRequired'),
-                        pattern: { value: /^[0-9]+$/, message: t('setup.validNumber') },
-                        min: { value: 0, message: t('setup.nonNegative') }
-                    }}
-                    name="dailyAvg"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                            accessibilityLabel={t('setup.averageA11y')}
-                            className={`bg-surface-container-high rounded-xl px-5 py-4 text-on-surface font-headline text-2xl tracking-wider border ${errors.dailyAvg ? 'border-error' : 'border-outline-variant/30'}`}
-                            placeholder={t('setup.averageExample')}
-                            placeholderTextColor="#64748b"
-                            keyboardType="number-pad"
-                            onBlur={onBlur}
-                            onChangeText={onChange}
-                            value={value}
-                        />
-                    )}
-                />
-                {errors.dailyAvg && (
-                    <Text className="text-error font-body text-xs mt-1 pl-1">{errors.dailyAvg.message}</Text>
-                )}
+            <View className="mb-8">
+                <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest pl-1 mb-3">{t('setup.purchaseCondition')}</Text>
+                <View className="gap-3">
+                    {(['new', 'used'] as const).map((condition) => {
+                        const selected = purchaseCondition === condition;
+                        return (
+                            <TouchableOpacity
+                                accessibilityRole="radio"
+                                accessibilityState={{ checked: selected }}
+                                className={`min-h-16 rounded-xl border px-4 py-3 flex-row items-center gap-3 ${selected ? 'border-primary bg-primary/10' : 'border-outline-variant/30 bg-surface-container-high'}`}
+                                key={condition}
+                                onPress={() => setPurchaseCondition(condition)}
+                            >
+                                <MaterialCommunityIcons name={selected ? 'radiobox-marked' : 'radiobox-blank'} size={22} color={selected ? '#a9c7ff' : '#8e9196'} />
+                                <View className="flex-1">
+                                    <Text className="font-headline text-base font-bold text-on-surface">{t(condition === 'new' ? 'setup.boughtNew' : 'setup.boughtUsed')}</Text>
+                                    <Text className="font-body text-xs text-on-surface-variant mt-1">{t(condition === 'new' ? 'setup.boughtNewBody' : 'setup.boughtUsedBody')}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
             </View>
 
             <TouchableOpacity

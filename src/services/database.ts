@@ -15,14 +15,9 @@ import type {
   ServiceInterval,
   ServiceLog,
   VehicleProfile,
+  VehiclePurchaseCondition,
   VehicleVitals,
 } from '../types/database.types';
-import {
-  completeServiceHistorySetupInTransaction,
-  deleteServiceLogInTransaction,
-  insertServiceCompletionInTransaction,
-  type ServiceCompletionTransactionInput,
-} from './maintenance/maintenanceTransactions';
 import {
   getInventoryStatus,
   validateInventoryQuantity,
@@ -81,6 +76,7 @@ import {
   type SetMaintenancePreferenceInput,
 } from './maintenance/maintenancePreferenceTransactions';
 import { applyMaintenanceStorageMigration } from './maintenance/maintenanceStorageMigration';
+import { applyMaintenanceLifecycleMigration } from './maintenance/maintenanceLifecycleMigration';
 import { applyOdometerCorrectionMigration } from './odometerCorrectionMigration';
 import {
   correctOdometerReadingInTransaction,
@@ -982,6 +978,14 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
     await addVehicleCapabilities(database);
   }
 
+  if (version < 21) {
+    await applyMaintenanceLifecycleMigration(database);
+    version = 21;
+    await setSchemaVersion(database, version);
+  } else {
+    await applyMaintenanceLifecycleMigration(database);
+  }
+
   if (version < CURRENT_SCHEMA_VERSION) {
     await setSchemaVersion(database, CURRENT_SCHEMA_VERSION);
   }
@@ -1237,14 +1241,11 @@ export async function setActiveVehicleId(vehicleId: number): Promise<void> {
 export async function createVehicleProfile(
   name: string,
   currentMileage = 0,
-  dailyAverageKm = 0,
-  scooterSelection: ScooterSelection
+  scooterSelection: ScooterSelection,
+  purchaseCondition: Exclude<VehiclePurchaseCondition, 'unknown'>
 ): Promise<VehicleProfile> {
   if (!Number.isSafeInteger(currentMileage) || currentMileage < 0) {
     throw new Error('Starting odometer must be a non-negative whole number.');
-  }
-  if (!Number.isSafeInteger(dailyAverageKm) || dailyAverageKm < 0) {
-    throw new Error('Daily average must be a non-negative whole number.');
   }
   if (!isScooterSelectionComplete(scooterSelection)) {
     throw new Error('Select a valid brand, model, version, and required exact variant.');
@@ -1259,12 +1260,12 @@ export async function createVehicleProfile(
          last_odometer_update_timestamp, service_history_setup_completed,
          scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id,
          vehicle_selection_mode, custom_brand_name, custom_model_name,
-         vehicle_capabilities_version, vehicle_capabilities_json
-       ) VALUES (?, ?, 0, 1, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         vehicle_capabilities_version, vehicle_capabilities_json,
+         purchase_condition, maintenance_started_at
+       ) VALUES (?, ?, 0, 1, 0, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         trimmedName,
         currentMileage,
-        dailyAverageKm,
         new Date().toISOString(),
         scooterSelection.brandId,
         scooterSelection.modelId,
@@ -1275,6 +1276,8 @@ export async function createVehicleProfile(
         scooterSelection.customModelName?.trim() || null,
         VEHICLE_CAPABILITIES_SCHEMA_VERSION,
         serializeVehicleCapabilities(scooterSelection.capabilities),
+        purchaseCondition,
+        new Date().toISOString(),
       ]
     );
     vehicleId = result.lastInsertRowId;
@@ -1478,15 +1481,12 @@ export async function saveVehicleScooterSelection(
 
 export async function saveInitialVehicleSetup(input: {
   currentMileage: number;
-  dailyAverageKm: number;
   selection: ScooterSelection;
+  purchaseCondition: Exclude<VehiclePurchaseCondition, 'unknown'>;
 }): Promise<void> {
   if (!isScooterSelectionComplete(input.selection)) {
     throw new Error('Select a valid brand, model, version, and required exact variant.');
   }
-  const dailyAverageError = validateWholeNumber(input.dailyAverageKm, { label: 'Daily average', min: 0 });
-  if (dailyAverageError) throw new Error(dailyAverageError);
-
   const database = await getDb();
   const vehicleId = await getActiveVehicleIdForDb(database);
   const minimum = await getMinimumOdometerForVehicle(database, vehicleId);
@@ -1500,11 +1500,12 @@ export async function saveInitialVehicleSetup(input: {
            has_completed_setup = 1, last_odometer_update_timestamp = ?,
            scooter_brand_id = ?, scooter_model_id = ?, scooter_version_id = ?, scooter_variant_id = ?,
            vehicle_selection_mode = ?, custom_brand_name = ?, custom_model_name = ?,
-           vehicle_capabilities_version = ?, vehicle_capabilities_json = ?
+           vehicle_capabilities_version = ?, vehicle_capabilities_json = ?,
+           purchase_condition = ?, maintenance_started_at = ?
        WHERE id = ?`,
       [
         input.currentMileage,
-        input.dailyAverageKm,
+        0,
         new Date().toISOString(),
         input.selection.brandId,
         input.selection.modelId,
@@ -1515,6 +1516,8 @@ export async function saveInitialVehicleSetup(input: {
         input.selection.customModelName?.trim() || null,
         VEHICLE_CAPABILITIES_SCHEMA_VERSION,
         serializeVehicleCapabilities(input.selection.capabilities),
+        input.purchaseCondition,
+        new Date().toISOString(),
         vehicleId,
       ]
     );
@@ -1993,76 +1996,6 @@ export async function getInsightsRecordSummary(
   };
 }
 
-export type ServiceCompletionInput = Omit<
-  ServiceLog,
-  'id' | 'vehicle_id' | 'service_type' | 'sets_odometer_baseline'
-> & {
-  serviceIntervalId: number | null;
-  setsOdometerBaseline?: boolean;
-};
-
-function isValidIsoDate(value: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return false;
-
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year
-    && parsed.getUTCMonth() === month - 1
-    && parsed.getUTCDate() === day;
-}
-
-function prepareServiceCompletion(log: ServiceCompletionInput): ServiceCompletionTransactionInput {
-  const title = log.title.trim();
-  const category = log.category.trim();
-  if (!title || !category || !isValidIsoDate(log.date)) {
-    throw new Error('Service title, category, and date must be valid.');
-  }
-  if (!Number.isSafeInteger(log.mileage) || log.mileage < 0) {
-    throw new Error('Service mileage must be a non-negative whole number.');
-  }
-  if (log.cost !== null && log.cost !== undefined && (!Number.isFinite(log.cost) || log.cost < 0)) {
-    throw new Error('Service cost must be a non-negative number.');
-  }
-  if (log.serviceIntervalId !== null && (!Number.isSafeInteger(log.serviceIntervalId) || log.serviceIntervalId <= 0)) {
-    throw new Error('Service interval ID must be a positive whole number.');
-  }
-
-  const setsOdometerBaseline = log.setsOdometerBaseline ?? true;
-  if (!setsOdometerBaseline && log.mileage !== 0) {
-    throw new Error('Date-only service history cannot include an odometer reading.');
-  }
-
-  return {
-    serviceIntervalId: log.serviceIntervalId,
-    title,
-    date: log.date,
-    mileage: log.mileage,
-    category,
-    notes: log.notes.trim(),
-    cost: log.cost ?? null,
-    setsOdometerBaseline,
-  };
-}
-
-export async function recordServiceCompletion(log: ServiceCompletionInput): Promise<void> {
-  const prepared = prepareServiceCompletion(log);
-
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-
-  await withWriteTransaction(database, async (transaction) => {
-    await insertServiceCompletionInTransaction(
-      transaction,
-      vehicleId,
-      prepared
-    );
-  });
-}
-
 export type MaintenanceEventInput = {
   ruleId: string;
   action: MaintenanceAction;
@@ -2115,6 +2048,12 @@ export type CreateMaintenanceRecordInput = {
 
 export type MaintenanceRecordResult = MaintenanceRecordMutationResult;
 
+export type ResolveInitialServiceCheckpointInput =
+  {
+    resolution: 'completed' | 'partial';
+    record: CreateMaintenanceRecordInput;
+  };
+
 const INSPECTION_RESULTS = new Set<InspectionResult>([
   'healthy',
   'cleaning_needed',
@@ -2144,6 +2083,20 @@ function selectableMaintenanceProfileForVehicle(vehicle: VehicleProfile) {
 
 function normalizedOptionalText(value: string | null | undefined): string | null {
   return value?.trim() || null;
+}
+
+function isValidIsoDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
 }
 
 function maintenancePackageId(vehicleId: number): string {
@@ -2315,6 +2268,76 @@ export async function createMaintenanceRecord(
     result = await insertMaintenanceRecordInTransaction(transaction, vehicleId, prepared);
   });
   if (!result) throw new Error('Maintenance record could not be saved.');
+  return result;
+}
+
+/**
+ * Resolves the exact profile's first service as one owner decision while retaining
+ * one durable state/log per manufacturer action. Everything commits or rolls back
+ * together, so reminders can never observe a half-saved service package.
+ */
+export async function resolveInitialServiceCheckpoint(
+  input: ResolveInitialServiceCheckpointInput
+): Promise<MaintenanceRecordResult | null> {
+  const database = await getDb();
+  const vehicleId = await getActiveVehicleIdForDb(database);
+  const recordInput = 'record' in input ? input.record : null;
+  let result: MaintenanceRecordResult | null = null;
+  await withWriteTransaction(database, async (transaction) => {
+    const vehicle = await transaction.getFirstAsync<VehicleProfile>(
+      'SELECT * FROM vehicle_profile WHERE id = ?',
+      [vehicleId]
+    );
+    if (!vehicle) throw new Error('The active vehicle no longer exists.');
+    if (vehicle.purchase_condition !== 'new') {
+      throw new Error('The first-service checkpoint is only available for a scooter bought new.');
+    }
+    const profile = selectableMaintenanceProfileForVehicle(vehicle);
+    if (!profile) throw new Error('A validated maintenance profile is required.');
+    const initialRules = profile.rules.filter((rule) => (
+      rule.applicable
+      && rule.schedule.type === 'one_time_initial'
+      && Number.isSafeInteger(rule.schedule.initialServiceKm)
+    ));
+    const milestoneKm = Math.min(...initialRules.map((rule) => rule.schedule.initialServiceKm ?? Infinity));
+    const milestoneRules = initialRules.filter((rule) => rule.schedule.initialServiceKm === milestoneKm);
+    if (!Number.isFinite(milestoneKm) || milestoneRules.length === 0) {
+      throw new Error('This scooter does not have a first-service checkpoint.');
+    }
+    const timestamp = new Date().toISOString();
+
+    const allowedRuleIds = new Set(milestoneRules.map((rule) => rule.id));
+    const selectedRuleIds = new Set<string>();
+    if (!recordInput) throw new Error('A completed first service requires maintenance details.');
+    for (const action of recordInput.actions) {
+      const ruleId = action.ruleId?.trim();
+      if (!ruleId || !allowedRuleIds.has(ruleId) || selectedRuleIds.has(ruleId)) {
+        throw new Error('The first-service package contains an invalid or repeated action.');
+      }
+      selectedRuleIds.add(ruleId);
+    }
+    if (input.resolution === 'completed' && selectedRuleIds.size !== milestoneRules.length) {
+      throw new Error('A completed first service must include every manufacturer checklist action.');
+    }
+    if (input.resolution === 'partial' && (selectedRuleIds.size === 0 || selectedRuleIds.size >= milestoneRules.length)) {
+      throw new Error('A partial first service must include some, but not all, checklist actions.');
+    }
+    const prepared = prepareMaintenanceRecordInput(vehicle, {
+      ...recordInput,
+      recordSource: 'service_package',
+    }, timestamp);
+    result = await insertMaintenanceRecordInTransaction(transaction, vehicleId, prepared);
+    for (const rule of milestoneRules) {
+      if (selectedRuleIds.has(rule.id)) continue;
+      await setMaintenanceHistoryStateInTransaction(transaction, vehicleId, profile.id, {
+        componentId: rule.componentId,
+        action: rule.action,
+        state: 'never_done',
+        lastServiceLogId: null,
+      }, timestamp);
+    }
+    await setMaintenanceHistoryLevelInTransaction(transaction, vehicleId, 'recent_memory');
+  });
   return result;
 }
 
@@ -2656,81 +2679,6 @@ export async function getMaintenanceHistoryStates(): Promise<MaintenanceHistoryS
   );
 }
 
-export async function completeServiceHistorySetup(entries: ServiceCompletionInput[]): Promise<void> {
-  const preparedEntries = entries.map(prepareServiceCompletion);
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-
-  await withWriteTransaction(database, async (transaction) => {
-    await completeServiceHistorySetupInTransaction(transaction, vehicleId, preparedEntries);
-  });
-}
-
-export async function getLatestLogForServiceType(serviceTypeName: string): Promise<ServiceLog | null> {
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-  const row = await database.getFirstAsync<ServiceLog>(
-    `SELECT * FROM service_logs
-     WHERE vehicle_id = ? AND service_type = ?
-     ORDER BY date DESC, id DESC LIMIT 1`,
-    [vehicleId, serviceTypeName]
-  );
-  return row ?? null;
-}
-
-export async function deleteServiceLogAndRecomputeBaseline(id: number): Promise<boolean> {
-  if (!Number.isSafeInteger(id) || id <= 0) {
-    throw new Error('Service log ID must be a positive whole number.');
-  }
-
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-  let deleted = false;
-
-  await withWriteTransaction(database, async (transaction) => {
-    deleted = await deleteServiceLogInTransaction(transaction, vehicleId, id);
-  });
-
-  return deleted;
-}
-
-export async function getServiceIntervals(): Promise<ServiceInterval[]> {
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-  return database.getAllAsync<ServiceInterval>(
-    'SELECT * FROM service_intervals WHERE vehicle_id = ? AND is_applicable = 1 ORDER BY id ASC',
-    [vehicleId]
-  );
-}
-
-export async function updateServiceInterval(
-  id: number,
-  updates: Pick<Partial<ServiceInterval>, 'interval_km'>
-): Promise<void> {
-  if (updates.interval_km !== undefined && updates.interval_km !== null) {
-    if (!Number.isSafeInteger(updates.interval_km) || updates.interval_km <= 0) {
-      throw new Error('Maintenance interval must be a positive whole number or unset.');
-    }
-  }
-
-  const database = await getDb();
-  const vehicleId = await getActiveVehicleIdForDb(database);
-  const fields: string[] = [];
-  const values: (string | number | null)[] = [];
-
-  if (updates.interval_km !== undefined) {
-    fields.push('interval_km = ?', 'user_interval_km = ?', 'user_override_active = 1', "recommendation_origin = 'user_override'");
-    values.push(updates.interval_km, updates.interval_km);
-  }
-  if (fields.length === 0) return;
-
-  values.push(id, vehicleId);
-  await database.runAsync(
-    `UPDATE service_intervals SET ${fields.join(', ')} WHERE id = ? AND vehicle_id = ?`,
-    values
-  );
-}
-
 export async function getDatabaseBackupData(): Promise<DatabaseBackupData> {
   const database = await getDb();
   const activeVehicleId = await getActiveVehicleIdForDb(database);
@@ -2812,8 +2760,9 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           daily_average_km, last_odometer_update_timestamp, service_history_setup_completed, tank_capacity_liters,
           scooter_brand_id, scooter_model_id, scooter_version_id, scooter_variant_id, maintenance_history_level,
           vehicle_selection_mode, custom_brand_name, custom_model_name,
-          vehicle_capabilities_version, vehicle_capabilities_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          vehicle_capabilities_version, vehicle_capabilities_json,
+          purchase_condition, maintenance_started_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           vehicle.id,
           vehicle.name,
@@ -2835,6 +2784,8 @@ export async function restoreDatabaseBackupData(data: DatabaseBackupData): Promi
           vehicle.custom_model_name ?? null,
           vehicle.vehicle_capabilities_version ?? VEHICLE_CAPABILITIES_SCHEMA_VERSION,
           vehicle.vehicle_capabilities_json ?? UNKNOWN_VEHICLE_CAPABILITIES_JSON,
+          vehicle.purchase_condition ?? 'unknown',
+          vehicle.maintenance_started_at ?? null,
         ]
       );
     }

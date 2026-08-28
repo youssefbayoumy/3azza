@@ -23,11 +23,7 @@ import {
   restoreMaintenancePreference,
 } from '../services/database';
 import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
-import { projectMaintenanceTasks } from '../maintenance/scheduler';
-import {
-  maintenanceHistoryByAction,
-  maintenancePreferencesForScheduler,
-} from '../maintenance/storageProjection';
+import { projectVehicleMaintenance } from '../maintenance/lifecycle';
 import type {
   MaintenanceTaskProjection,
   ScooterMaintenanceProfile,
@@ -48,9 +44,7 @@ function statusLabel(task: MaintenanceTaskProjection): string {
   if (task.status === 'overdue') return t('maintenance.overdue');
   if (task.status === 'due') return t('maintenance.dueNow');
   if (task.status === 'due_soon') return t('maintenance.dueSoon');
-  if (task.status === 'history_unknown_recommend_service' || task.status === 'unknown') return t('maintenance.statusLastChange');
-  if (task.status === 'history_unknown_request_record') return t('oil.lastCheckUnknown');
-  if (task.status === 'historical_unverified') return t('oil.pastMilestone');
+  if (task.status === 'unknown_history') return t('maintenance.statusHistory');
   if (task.status === 'not_applicable') return t('maintenance.statusNotApplicable');
   if (task.status === 'condition_attention') {
     if (task.conditionResult === 'replace_now') return t('maintenance.statusReplaceNow');
@@ -58,7 +52,7 @@ function statusLabel(task: MaintenanceTaskProjection): string {
     if (task.conditionResult === 'service_soon') return t('maintenance.statusServiceSoon');
     return t('maintenance.needsAttention');
   }
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return t('oil.byCondition');
+  if (task.status === 'no_fixed_interval') return t('oil.byCondition');
   return t('maintenance.upcoming');
 }
 
@@ -87,6 +81,7 @@ export default function OilChangeDetailsScreen() {
   const [oilTasks, setOilTasks] = useState<MaintenanceTaskProjection[]>([]);
   const [menuTask, setMenuTask] = useState<MaintenanceTaskProjection | null>(null);
   const [recordingTask, setRecordingTask] = useState<MaintenanceTaskProjection | null>(null);
+  const [recordingMode, setRecordingMode] = useState<'now' | 'previous'>('now');
   const [savingRecord, setSavingRecord] = useState(false);
 
   const loadData = useCallback(async (isCurrent: () => boolean) => {
@@ -102,17 +97,14 @@ export default function OilChangeDetailsScreen() {
     if (!isCurrent()) return;
     setVehicle(vehicleData);
     setProfile(domainProfile);
-    setOilTasks(vehicleData && domainProfile ? projectMaintenanceTasks({
+    setOilTasks(vehicleData && domainProfile ? projectVehicleMaintenance({
+      vehicle: vehicleData,
       profile: domainProfile,
-      currentOdometerKm: vehicleData.current_mileage,
-      vehicleId: vehicleData.id,
       now: new Date(),
       events,
-      preferences: maintenancePreferencesForScheduler(preferences),
-      historyByAction: maintenanceHistoryByAction(historyStates),
-      defaultHistoryKnowledge: 'unknown',
-      vehicleInServiceDate: vehicleData.created_at.slice(0, 10),
-    }).filter((task) => task.componentId === 'engine-oil' || task.componentId === 'oil-filter-screen') : []);
+      preferences,
+      historyStates,
+    }).tasks.filter((task) => task.componentId === 'engine-oil' || task.componentId === 'oil-filter-screen') : []);
   }, []);
 
   const { error, loading, reload } = useFocusedLoader(
@@ -235,11 +227,9 @@ export default function OilChangeDetailsScreen() {
   const lastChanged = recurringReplacement?.lastPerformedAtKm;
   const nextDue = recurringReplacement?.dueAtKm;
   const remaining = recurringReplacement?.remainingKm;
-  const historyUnknown = recurringReplacement?.status === 'history_unknown_recommend_service'
-    || recurringReplacement?.status === 'unknown';
+  const historyUnknown = recurringReplacement?.status === 'unknown_history';
   const otherOilTasks = oilTasks.filter((task) =>
     task.key !== recurringReplacement?.key
-    && task.status !== 'historical_unverified'
   );
 
   return (
@@ -316,7 +306,10 @@ export default function OilChangeDetailsScreen() {
               <TouchableOpacity
                 accessibilityRole="button"
                 className="min-h-12 flex-1 min-w-40 rounded-lg bg-primary items-center justify-center px-4"
-                onPress={() => setRecordingTask(recurringReplacement)}
+                onPress={() => {
+                  setRecordingMode('now');
+                  setRecordingTask(recurringReplacement);
+                }}
               >
                 <Text className="font-label text-sm font-bold text-on-primary">{naturalRecordActionLabel(recurringReplacement)}</Text>
               </TouchableOpacity>
@@ -353,6 +346,7 @@ export default function OilChangeDetailsScreen() {
       <MaintenanceRecordForm
         actionOptions={recordOption}
         actionsLocked
+        advisoryText={recordingMode === 'previous' ? tr('oil.historyUnknownBody') : undefined}
         currentOdometerKm={vehicle.current_mileage}
         initialValue={recordingTask && recordOption[0] ? {
           selectedActions: recordOption,
@@ -369,7 +363,10 @@ export default function OilChangeDetailsScreen() {
         onClose={() => setMenuTask(null)}
         onCustomize={(task) => navigation.navigate('MaintenanceReminderCustomization', { ruleId: task.ruleId })}
         onHistory={() => navigation.navigate('ServiceLogs')}
-        onRecord={setRecordingTask}
+        onRecord={(task, mode) => {
+          setRecordingMode(mode);
+          setRecordingTask(task);
+        }}
         onRestore={restoreOriginalSchedule}
         task={menuTask}
       />

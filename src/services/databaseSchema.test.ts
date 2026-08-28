@@ -13,7 +13,7 @@ describe('fresh-install database schema', () => {
   it('creates the current multi-vehicle tables directly', () => {
     const database = createCurrentDatabase();
     try {
-      assert.equal(CURRENT_SCHEMA_VERSION, 20);
+      assert.equal(CURRENT_SCHEMA_VERSION, 21);
       const profileColumns = database.prepare('PRAGMA table_info(vehicle_profile)').all()
         .map((column) => (column as { name: string }).name);
       const expectedProfileColumns = [
@@ -37,6 +37,8 @@ describe('fresh-install database schema', () => {
         'custom_model_name',
         'vehicle_capabilities_version',
         'vehicle_capabilities_json',
+        'purchase_condition',
+        'maintenance_started_at',
       ];
       assert.deepEqual(profileColumns, expectedProfileColumns);
 
@@ -54,6 +56,9 @@ describe('fresh-install database schema', () => {
       assert.throws(() => database.prepare(
         "INSERT INTO vehicle_profile (name, vehicle_selection_mode) VALUES ('Invalid', 'custom_brand')"
       ).run(), /Vehicle identity is invalid/);
+      assert.throws(() => database.prepare(
+        "INSERT INTO vehicle_profile (name, purchase_condition) VALUES ('Invalid lifecycle', 'guessed')"
+      ).run(), /Vehicle purchase condition is invalid/);
 
       database.prepare(
         "INSERT INTO service_intervals (vehicle_id, name, interval_km, type) VALUES (?, 'Oil Change', 1000, 'replace')"

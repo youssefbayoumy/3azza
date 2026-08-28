@@ -111,4 +111,17 @@ describe('maintenance onboarding history state', () => {
       /does not match this vehicle/
     );
   });
+
+  it('stores a known completion with unknown timing without fabricating a service log', async () => {
+    const confirmed = await setMaintenanceHistoryStateInTransaction(
+      transaction,
+      1,
+      'profile-a',
+      { componentId: 'engine-oil', action: 'replace', state: 'confirmed', lastServiceLogId: null },
+      '2026-08-01T09:00:00.000Z'
+    );
+    assert.equal(confirmed.history_state, 'confirmed');
+    assert.equal(confirmed.last_service_log_id, null);
+    assert.equal(Number(database.prepare('SELECT COUNT(*) AS count FROM service_logs').get()?.count), 0);
+  });
 });

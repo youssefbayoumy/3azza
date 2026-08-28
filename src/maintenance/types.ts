@@ -220,20 +220,13 @@ export type MaintenanceEvent = {
 };
 
 export type TaskStatus =
-  | 'upcoming'
+  | 'ok'
   | 'due_soon'
   | 'due'
   | 'overdue'
-  | 'completed_confirmed'
-  | 'history_unknown_recommend_service'
-  | 'history_unknown_request_record'
-  | 'historical_unverified'
+  | 'unknown_history'
   | 'not_applicable'
   | 'no_fixed_interval'
-  /** @deprecated Kept while older screens migrate to differentiated history states. */
-  | 'unknown'
-  /** @deprecated Kept while older screens migrate to no_fixed_interval. */
-  | 'informational'
   | 'condition_attention';
 
 export type MaintenanceTaskProjection = {

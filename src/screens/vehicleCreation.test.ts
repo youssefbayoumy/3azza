@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { CUSTOM_MODEL_ID, CUSTOM_VERSION_ID, OTHER_BRAND_ID } from '../catalog/scooterCatalog';
 import { createVehicleCreationGuard, prepareVehicleCreation } from './vehicleCreation';
 
-const labels = { startingOdometer: 'Starting odometer', dailyAverage: 'Daily average' };
+const labels = { startingOdometer: 'Starting odometer' };
 const customSelection = {
   selectionMode: 'custom_brand' as const,
   brandId: OTHER_BRAND_ID,
@@ -18,22 +18,29 @@ describe('vehicle creation', () => {
     assert.equal(prepareVehicleCreation({
       name: '  Delivery bike  ',
       mileage: '0',
-      dailyAverage: '25',
+      purchaseCondition: 'used',
       selection: customSelection,
     }, labels)?.name, 'Delivery bike');
 
     assert.equal(prepareVehicleCreation({
       name: 'Delivery bike',
       mileage: '12.5',
-      dailyAverage: '25',
+      purchaseCondition: 'used',
       selection: customSelection,
     }, labels), null);
 
     assert.equal(prepareVehicleCreation({
       name: 'Delivery bike',
       mileage: '12',
-      dailyAverage: '25',
+      purchaseCondition: 'new',
       selection: { ...customSelection, customModelName: '' },
+    }, labels), null);
+
+    assert.equal(prepareVehicleCreation({
+      name: 'Delivery bike',
+      mileage: '12',
+      purchaseCondition: null,
+      selection: customSelection,
     }, labels), null);
   });
 

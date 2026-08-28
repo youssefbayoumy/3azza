@@ -9,6 +9,7 @@ import MaintenanceRecordForm, {
 } from '../components/maintenance/MaintenanceRecordForm';
 import MaintenanceActionMenu from '../components/maintenance/MaintenanceActionMenu';
 import MaintenanceActionRow from '../components/maintenance/MaintenanceActionRow';
+import InitialServiceCheckpointCard from '../components/maintenance/InitialServiceCheckpointCard';
 import AppIconButton from '../components/ui/AppIconButton';
 import AppScreen from '../components/ui/AppScreen';
 import AppTopBar from '../components/ui/AppTopBar';
@@ -19,7 +20,6 @@ import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
 import {
   compareMaintenanceTaskPriority,
   isTaskTracked,
-  projectMaintenanceTasks,
 } from '../maintenance/scheduler';
 import {
   maintenanceComponentGroup,
@@ -29,7 +29,6 @@ import {
   naturalRecordActionLabel,
 } from '../maintenance/presentation';
 import {
-  maintenanceHistoryByAction,
   maintenancePreferencesForScheduler,
 } from '../maintenance/storageProjection';
 import type {
@@ -49,6 +48,8 @@ import type { VehicleProfile } from '../types/database.types';
 import { syncMaintenanceNotifications } from '../services/notifications';
 import { useAppStore } from '../store/useAppStore';
 import { formatKilometres, formatNumber, localizeErrorMessage, t, useTranslation } from '../i18n';
+import type { InitialServiceCheckpoint } from '../maintenance/initialServiceCheckpoint';
+import { projectVehicleMaintenance } from '../maintenance/lifecycle';
 
 type SectionId = 'scheduled' | 'checks' | 'wear';
 
@@ -139,7 +140,7 @@ function statusPresentation(task: MaintenanceTaskProjection): {
 } {
   if (task.reminderDisabled) return { label: t('oil.disabled'), color: 'text-secondary', background: 'bg-secondary/15' };
   if (task.conditionResult === 'cleaning_needed') return { label: t('maintenance.statusCleaning'), color: 'text-amber-400', background: 'bg-amber-500/15' };
-  if (task.conditionResult === 'healthy' && task.status === 'upcoming') return { label: t('record.healthy'), color: 'text-primary', background: 'bg-primary/15' };
+  if (task.conditionResult === 'healthy' && task.status === 'ok') return { label: t('record.healthy'), color: 'text-primary', background: 'bg-primary/15' };
   if (task.status === 'overdue') return { label: t('maintenance.overdue'), color: 'text-error', background: 'bg-error/15' };
   if (task.status === 'due') return { label: t('maintenance.dueNow'), color: 'text-error', background: 'bg-error/15' };
   if (task.status === 'due_soon') return { label: t('maintenance.dueSoon'), color: 'text-amber-400', background: 'bg-amber-500/15' };
@@ -149,24 +150,16 @@ function statusPresentation(task: MaintenanceTaskProjection): {
     if (task.conditionResult === 'service_soon') return { label: t('maintenance.statusServiceSoon'), color: 'text-amber-400', background: 'bg-amber-500/15' };
     return { label: t('maintenance.needsAttention'), color: 'text-amber-400', background: 'bg-amber-500/15' };
   }
-  if (task.status === 'history_unknown_recommend_service') return { label: t('maintenance.statusLastChange'), color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') return { label: t('oil.lastCheckUnknown'), color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'historical_unverified') return { label: t('oil.pastMilestone'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'unknown_history') return { label: t('maintenance.statusHistory'), color: 'text-secondary', background: 'bg-secondary/15' };
   if (task.status === 'not_applicable') return { label: t('maintenance.statusNotApplicable'), color: 'text-secondary', background: 'bg-secondary/15' };
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return { label: t('maintenance.noFixedInterval'), color: 'text-secondary', background: 'bg-secondary/15' };
+  if (task.status === 'no_fixed_interval') return { label: t('maintenance.noFixedInterval'), color: 'text-secondary', background: 'bg-secondary/15' };
   return { label: t('maintenance.upcoming'), color: 'text-primary', background: 'bg-primary/15' };
 }
 
 function taskTiming(task: MaintenanceTaskProjection): string {
   if (task.reminderDisabled) return t('plan.disabledTiming');
-  if (task.status === 'history_unknown_recommend_service') {
+  if (task.status === 'unknown_history') {
     return t('oil.historyUnknownBody');
-  }
-  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') {
-    return t('plan.lastCheckBody');
-  }
-  if (task.status === 'historical_unverified') {
-    return t('plan.initialPastBody');
   }
   if (task.status === 'not_applicable') return t('plan.notApplicableBody');
   if (task.status === 'condition_attention') return statusPresentation(task).label;
@@ -180,7 +173,7 @@ function taskTiming(task: MaintenanceTaskProjection): string {
     if (task.remainingDays === 0) return t('dashboard.statusDueToday');
     return t('maintenance.daysRemaining', { days: formatNumber(task.remainingDays) });
   }
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') {
+  if (task.status === 'no_fixed_interval') {
     return t('plan.serviceCondition');
   }
   return naturalMaintenanceActionLabel(task);
@@ -220,11 +213,14 @@ export default function MaintenanceScheduleScreen() {
   const [vehicle, setVehicle] = useState<VehicleProfile | null>(null);
   const [maintenanceProfile, setMaintenanceProfile] = useState<ScooterMaintenanceProfile | null>(null);
   const [tasks, setTasks] = useState<MaintenanceTaskProjection[]>([]);
+  const [initialServiceCheckpoint, setInitialServiceCheckpoint] = useState<InitialServiceCheckpoint | null>(null);
   const [trackedKeys, setTrackedKeys] = useState<Set<string>>(new Set());
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [menuTask, setMenuTask] = useState<MaintenanceTaskProjection | null>(null);
   const [recordingTask, setRecordingTask] = useState<MaintenanceTaskProjection | null>(null);
+  const [recordingMode, setRecordingMode] = useState<'now' | 'previous'>('now');
   const [saving, setSaving] = useState(false);
+  const openMaintenanceHistorySetup = () => navigation.navigate('MaintenanceHistorySetup');
 
   const loadData = useCallback(async (isCurrent: () => boolean) => {
     const [profileData, events, preferences, historyStates] = await Promise.all([
@@ -241,24 +237,24 @@ export default function MaintenanceScheduleScreen() {
     setMaintenanceProfile(domainProfile);
     if (!profileData || !domainProfile) {
       setTasks([]);
+      setInitialServiceCheckpoint(null);
       return;
     }
     const schedulerPreferences = maintenancePreferencesForScheduler(preferences);
-    const projected = projectMaintenanceTasks({
+    const plan = projectVehicleMaintenance({
+      vehicle: profileData,
       profile: domainProfile,
-      currentOdometerKm: profileData.current_mileage,
-      vehicleId: profileData.id,
       now: new Date(),
       events,
-      preferences: schedulerPreferences,
-      historyByAction: maintenanceHistoryByAction(historyStates),
-      defaultHistoryKnowledge: 'unknown',
-      vehicleInServiceDate: profileData.created_at.slice(0, 10),
+      preferences,
+      historyStates,
     });
-    setTasks(projected);
+    setInitialServiceCheckpoint(plan.firstServiceCheckpoint);
+    const visibleProjected = plan.tasks;
+    setTasks(visibleProjected);
     const trackingContext = { preferences: schedulerPreferences, events, vehicleId: profileData.id };
     setTrackedKeys(new Set(
-      projected.filter((task) => isTaskTracked(task, trackingContext)).map((task) => task.key)
+      visibleProjected.filter((task) => isTaskTracked(task, trackingContext)).map((task) => task.key)
     ));
   }, []);
 
@@ -272,7 +268,7 @@ export default function MaintenanceScheduleScreen() {
     const openRuleId = route.params?.openRuleId;
     if (!openRuleId) return;
     const task = tasks.find((candidate) => candidate.ruleId === openRuleId);
-    if (!task || task.status === 'historical_unverified') return;
+    if (!task) return;
     const group = groupForTask(task);
     if (group.id !== 'engine-oil') {
       setExpandedGroupId(`${sectionForTask(task) ?? 'checks'}:${group.id}`);
@@ -427,15 +423,9 @@ export default function MaintenanceScheduleScreen() {
   const scooterSelection = selectionFromProfile(vehicle);
   const selectable = Boolean(maintenanceProfile);
   const basicTracking = scooterSelection?.selectionMode === 'custom_brand';
-  const setupNeeded = selectable && (
-    vehicle.maintenance_history_level === undefined
-    || vehicle.maintenance_history_level === 'not_asked'
-    || vehicle.maintenance_history_level === 'skipped'
-  );
   const trackedTasks = tasks.filter((task) => trackedKeys.has(task.key));
   const untrackedTasks = tasks.filter((task) =>
     !trackedKeys.has(task.key)
-    && task.status !== 'historical_unverified'
     && task.status !== 'not_applicable'
   );
   const trackableGroups = deduplicateByGroup(untrackedTasks).map(({ group }) => group).filter((group) =>
@@ -445,9 +435,7 @@ export default function MaintenanceScheduleScreen() {
   const dueNow = deduplicateByGroup(trackedTasks.filter(isDueNow));
   const comingUp = deduplicateByGroup(trackedTasks.filter(isComingUp));
   const activeInitialTasks = trackedTasks.filter((task) =>
-    task.isOneTime
-    && task.status !== 'historical_unverified'
-    && task.status !== 'not_applicable'
+    task.isOneTime && task.status !== 'not_applicable'
   );
 
   const openGroup = (group: ComponentGroup, section: SectionId) => {
@@ -485,7 +473,7 @@ export default function MaintenanceScheduleScreen() {
 
   const renderComponentRow = (group: ComponentGroup, section: SectionId) => {
     const visibleTasks = groupTasks(group, trackedTasks).filter((task) =>
-      task.status !== 'historical_unverified' && task.status !== 'not_applicable'
+      task.status !== 'not_applicable'
     );
     if (visibleTasks.length === 0) return null;
     const representative = representativeForGroup(group, visibleTasks);
@@ -533,7 +521,7 @@ export default function MaintenanceScheduleScreen() {
 
   const renderSection = (id: SectionId, title: string) => {
     const groups = deduplicateByGroup(trackedTasks).map(({ group }) => group).filter((group) => group.section === id && groupTasks(group, trackedTasks).some((task) =>
-      task.status !== 'historical_unverified' && task.status !== 'not_applicable'
+      task.status !== 'not_applicable'
     ));
     if (groups.length === 0) return null;
     return (
@@ -589,6 +577,11 @@ export default function MaintenanceScheduleScreen() {
                   <Text className="font-headline text-base font-bold text-on-surface">{tr('plan.basicTrackingTitle')}</Text>
                   <Text className="font-body text-xs text-on-surface-variant mt-1 leading-5">{tr('plan.basicTrackingBody')}</Text>
                 </View>
+              </View>
+            ) : null}
+            {initialServiceCheckpoint ? (
+              <View className="mt-6">
+                <InitialServiceCheckpointCard checkpoint={initialServiceCheckpoint} onPress={openMaintenanceHistorySetup} />
               </View>
             ) : null}
             {dueNow.length > 0 ? (
@@ -662,20 +655,6 @@ export default function MaintenanceScheduleScreen() {
               </TouchableOpacity>
             </View>
 
-            {setupNeeded ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                className="mt-7 min-h-20 rounded-xl border border-primary/30 bg-primary/10 p-4 flex-row items-center gap-3"
-                onPress={() => navigation.navigate('MaintenanceHistorySetup')}
-              >
-                <MaterialIcons name="playlist-add-check" size={22} color="#a9c7ff" />
-                <View className="flex-1">
-                  <Text className="font-headline text-sm font-bold text-on-surface">{tr('plan.finishHistory')}</Text>
-                  <Text className="font-body text-xs text-on-surface-variant mt-1">{tr('plan.finishHistoryBody')}</Text>
-                </View>
-                <MaterialIcons name={isRTL ? 'chevron-left' : 'chevron-right'} size={22} color="#a9c7ff" />
-              </TouchableOpacity>
-            ) : null}
           </>
         )}
       </ScrollView>
@@ -683,6 +662,7 @@ export default function MaintenanceScheduleScreen() {
       <MaintenanceRecordForm
         actionOptions={recordOption}
         actionsLocked
+        advisoryText={recordingMode === 'previous' ? tr('oil.historyUnknownBody') : undefined}
         currentOdometerKm={vehicle.current_mileage}
         initialValue={recordingTask && recordOption[0] ? {
           selectedActions: recordOption,
@@ -699,7 +679,10 @@ export default function MaintenanceScheduleScreen() {
         onClose={() => setMenuTask(null)}
         onCustomize={(task) => navigation.navigate('MaintenanceReminderCustomization', { ruleId: task.ruleId })}
         onHistory={() => navigation.navigate('ServiceLogs')}
-        onRecord={setRecordingTask}
+        onRecord={(task, mode) => {
+          setRecordingMode(mode);
+          setRecordingTask(task);
+        }}
         onRestore={restoreOriginalSchedule}
         onStopTracking={stopTrackingTask}
         task={menuTask}

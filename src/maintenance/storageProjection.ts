@@ -7,10 +7,11 @@ import type {
 } from './types';
 
 export function maintenanceHistoryByAction(
-  states: MaintenanceHistoryState[]
+  states: MaintenanceHistoryState[],
+  allowKnownZeroBaseline = false
 ): Partial<Record<string, RuleHistoryKnowledge>> {
   return Object.fromEntries(states.map((state) => {
-    const knowledge: RuleHistoryKnowledge = state.history_state === 'never_done'
+    const knowledge: RuleHistoryKnowledge = state.history_state === 'never_done' && allowKnownZeroBaseline
       ? 'known_no_prior_completion'
       : state.history_state === 'confirmed'
         ? 'known_from_events'

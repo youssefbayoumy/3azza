@@ -4,23 +4,23 @@ import {
   type ScooterSelection,
 } from '../catalog/scooterCatalog';
 import { parseWholeNumberInput } from '../utils/recordValidation';
+import type { VehiclePurchaseCondition } from '../types/database.types';
 
 export type VehicleCreationFields = {
   name: string;
   mileage: string;
-  dailyAverage: string;
+  purchaseCondition: Exclude<VehiclePurchaseCondition, 'unknown'> | null;
   selection: Partial<ScooterSelection>;
 };
 
 export type VehicleCreationLabels = {
   startingOdometer: string;
-  dailyAverage: string;
 };
 
 export type PreparedVehicleCreation = {
   name: string;
   currentMileage: number;
-  dailyAverageKm: number;
+  purchaseCondition: Exclude<VehiclePurchaseCondition, 'unknown'>;
   selection: ScooterSelection;
 };
 
@@ -31,17 +31,16 @@ export function prepareVehicleCreation(
 ): PreparedVehicleCreation | null {
   const name = fields.name.trim();
   const mileage = parseWholeNumberInput(fields.mileage, { label: labels.startingOdometer });
-  const dailyAverage = parseWholeNumberInput(fields.dailyAverage, { label: labels.dailyAverage });
   const selection = resolveScooterSelection(fields.selection);
 
-  if (!name || !mileage.ok || !dailyAverage.ok || !selection || !isScooterSelectionComplete(selection)) {
+  if (!name || !mileage.ok || !fields.purchaseCondition || !selection || !isScooterSelectionComplete(selection)) {
     return null;
   }
 
   return {
     name,
     currentMileage: mileage.value,
-    dailyAverageKm: dailyAverage.value,
+    purchaseCondition: fields.purchaseCondition,
     selection,
   };
 }

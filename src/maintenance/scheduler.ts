@@ -314,12 +314,9 @@ function unknownProjection(
 ): MaintenanceTaskProjection {
   const fixedChange = rule.action === 'replace'
     && !['condition_based', 'manual_only_or_no_fixed_interval', 'one_time_initial'].includes(rule.schedule.type);
-  const status: TaskStatus = fixedChange
-    ? 'history_unknown_recommend_service'
-    : 'history_unknown_request_record';
   return {
     ...projectionBase(rule, interval),
-    status,
+    status: 'unknown_history',
     dueAtKm: null,
     dueOn: null,
     dueBy: 'unknown',
@@ -334,25 +331,6 @@ function unknownProjection(
       ? 'Enter previous maintenance or consider servicing it now.'
       : 'Add a previous record, or consider having this checked.',
     ambiguity: rule.ambiguity,
-  };
-}
-
-function historicalInitialProjection(
-  rule: MaintenanceRule,
-  interval: EffectiveIntervalResolution
-): MaintenanceTaskProjection {
-  return {
-    ...projectionBase(rule, interval),
-    status: 'historical_unverified',
-    dueAtKm: rule.schedule.initialServiceKm ?? null,
-    dueOn: null,
-    dueBy: rule.schedule.initialServiceKm ? 'distance' : 'time',
-    lastPerformedAtKm: null,
-    lastPerformedOn: null,
-    remainingKm: null,
-    remainingDays: null,
-    title: `${rule.label} is a past initial milestone.`,
-    reason: 'The initial break-in milestone is no longer shown as current because this scooter was added after that stage.',
   };
 }
 
@@ -525,7 +503,7 @@ function statusFromDue(input: {
     && input.currentKm >= input.dueAtKm - distanceWindow;
   const timeSoon = input.dueOnDate !== null
     && input.dueOnDate.getTime() - input.now.getTime() <= 30 * DAY_MS;
-  const status: TaskStatus = distanceSoon || timeSoon ? 'due_soon' : 'upcoming';
+  const status: TaskStatus = distanceSoon || timeSoon ? 'due_soon' : 'ok';
   if (input.dueAtKm !== null && dueOn) return { status, dueBy, reason: t('due.first', { km: formatNumber(input.dueAtKm), date: dueOn }), remainingKm, remainingDays };
   if (input.dueAtKm !== null) return { status, dueBy, reason: t('due.nextDistance', { km: formatNumber(input.dueAtKm) }), remainingKm, remainingDays };
   return { status, dueBy, reason: t('due.nextTime', { date: dueOn ?? '' }), remainingKm, remainingDays };
@@ -559,7 +537,7 @@ function projectScheduledRule(
     // A user preference must never resurrect a past break-in milestone as a
     // current task. One-time history remains bounded by the profile policy.
     if (input.currentOdometerKm > profileActionableUntilKm) {
-      return historicalInitialProjection(rule, interval);
+      return null;
     }
   }
 
@@ -644,12 +622,9 @@ export function maintenanceTaskPriority(task: MaintenanceTaskProjection): number
   if (task.status === 'due') return task.action === 'replace' ? 200 : 210;
   if (task.status === 'condition_attention') return 220 + conditionSeverity(task.conditionResult);
   if (task.status === 'due_soon') return 300;
-  if (task.status === 'upcoming') return 400;
-  if (task.status === 'history_unknown_recommend_service') return 500;
-  if (task.status === 'history_unknown_request_record' || task.status === 'unknown') return 600;
-  if (task.status === 'historical_unverified') return 800;
-  if (task.status === 'no_fixed_interval' || task.status === 'informational') return 900;
-  if (task.status === 'completed_confirmed') return 950;
+  if (task.status === 'ok') return 400;
+  if (task.status === 'unknown_history') return 500;
+  if (task.status === 'no_fixed_interval') return 900;
   return 1000;
 }
 
