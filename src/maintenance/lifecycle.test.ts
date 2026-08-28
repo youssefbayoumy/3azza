@@ -107,7 +107,7 @@ describe('vehicle maintenance lifecycle', () => {
     assert.ok(plan({ vehicle: vehicle('new', 1001) }).tasks.every((task) => !task.isOneTime));
   });
 
-  it('keeps used and migrated-unknown history unanchored at any odometer', () => {
+  it('keeps high-mileage used and migrated-unknown history unanchored', () => {
     const legacyNeverDone: MaintenanceHistoryState = {
       vehicle_id: 1,
       profile_id: profile.id,

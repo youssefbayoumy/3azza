@@ -246,6 +246,25 @@ describe('maintenance presentation taxonomy', () => {
 });
 
 describe('production-safe maintenance presentation', () => {
+  it('presents unknown history without a due odometer or mileage countdown', () => {
+    const profile = profileWithRules('engine-oil.replace.recurring-1000km');
+    const [task] = projectMaintenanceTasks({
+      profile,
+      vehicleId: 1,
+      currentOdometerKm: 12_450,
+      now: NOW,
+      events: [],
+      defaultHistoryKnowledge: 'unknown',
+    });
+    const [view] = buildMaintenancePresentation([task]);
+    const [action] = view.actions;
+
+    assert.equal(task.status, 'unknown_history');
+    assert.equal(action.statusLabel, 'History unknown');
+    assert.equal(action.nextDueAtKm, null);
+    assert.equal(action.remainingKm, null);
+  });
+
   it('orders safety-critical condition findings ahead of confirmed overdue work', () => {
     const profile = profileWithRules(
       'engine-oil.replace.recurring-1000km',

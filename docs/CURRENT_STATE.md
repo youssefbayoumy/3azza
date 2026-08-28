@@ -7,7 +7,7 @@ Updated: 2026-08-28 (Africa/Cairo)
 - The current source configuration declares version **2.3.4** and Android version code **16**.
 - The latest connected-device QA report verifies version **2.3.3** / code **12** on 2026-08-03. It is not evidence that the current 2.3.4/16 source has been device-qualified.
 - The production EAS AAB for **2.3.4** / code **16** completed successfully and its compiled base manifest was verified with Bundletool. This verifies the artifact identity and packaged launcher/notification configuration, not connected-device behavior or Play acceptance.
-- After the lifecycle refactor, `npm test` passes all **248 tests** and both `npm run typecheck` and `npm run lint` pass. No Android build was needed for this maintenance-only verification.
+- After the maintenance-lifecycle and first-run UX simplifications, `npm test` passes all **250 tests** and both `npm run typecheck` and `npm run lint` pass. No Android build was needed for this maintenance-only verification.
 - `npm run release:check` currently stops at Expo Doctor. It reports six Expo SDK 57 patch-version mismatches: `expo`, `expo-file-system`, `expo-image-picker`, `expo-notifications`, `expo-sharing`, and `expo-splash-screen`. The subsequent security-audit step does not run when Doctor stops the command.
 
 ## What the product currently does well

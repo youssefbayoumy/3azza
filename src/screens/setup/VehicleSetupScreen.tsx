@@ -14,7 +14,7 @@ import {
     type GuidedScooterSelectionDraft,
 } from '../../catalog/guidedScooterIdentification';
 import type { VehiclePurchaseCondition } from '../../types/database.types';
-import { useTranslation } from '../../i18n';
+import { configureLayoutDirection, useTranslation, type AppLocale } from '../../i18n';
 
 type SetupFormData = {
     mileage: string;
@@ -24,6 +24,8 @@ export default function VehicleSetupScreen() {
     const { t, isRTL } = useTranslation();
     const maintenanceReminders = useAppStore((state) => state.maintenanceReminders);
     const completeVehicleSetup = useAppStore((s) => s.completeVehicleSetup);
+    const locale = useAppStore((s) => s.locale);
+    const setLocale = useAppStore((s) => s.setLocale);
     const [saving, setSaving] = useState(false);
     const [purchaseCondition, setPurchaseCondition] = useState<Exclude<VehiclePurchaseCondition, 'unknown'> | null>(null);
     const [selectionDraft, setSelectionDraft] = useState<GuidedScooterSelectionDraft>(() => createGuidedSelectionDraft());
@@ -32,6 +34,14 @@ export default function VehicleSetupScreen() {
     const { control, handleSubmit, reset, formState: { errors } } = useForm<SetupFormData>({
         defaultValues: { mileage: '' }
     });
+
+    const changeLocale = (next: AppLocale) => {
+        if (next === locale) return;
+        setLocale(next);
+        if (configureLayoutDirection(next)) {
+            Alert.alert(t('language.changeTitle'), t('language.changeBody'));
+        }
+    };
 
     useEffect(() => {
         getVehicleProfile().then((profile) => {
@@ -85,6 +95,23 @@ export default function VehicleSetupScreen() {
 
     return (
         <AppFormScreen>
+            <View className="flex-row self-center items-center gap-3 mb-5">
+                <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: locale === 'en' }}
+                    onPress={() => changeLocale('en')}
+                >
+                    <Text className={`font-label text-xs ${locale === 'en' ? 'text-primary' : 'text-on-surface-variant'}`}>{t('language.english')}</Text>
+                </TouchableOpacity>
+                <Text className="font-body text-xs text-on-surface-variant">|</Text>
+                <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: locale === 'ar-EG' }}
+                    onPress={() => changeLocale('ar-EG')}
+                >
+                    <Text className={`font-label text-xs ${locale === 'ar-EG' ? 'text-primary' : 'text-on-surface-variant'} ${isRTL ? 'font-body' : ''}`}>{t('language.egyptianArabic')}</Text>
+                </TouchableOpacity>
+            </View>
             <View className="items-center mb-10">
                 <View className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mb-6">
                     <MaterialCommunityIcons name="car-cog" size={40} color="#a9c7ff" />

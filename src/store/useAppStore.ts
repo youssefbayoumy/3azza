@@ -22,11 +22,6 @@ const secureStorage: StateStorage = {
 // ── App-wide state persisted securely ──
 
 interface AppState {
-  // Onboarding
-  hasCompletedOnboarding: boolean;
-  completeOnboarding: () => void;
-  resetOnboarding: () => void; // Dev only
-  
   // Auth
   isAuthenticated: boolean;
   login: () => void;
@@ -53,14 +48,12 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      hasCompletedOnboarding: false,
-      completeOnboarding: () => set({ hasCompletedOnboarding: true }),
-      resetOnboarding: () => set({ hasCompletedOnboarding: false }),
-
       isAuthenticated: false,
       login: () => set({ isAuthenticated: true }),
       logout: () => set({ isAuthenticated: false }),
-      appLockEnabled: true,
+      // App lock stays available in Settings, but it must not add a mandatory
+      // PIN-registration step before a new owner can finish vehicle setup.
+      appLockEnabled: false,
       setAppLockEnabled: (enabled) => set({ appLockEnabled: enabled }),
 
       hasCompletedVehicleSetup: false,

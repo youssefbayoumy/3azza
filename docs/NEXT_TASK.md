@@ -7,6 +7,7 @@ Read `PRODUCT_SCOPE.md`, `CURRENT_STATE.md`, and `docs/architecture/ARCHITECTURE
 ### Replace onboarding and maintenance scheduling with an explicit lifecycle model
 
 - Initial setup and Add Vehicle now ask exact scooter, odometer, and bought new/used; the detailed history questionnaire and daily-average requirement are gone.
+- Fresh installs now open directly to that vehicle setup instead of an introductory tour. The optional app lock remains available in Settings, but no longer forces PIN registration before setup is complete.
 - New scooters alone receive one isolated first-service checkpoint and transition to the normal plan after completion or cutoff. Used and migrated-unknown scooters start normal with unknown per-action history.
 - Home, Maintenance, oil details, Insights, and notifications use `projectVehicleMaintenance`; legacy service-interval calculators and their runtime APIs were removed.
 - Schema v21 migrates existing ownership to unknown and preserves records/preferences. Exact record anchors, custom intervals, changed-now, edit, and delete recalculation are covered by automated tests.

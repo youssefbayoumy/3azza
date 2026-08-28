@@ -24,7 +24,6 @@ export type MainStackParamList = {
 };
 
 export type RootStackParamList = {
-  Onboarding: undefined;
   VehicleSetup: undefined;
   Main: NavigatorScreenParams<MainStackParamList> | undefined;
 };

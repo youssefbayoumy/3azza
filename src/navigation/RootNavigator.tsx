@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainNavigator from './MainNavigator';
-import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import VehicleSetupScreen from '../screens/setup/VehicleSetupScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -70,7 +69,6 @@ function AppLockGate() {
 }
 
 export default function RootNavigator() {
-    const hasCompletedOnboarding = useAppStore((s) => s.hasCompletedOnboarding);
     const isAuthenticated = useAppStore((s) => s.isAuthenticated);
     const appLockEnabled = useAppStore((s) => s.appLockEnabled);
     const hasCompletedVehicleSetup = useAppStore((s) => s.hasCompletedVehicleSetup);
@@ -91,20 +89,18 @@ export default function RootNavigator() {
         <View style={styles.root}>
             <View
                 style={styles.root}
-                accessibilityElementsHidden={hasCompletedOnboarding && appLockEnabled && !isAuthenticated}
-                importantForAccessibility={hasCompletedOnboarding && appLockEnabled && !isAuthenticated ? 'no-hide-descendants' : 'auto'}
+                accessibilityElementsHidden={hasCompletedVehicleSetup && appLockEnabled && !isAuthenticated}
+                importantForAccessibility={hasCompletedVehicleSetup && appLockEnabled && !isAuthenticated ? 'no-hide-descendants' : 'auto'}
             >
                 <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#081421' }, animation: 'fade' }}>
-                    {!hasCompletedOnboarding ? (
-                        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                    ) : !hasCompletedVehicleSetup ? (
+                    {!hasCompletedVehicleSetup ? (
                         <Stack.Screen name="VehicleSetup" component={VehicleSetupScreen} />
                     ) : (
                         <Stack.Screen name="Main" component={MainNavigator} />
                     )}
                 </Stack.Navigator>
             </View>
-            {hasCompletedOnboarding && appLockEnabled && !isAuthenticated ? (
+            {hasCompletedVehicleSetup && appLockEnabled && !isAuthenticated ? (
                 <Modal
                     visible
                     animationType="none"

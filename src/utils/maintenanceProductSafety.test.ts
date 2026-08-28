@@ -351,6 +351,22 @@ describe('production maintenance UI safety', () => {
     assert.doesNotMatch(source, /MaintenanceHistoryOnboarding|dailyAvg/);
   });
 
+  it('starts directly at minimal vehicle setup without a tour or fresh-install PIN gate', () => {
+    const root = sourceFile('navigation/RootNavigator.tsx').source;
+    const store = sourceFile('store/useAppStore.ts').source;
+    const setup = sourceFile('screens/setup/VehicleSetupScreen.tsx').source;
+
+    assert.doesNotMatch(root, /OnboardingScreen|hasCompletedOnboarding/);
+    assert.match(root, /!hasCompletedVehicleSetup\s*\?/);
+    assert.match(root, /hasCompletedVehicleSetup && appLockEnabled && !isAuthenticated/);
+    assert.doesNotMatch(store, /hasCompletedOnboarding|completeOnboarding|resetOnboarding/);
+    assert.match(store, /appLockEnabled:\s*false/);
+    assert.match(setup, /saveInitialVehicleSetup\(\{/);
+    assert.doesNotMatch(setup, /MaintenanceHistory|InitialServiceCheckpoint|dailyAverage/);
+    assert.match(setup, /language\.english/);
+    assert.match(setup, /language\.egyptianArabic/);
+  });
+
   it('keeps exact history setup behind the supported-profile gate', () => {
     const setup = sourceFile('screens/MaintenanceHistorySetupScreen.tsx').source;
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
@@ -433,6 +449,7 @@ describe('production maintenance UI safety', () => {
     assert.doesNotMatch(menu, /historical_unverified/);
     assert.match(menu, /maintenance\.changedNow/);
     assert.match(menu, /maintenance\.enterPrevious/);
+    assert.match(menu, /task\.status === 'unknown_history'/);
     assert.match(menu, /\{customizable \? \(/);
   });
 
