@@ -24,6 +24,16 @@ dashboard, and notification planner consume the same task projection.
 - Profile IDs remain stable; `profileVersion` changes whenever evidence,
   applicability, or schedule semantics change. Events store both values.
 
+### Historical record compatibility
+
+`profileId` identifies a maintenance-profile lineage; `profileVersion` records
+the revision that produced or recorded an event. A version change alone never
+invalidates trustworthy physical maintenance history. The scheduler decides
+compatibility from exact profile, rule, component, and action identity. Keep a
+rule ID only while its real-world maintenance action remains semantically
+compatible; otherwise author a new rule ID. Do not use profile-version
+filtering or generic history migrations to reinterpret a semantic rule change.
+
 ## Exact selection and isolation
 
 A profile is resolved by brand, model, manual version, and exact variant ID.

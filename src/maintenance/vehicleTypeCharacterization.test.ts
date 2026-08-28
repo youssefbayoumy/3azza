@@ -270,14 +270,63 @@ describe('vehicle-type characterization profiles', () => {
     assert.equal(isolatedProfile?.status, 'unknown_history');
   });
 
-  it('classifies profile-version isolation as a remaining scheduler assumption', () => {
-    const oil = motorcycleProfile.rules[0];
-    const priorVersionEvent = event(oil, { profileVersion: 'test-0', odometerKm: 10_000 });
-    const task = taskAt(motorcycleProfile, 10_500, [priorVersionEvent]).find((candidate) => candidate.ruleId === oil.id);
-    // A: validEventForProfile currently keys history by profile ID, not version.
-    // Keep this characterization explicit rather than changing production behavior.
-    assert.equal(task?.lastPerformedAtKm, 10_000);
-    assert.equal(task?.status, 'ok');
+  it('preserves a compatible maintenance anchor across profile versions', () => {
+    const v1Rule = rule({ id: 'engine-oil-service', componentId: 'engine-oil', label: 'Engine oil replacement', action: 'replace', category: 'engine_and_lubrication', schedule: { type: 'recurring_distance', intervalKm: 3000 } });
+    const v1 = { ...profile('synthetic-profile-upgrade', [v1Rule]), profileVersion: 'v1' };
+    const v2Rule = { ...v1Rule, schedule: { type: 'recurring_distance' as const, intervalKm: 1000 } };
+    const v2 = { ...profile('synthetic-profile-upgrade', [v2Rule]), profileVersion: 'v2' };
+
+    const task = taskAt(v2, 9_500, [event(v1Rule, {
+      profileId: v1.id,
+      profileVersion: v1.profileVersion,
+      odometerKm: 9_000,
+    })])[0];
+    assert.equal(task.lastPerformedAtKm, 9_000);
+    assert.equal(task.dueAtKm, 10_000);
+    assert.equal(task.remainingKm, 500);
+    assert.notEqual(task.status, 'unknown_history');
+  });
+
+  it('keeps equivalent rules isolated when their profile IDs differ', () => {
+    const sharedRule = rule({ id: 'engine-oil-service', componentId: 'engine-oil', label: 'Engine oil replacement', action: 'replace', category: 'engine_and_lubrication', schedule: { type: 'recurring_distance', intervalKm: 1000 } });
+    const profileA = profile('synthetic-profile-a', [sharedRule]);
+    const profileB = profile('synthetic-profile-b', [sharedRule]);
+    const task = taskAt(profileB, 9_500, [event(sharedRule, {
+      profileId: profileA.id,
+      profileVersion: profileA.profileVersion,
+      odometerKm: 9_000,
+    })])[0];
+    assert.equal(task.status, 'unknown_history');
+    assert.equal(task.lastPerformedAtKm, null);
+    assert.equal(task.dueAtKm, null);
+  });
+
+  it('rejects old history when a stable rule ID changes action', () => {
+    const v1Rule = rule({ id: 'air-filter-service', componentId: 'air-filter', label: 'Air-filter inspection', action: 'inspect', category: 'fuel_and_intake', schedule: { type: 'recurring_distance', intervalKm: 3000 } });
+    const v1 = { ...profile('synthetic-action-change', [v1Rule]), profileVersion: 'v1' };
+    const v2Rule = { ...v1Rule, action: 'replace' as const, label: 'Air-filter replacement' };
+    const v2 = { ...profile('synthetic-action-change', [v2Rule]), profileVersion: 'v2' };
+    const task = taskAt(v2, 9_500, [event(v1Rule, {
+      profileId: v1.id,
+      profileVersion: v1.profileVersion,
+      odometerKm: 9_000,
+    })])[0];
+    assert.equal(task.status, 'unknown_history');
+    assert.equal(task.lastPerformedAtKm, null);
+  });
+
+  it('rejects old history when a stable rule ID changes component', () => {
+    const v1Rule = rule({ id: 'air-filter-service', componentId: 'air-filter', label: 'Air-filter inspection', action: 'inspect', category: 'fuel_and_intake', schedule: { type: 'recurring_distance', intervalKm: 3000 } });
+    const v1 = { ...profile('synthetic-component-change', [v1Rule]), profileVersion: 'v1' };
+    const v2Rule = { ...v1Rule, componentId: 'intake-filter', label: 'Intake-filter inspection' };
+    const v2 = { ...profile('synthetic-component-change', [v2Rule]), profileVersion: 'v2' };
+    const task = taskAt(v2, 9_500, [event(v1Rule, {
+      profileId: v1.id,
+      profileVersion: v1.profileVersion,
+      odometerKm: 9_000,
+    })])[0];
+    assert.equal(task.status, 'unknown_history');
+    assert.equal(task.lastPerformedAtKm, null);
   });
 
   it('keeps used vehicles normal without reconstructing break-in, while new vehicles get one checkpoint', () => {
