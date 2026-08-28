@@ -12,6 +12,12 @@ The scheduler consumes one exact profile, current confirmed odometer/date state,
 and action-specific events. It has no manufacturer conditionals. The UI,
 dashboard, and notification planner consume the same task projection.
 
+Profiles also own their default tracked rule IDs and their quick-record rule
+IDs. Presentation uses profile-supplied component metadata when present, then
+the universal catalogue, while preserving the localized presentation of known
+production components. These are catalogue/profile concerns, not scheduler
+rules or persisted vehicle state.
+
 ## Profile lifecycle
 
 `draft -> extracted -> needs_review -> validated -> production_ready`
@@ -37,6 +43,9 @@ filtering or generic history migrations to reinterpret a semantic rule change.
 ## Exact selection and isolation
 
 A profile is resolved by brand, model, manual version, and exact variant ID.
+An optional stable `profileId` may select one profile lineage directly; when it
+is absent, catalog matching must yield exactly one profile or resolve to no
+profile. Do not silently choose the first of multiple catalog matches.
 Changing vehicles or scooter identity changes the active profile transactionally.
 Events from another profile remain in history but cannot influence the new
 profile because the scheduler filters by profile and rule identity. Legacy

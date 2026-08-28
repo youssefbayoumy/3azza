@@ -98,6 +98,7 @@ export default function InsightsScreen() {
       preferences: schedulerPreferences,
       events,
       vehicleId: profile?.id,
+      defaultTrackedRuleIds: maintenanceProfile?.defaultTrackedRuleIds,
     }));
 
     if (!isCurrent()) return;

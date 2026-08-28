@@ -259,6 +259,7 @@ function projectionBase(
   | 'technicianRecommended'
   | 'userInspectable'
   | 'technicianLevel'
+  | 'presentation'
   | 'isOneTime'
   | 'instructions'
   | 'profileRecommendedIntervalKm'
@@ -286,6 +287,7 @@ function projectionBase(
       ?? (rule.userInspectable
         ? 'user_checkable'
         : rule.technicianRecommended ? 'workshop_recommended' : 'workshop_required'),
+    presentation: rule.presentation,
     isOneTime: rule.schedule.type === 'one_time_initial',
     instructions: rule.instructions,
     profileRecommendedIntervalKm: interval.profileRecommendedIntervalKm,
@@ -678,27 +680,22 @@ export function projectMaintenanceTasks(input: MaintenanceProjectionInput): Main
   return tasks.sort(compareMaintenanceTaskPriority);
 }
 
-/**
- * Components tracked by default on a fresh vehicle. Everything else is opt-in:
- * the user adds it explicitly, or it auto-tracks the first time a record is logged.
- */
-export const DEFAULT_TRACKED_COMPONENT_IDS: ReadonlySet<string> = new Set(['engine-oil']);
-
 export type TaskTrackingContext = {
   preferences?: VehicleMaintenancePreference[];
   events: MaintenanceEvent[];
   vehicleId?: number;
+  defaultTrackedRuleIds?: readonly string[];
 };
 
 /**
  * Opt-in service tracking. A task is surfaced (on the plan, on Home, and in
  * reminders) only when tracked:
  *  - an explicit "stop tracking" (tracked === false) always wins; otherwise
- *  - engine oil is tracked by default, an explicit tracked === true, or any
+ *  - a profile-owned default, an explicit tracked === true, or any
  *    logged event for the same component+action (auto-track on log).
  */
 export function isTaskTracked(
-  task: Pick<MaintenanceTaskProjection, 'componentId' | 'action'>,
+  task: Pick<MaintenanceTaskProjection, 'ruleId' | 'componentId' | 'action'>,
   context: TaskTrackingContext
 ): boolean {
   const preference = (context.preferences ?? []).find((candidate) =>
@@ -708,7 +705,7 @@ export function isTaskTracked(
   );
   if (preference?.tracked === false) return false;
   if (preference?.tracked === true) return true;
-  if (DEFAULT_TRACKED_COMPONENT_IDS.has(task.componentId)) return true;
+  if (context.defaultTrackedRuleIds?.includes(task.ruleId)) return true;
   return context.events.some((event) =>
     event.componentId === task.componentId
     && event.action === task.action

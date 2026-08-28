@@ -119,6 +119,7 @@ async function reconcileMaintenanceNotifications(enabled: boolean): Promise<Noti
       preferences: schedulerPreferences,
       events,
       vehicleId: profile?.id,
+      defaultTrackedRuleIds: domainProfile?.defaultTrackedRuleIds,
     }));
     const checkpoint = maintenancePlan?.firstServiceCheckpoint ?? null;
     const checkpointDue = checkpoint?.status === 'overdue' || checkpoint?.status === 'due' ? 1 : 0;

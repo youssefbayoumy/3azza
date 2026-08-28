@@ -67,6 +67,11 @@ export type MaintenanceCategory =
   | 'emissions_systems'
   | 'general_safety_inspections';
 
+export type MaintenancePresentationSectionKey =
+  | 'scheduled-maintenance'
+  | 'wear-and-condition'
+  | 'general-checks';
+
 export type MaintenanceSource = {
   sourceType?: MaintenanceSourceType;
   manualId?: string;
@@ -108,6 +113,8 @@ export type MaintenanceRule = {
   presentation?: {
     componentGroupId?: string;
     userLabel?: string;
+    componentLabel?: string;
+    sectionKey?: MaintenancePresentationSectionKey;
     surface?: 'individual' | 'workshop_group' | 'background_checklist';
   };
   conditionFollowUp?: {
@@ -168,6 +175,10 @@ export type ScooterMaintenanceProfile = {
     actionableUntilKm: number;
     afterWindowBehavior: 'historical_unverified';
   };
+  /** Profile-owned defaults for opt-in tracking; they always reference applicable rule IDs. */
+  defaultTrackedRuleIds?: string[];
+  /** Profile-owned maintenance actions offered first in the service-record form. */
+  quickRecordRuleIds?: string[];
   rules: MaintenanceRule[];
 };
 
@@ -265,6 +276,7 @@ export type MaintenanceTaskProjection = {
   isOneTime: boolean;
   instructions?: string;
   ambiguity?: MaintenanceRule['ambiguity'];
+  presentation?: MaintenanceRule['presentation'];
 };
 
 export type VehicleMaintenancePreference = {

@@ -16,7 +16,7 @@ import ScreenLoadState from '../components/ui/ScreenLoadState';
 import useFocusedLoader from '../hooks/useFocusedLoader';
 import useIncrementalRecordLimit from '../hooks/useIncrementalRecordLimit';
 import { naturalMaintenanceActionLabel } from '../maintenance/presentation';
-import { getMaintenanceProfileForSelection } from '../maintenance/profiles';
+import { getMaintenanceProfileForSelection, quickRecordRules } from '../maintenance/profiles';
 import type { InspectionResult, MaintenanceAction, ScooterMaintenanceProfile } from '../maintenance/types';
 import type { ServiceLogsNavigationProp } from '../navigation/types';
 import {
@@ -34,19 +34,6 @@ import { useAppStore } from '../store/useAppStore';
 import type { ServiceLog, VehicleProfile } from '../types/database.types';
 import { formatDate, formatEgp, formatKilometres, localizeErrorMessage, t, useTranslation, type TranslationKey } from '../i18n';
 import { selectionFromProfile } from '../catalog/scooterCatalog';
-import { UNIVERSAL_CUSTOM_PROFILE_ID } from '../maintenance/universalProfile';
-
-const CURATED_RULE_IDS = [
-  'engine-oil.replace.recurring-1000km',
-  'transmission-oil.replace.recurring-5000km-5mo',
-  'air-cleaner-element.inspect.recurring-1000km-1mo',
-  'air-cleaner-element.clean.if-needed',
-  'air-cleaner-element.replace.if-necessary',
-  'brake-pads.inspect.recurring-1000km-1mo',
-  'tires.inspect.recurring-1000km-1mo',
-  'drive-belt-rollers.inspect.recurring-6000km-6mo',
-  'general-fasteners.inspect.recurring-1000km-1mo',
-] as const;
 
 const GENERAL_INSPECTION_OPTION: MaintenanceRecordActionOption = {
   ruleId: 'general-workshop-inspection',
@@ -152,21 +139,8 @@ function optionForRule(
 
 function curatedActionOptions(profile: ScooterMaintenanceProfile | null): MaintenanceRecordActionOption[] {
   if (!profile) return [generalInspectionOption()];
-  if (profile.id === UNIVERSAL_CUSTOM_PROFILE_ID) {
-    const applicableOptions = profile.rules
-      .filter((rule) => rule.applicable)
-      .map((rule): MaintenanceRecordActionOption => ({
-        ruleId: rule.id,
-        componentId: rule.componentId,
-        action: rule.action,
-        label: naturalMaintenanceActionLabel({ componentId: rule.componentId, action: rule.action }),
-        requiresConditionResult: Boolean(rule.conditionFollowUp),
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
-    return [...applicableOptions, generalInspectionOption()];
-  }
   return [
-    ...CURATED_RULE_IDS.map((ruleId) => optionForRule(profile, ruleId)).filter(
+    ...quickRecordRules(profile).map((rule) => optionForRule(profile, rule.id)).filter(
       (option): option is MaintenanceRecordActionOption => option !== null
     ),
     generalInspectionOption(),

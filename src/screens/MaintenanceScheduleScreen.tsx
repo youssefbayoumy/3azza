@@ -252,7 +252,12 @@ export default function MaintenanceScheduleScreen() {
     setInitialServiceCheckpoint(plan.firstServiceCheckpoint);
     const visibleProjected = plan.tasks;
     setTasks(visibleProjected);
-    const trackingContext = { preferences: schedulerPreferences, events, vehicleId: profileData.id };
+    const trackingContext = {
+      preferences: schedulerPreferences,
+      events,
+      vehicleId: profileData.id,
+      defaultTrackedRuleIds: domainProfile.defaultTrackedRuleIds,
+    };
     setTrackedKeys(new Set(
       visibleProjected.filter((task) => isTaskTracked(task, trackingContext)).map((task) => task.key)
     ));

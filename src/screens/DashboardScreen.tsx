@@ -331,6 +331,7 @@ export default function DashboardScreen() {
             preferences: schedulerPreferences,
             events,
             vehicleId: profileData?.id,
+            defaultTrackedRuleIds: domainProfile?.defaultTrackedRuleIds,
         })));
     }, []);
     const { error: loadError, loading, reload } = useFocusedLoader(

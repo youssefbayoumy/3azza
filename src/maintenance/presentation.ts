@@ -1,16 +1,16 @@
 import { compareMaintenanceTaskPriority, maintenancePriorityScore } from './scheduler';
+import catalogueJson from '../../maintenance-data/universal-maintenance-catalogue.json';
 import type {
   MaintenanceAction,
+  MaintenanceCatalogue,
+  MaintenanceCategory,
+  MaintenancePresentationSectionKey,
+  MaintenanceRule,
   MaintenanceTaskProjection,
   ScheduleType,
   TechnicianLevel,
 } from './types';
 import { formatNumber, t, type TranslationKey } from '../i18n/core';
-
-export type MaintenancePresentationSectionKey =
-  | 'scheduled-maintenance'
-  | 'wear-and-condition'
-  | 'general-checks';
 
 export type MaintenancePresentationSection = {
   key: MaintenancePresentationSectionKey;
@@ -134,6 +134,24 @@ const WORKSHOP_COMPONENTS = new Set([
   'pcv-system',
 ]);
 
+const catalogue = catalogueJson as MaintenanceCatalogue;
+const componentDefinitions = new Map(catalogue.components.map((component) => [component.id, component]));
+
+const SECTION_BY_CATEGORY: Record<MaintenanceCategory, MaintenancePresentationSectionKey> = {
+  engine_and_lubrication: 'scheduled-maintenance',
+  fuel_and_intake: 'scheduled-maintenance',
+  ignition: 'scheduled-maintenance',
+  cooling: 'scheduled-maintenance',
+  transmission_and_cvt: 'scheduled-maintenance',
+  brakes: 'wear-and-condition',
+  wheels_and_tires: 'wear-and-condition',
+  steering_and_suspension: 'wear-and-condition',
+  electrical_system: 'wear-and-condition',
+  chassis_and_fasteners: 'general-checks',
+  emissions_systems: 'general-checks',
+  general_safety_inspections: 'general-checks',
+};
+
 function section(key: MaintenancePresentationSectionKey): MaintenancePresentationSection {
   return { key, label: t(SECTION_LABELS[key]) };
 }
@@ -142,14 +160,32 @@ function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-export function maintenanceComponentGroup(componentId: string): {
+export function maintenanceComponentGroup(
+  componentId: string,
+  presentation?: MaintenanceRule['presentation']
+): {
   key: string;
   label: string;
   section: MaintenancePresentationSection;
 } {
   const definition = COMPONENT_PRESENTATION[componentId as keyof typeof COMPONENT_PRESENTATION];
+  const component = componentDefinitions.get(componentId);
+  if (presentation?.componentLabel) {
+    return {
+      key: componentId,
+      label: presentation.componentLabel,
+      section: section(presentation.sectionKey ?? definition?.sectionKey ?? (component ? SECTION_BY_CATEGORY[component.category] : 'general-checks')),
+    };
+  }
   if (definition) {
     return { key: componentId, label: t(definition.labelKey), section: section(definition.sectionKey) };
+  }
+  if (component) {
+    return {
+      key: componentId,
+      label: presentation?.componentLabel ?? component.label,
+      section: section(presentation?.sectionKey ?? SECTION_BY_CATEGORY[component.category]),
+    };
   }
   // Unknown imported IDs remain identifiable instead of being silently renamed as generic maintenance.
   return { key: componentId, label: `[${componentId}]`, section: section('general-checks') };
@@ -171,7 +207,7 @@ export function maintenanceBaseActionLabel(action: MaintenanceAction): string {
 }
 
 type MaintenanceActionIdentity = Pick<MaintenanceTaskProjection, 'componentId' | 'action'>
-  & Partial<Pick<MaintenanceTaskProjection, 'isOneTime'>>;
+  & Partial<Pick<MaintenanceTaskProjection, 'isOneTime' | 'presentation'>>;
 
 function exactComponentActionLabel(task: MaintenanceActionIdentity): string {
   const labels: Record<MaintenanceAction, TranslationKey> = {
@@ -185,7 +221,7 @@ function exactComponentActionLabel(task: MaintenanceActionIdentity): string {
     initial_service: 'maintenance.action.initialComponent',
     condition_check: 'maintenance.action.conditionComponent',
   };
-  const label = t(labels[task.action], { component: maintenanceComponentGroup(task.componentId).label });
+  const label = t(labels[task.action], { component: maintenanceComponentGroup(task.componentId, task.presentation).label });
   return task.isOneTime && task.action !== 'initial_service'
     ? t('maintenance.initialLabel', { label: label.toLocaleLowerCase() })
     : label;
@@ -291,7 +327,7 @@ export function maintenanceGroupSummary(tasks: MaintenanceTaskProjection[]): str
     ? 'maintenance.remindersDisabled'
     : 'maintenance.noActiveReminders');
 
-  const groupKey = maintenanceComponentGroup(active[0].componentId).key;
+  const groupKey = maintenanceComponentGroup(active[0].componentId, active[0].presentation).key;
   if (groupKey === 'air-cleaner-element') {
     const inspection = active.find((task) => task.action === 'inspect' && !task.isOneTime);
     const interval = inspection?.effectiveIntervalKm;
@@ -365,9 +401,9 @@ export function maintenanceNearestActionSummary(tasks: MaintenanceTaskProjection
 }
 
 export function maintenanceSectionForTask(
-  task: Pick<MaintenanceTaskProjection, 'componentId'>
+  task: Pick<MaintenanceTaskProjection, 'componentId' | 'presentation'>
 ): MaintenancePresentationSection {
-  return maintenanceComponentGroup(task.componentId).section;
+  return maintenanceComponentGroup(task.componentId, task.presentation).section;
 }
 
 function statusLabel(task: MaintenanceTaskProjection): string {
@@ -445,7 +481,7 @@ export function buildMaintenancePresentation(
 ): ProductionMaintenanceComponentView[] {
   const groups = new Map<string, { label: string; tasks: MaintenanceTaskProjection[] }>();
   for (const task of tasks) {
-    const component = maintenanceComponentGroup(task.componentId);
+    const component = maintenanceComponentGroup(task.componentId, task.presentation);
     const current = groups.get(component.key) ?? { label: component.label, tasks: [] };
     current.tasks.push(task);
     groups.set(component.key, current);

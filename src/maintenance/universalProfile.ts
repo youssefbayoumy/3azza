@@ -102,6 +102,8 @@ export const UNIVERSAL_CUSTOM_MAINTENANCE_PROFILE: ScooterMaintenanceProfile = {
     safeBehavior: 'no_automatic_reminder',
     resolutionRequired: 'The owner may track applicable components and enter values from a trusted source.',
   }],
+  defaultTrackedRuleIds: [universalRuleId('engine-oil', 'replace')],
+  quickRecordRuleIds: rules.map((rule) => rule.id),
   rules,
 };
 

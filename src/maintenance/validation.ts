@@ -309,6 +309,23 @@ export function validateMaintenanceProfile(
     });
   });
 
+  for (const [field, ruleIds] of [
+    ['defaultTrackedRuleIds', profile.defaultTrackedRuleIds],
+    ['quickRecordRuleIds', profile.quickRecordRuleIds],
+  ] as const) {
+    const seen = new Set<string>();
+    ruleIds?.forEach((ruleId, index) => {
+      const rule = ruleMap.get(ruleId);
+      if (!rule || !rule.applicable) {
+        issues.push({ code: 'invalid_profile_rule_reference', path: `${field}[${index}]`, message: `${field} must reference an applicable profile rule.` });
+      }
+      if (seen.has(ruleId)) {
+        issues.push({ code: 'duplicate_profile_rule_reference', path: `${field}[${index}]`, message: `${field} cannot repeat a rule ID.` });
+      }
+      seen.add(ruleId);
+    });
+  }
+
   validateNewSymphonySt200OilDefault(profile, issues);
 
   return issues;

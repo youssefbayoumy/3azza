@@ -3,7 +3,11 @@ import { describe, it } from 'node:test';
 import { isTaskTracked } from './scheduler';
 import type { MaintenanceAction, MaintenanceEvent, VehicleMaintenancePreference } from './types';
 
-const task = (componentId: string, action: MaintenanceAction = 'replace') => ({ componentId, action });
+const task = (componentId: string, action: MaintenanceAction = 'replace') => ({
+  ruleId: `${componentId}.${action}`,
+  componentId,
+  action,
+});
 
 const event = (componentId: string, action: MaintenanceAction = 'replace'): MaintenanceEvent => ({
   id: 'event-1',
@@ -31,8 +35,11 @@ const preference = (
 } as VehicleMaintenancePreference);
 
 describe('isTaskTracked (opt-in service tracking)', () => {
-  it('tracks engine oil by default with no preference or history', () => {
-    assert.equal(isTaskTracked(task('engine-oil'), { events: [] }), true);
+  it('tracks an explicit profile default with no preference or history', () => {
+    assert.equal(isTaskTracked(task('engine-oil'), {
+      events: [],
+      defaultTrackedRuleIds: ['engine-oil.replace'],
+    }), true);
   });
 
   it('leaves other services untracked by default', () => {
@@ -61,9 +68,14 @@ describe('isTaskTracked (opt-in service tracking)', () => {
     );
   });
 
-  it('stop-tracking wins over the engine-oil default', () => {
+  it('stop-tracking wins over a profile default', () => {
     assert.equal(
-      isTaskTracked(task('engine-oil'), { events: [], preferences: [preference('engine-oil', false)], vehicleId: 1 }),
+      isTaskTracked(task('engine-oil'), {
+        events: [],
+        preferences: [preference('engine-oil', false)],
+        vehicleId: 1,
+        defaultTrackedRuleIds: ['engine-oil.replace'],
+      }),
       false
     );
   });

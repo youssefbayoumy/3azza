@@ -61,6 +61,20 @@
       "safeBehavior": "informational_only"
     }
   ],
+  "defaultTrackedRuleIds": [
+    "engine-oil.replace.recurring-1000km"
+  ],
+  "quickRecordRuleIds": [
+    "engine-oil.replace.recurring-1000km",
+    "transmission-oil.replace.recurring-5000km-5mo",
+    "air-cleaner-element.inspect.recurring-1000km-1mo",
+    "air-cleaner-element.clean.if-needed",
+    "air-cleaner-element.replace.if-necessary",
+    "brake-pads.inspect.recurring-1000km-1mo",
+    "tires.inspect.recurring-1000km-1mo",
+    "drive-belt-rollers.inspect.recurring-6000km-6mo",
+    "general-fasteners.inspect.recurring-1000km-1mo"
+  ],
   "rules": [
     {
       "id": "air-cleaner-element.inspect.initial-300",

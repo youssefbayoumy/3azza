@@ -14,6 +14,7 @@ export { CUSTOM_MODEL_ID, CUSTOM_VERSION_ID, OTHER_BRAND_ID } from './customVehi
 export type ScooterVersion = {
   id: string;
   name: string;
+  profileId?: string | null;
   manualId: string;
   manualFileName: string;
   manualRelativePath: string;
@@ -38,6 +39,7 @@ export type ScooterSelection = {
   modelId: string;
   versionId: string;
   variantId?: string | null;
+  profileId?: string | null;
   customBrandName?: string | null;
   customModelName?: string | null;
   capabilities?: VehicleCapabilities;
@@ -119,6 +121,7 @@ export function resolveScooterSelection(
       modelId: CUSTOM_MODEL_ID,
       versionId: CUSTOM_VERSION_ID,
       variantId: null,
+      profileId: selection.profileId ?? null,
       customBrandName: brandName,
       customModelName: modelName,
       capabilities: normalizeVehicleCapabilities(selection.capabilities),
@@ -148,6 +151,7 @@ export function resolveScooterSelection(
     modelId: model.id,
     versionId: version.id,
     variantId: variant?.id ?? null,
+    profileId: selection.profileId ?? version.profileId ?? null,
     brand,
     model,
     version,
