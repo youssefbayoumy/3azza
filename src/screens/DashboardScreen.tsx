@@ -229,9 +229,8 @@ export default function DashboardScreen() {
                 ...(dailyAverageKm === undefined ? {} : { daily_average_km: dailyAverageKm }),
                 last_odometer_update_timestamp: new Date().toISOString(),
             });
-            const data = await getVehicleProfile();
             await syncMaintenanceNotifications(maintenanceReminders);
-            setProfile(data);
+            await reload();
             setIsOdoModalVisible(false);
         } catch (error) {
             console.error('Failed to update odometer:', error);

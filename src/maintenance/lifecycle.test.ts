@@ -107,6 +107,24 @@ describe('vehicle maintenance lifecycle', () => {
     assert.ok(plan({ vehicle: vehicle('new', 1001) }).tasks.every((task) => !task.isOneTime));
   });
 
+  it('keeps Home-facing lifecycle state aligned across the first-service cutoff without hiding genuine overdue work', () => {
+    const activeBreakIn = plan({ vehicle: vehicle('new', 300) });
+    assert.equal(activeBreakIn.lifecycle, 'break_in');
+    assert.equal(activeBreakIn.firstServiceCheckpoint?.milestoneKm, 300);
+
+    const afterCutoff = plan({
+      vehicle: vehicle('new', 1001),
+      events: [event(0)],
+    });
+    const overdueOil = afterCutoff.tasks.find((task) => task.ruleId === oilRule.id);
+
+    assert.equal(afterCutoff.lifecycle, 'normal');
+    assert.equal(afterCutoff.firstServiceCheckpoint, null);
+    assert.ok(afterCutoff.tasks.every((task) => !task.isOneTime));
+    assert.equal(overdueOil?.status, 'overdue');
+    assert.equal(overdueOil?.remainingKm, -1);
+  });
+
   it('keeps high-mileage used and migrated-unknown history unanchored', () => {
     const legacyNeverDone: MaintenanceHistoryState = {
       vehicle_id: 1,

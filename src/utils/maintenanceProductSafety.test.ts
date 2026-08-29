@@ -441,10 +441,12 @@ describe('production maintenance UI safety', () => {
   });
 
   it('routes current plan consumers through the lifecycle engine and removes historical task branches', () => {
+    const dashboard = sourceFile('screens/DashboardScreen.tsx').source;
     const maintenance = sourceFile('screens/MaintenanceScheduleScreen.tsx').source;
     const oil = sourceFile('screens/OilChangeDetailsScreen.tsx').source;
     const menu = sourceFile('components/maintenance/MaintenanceActionMenu.tsx').source;
     assert.match(maintenance, /projectVehicleMaintenance/);
+    assert.match(dashboard, /const saveConfirmedOdometer[\s\S]*?await reload\(\);[\s\S]*?setIsOdoModalVisible\(false\)/);
     assert.match(oil, /projectVehicleMaintenance/);
     assert.doesNotMatch(menu, /historical_unverified/);
     assert.match(menu, /maintenance\.changedNow/);
