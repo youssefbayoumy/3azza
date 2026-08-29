@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  canAccessProtectedContent,
   classifyBiometricResult,
   getAppLockEntryMode,
   isValidPin,
@@ -20,6 +21,13 @@ describe('app-lock utilities', () => {
     assert.equal(isValidPin('1234'), true);
     assert.equal(isValidPin('123'), false);
     assert.equal(isValidPin('12a4'), false);
+  });
+
+  it('allows protected content only when the app lock is disabled or the session is authenticated', () => {
+    assert.equal(canAccessProtectedContent(false, false), true);
+    assert.equal(canAccessProtectedContent(false, true), true);
+    assert.equal(canAccessProtectedContent(true, false), false);
+    assert.equal(canAccessProtectedContent(true, true), true);
   });
 
   it('never restores an authenticated session from persisted state', () => {

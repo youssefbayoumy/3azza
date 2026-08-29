@@ -10,6 +10,7 @@ import {
   type ModalProps,
 } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
+import { canAccessProtectedContent } from '../utils/appLock';
 
 type ProtectedModalProps = Omit<ModalProps, 'onRequestClose'> & {
   accessibilityLabel: string;
@@ -28,6 +29,7 @@ export default function ProtectedModal({
   ...props
 }: ProtectedModalProps) {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const appLockEnabled = useAppStore((state) => state.appLockEnabled);
   const initialFocusRef = useRef<View>(null);
 
   const handleShow = () => {
@@ -43,7 +45,7 @@ export default function ProtectedModal({
       onRequestClose={onRequestClose}
       onShow={handleShow}
       statusBarTranslucent
-      visible={isAuthenticated && (visible ?? true)}
+      visible={canAccessProtectedContent(appLockEnabled, isAuthenticated) && (visible ?? true)}
     >
       <KeyboardAvoidingView
         accessibilityViewIsModal

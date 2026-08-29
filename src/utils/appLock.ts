@@ -21,6 +21,13 @@ export function isValidPin(pin: string): boolean {
   return /^\d{4}$/.test(pin);
 }
 
+export function canAccessProtectedContent(
+  appLockEnabled: boolean,
+  isAuthenticated: boolean
+): boolean {
+  return !appLockEnabled || isAuthenticated;
+}
+
 export function classifyBiometricResult(
   success: boolean,
   error?: string
