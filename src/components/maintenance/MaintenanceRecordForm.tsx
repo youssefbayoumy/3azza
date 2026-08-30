@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import ProtectedModal from '../ProtectedModal';
 import AppBottomSheet from '../ui/AppBottomSheet';
@@ -10,6 +10,12 @@ import { isPastOrTodayIsoDate, toIsoDate } from '../../utils/dates';
 import { parseDecimalNumberInput, parseWholeNumberInput } from '../../utils/recordValidation';
 import type { InspectionResult, MaintenanceAction } from '../../maintenance/types';
 import { formatNumber, useTranslation, type TranslationKey } from '../../i18n';
+import {
+  generatedRecordTitle,
+  hasSavedAdditionalDetails,
+  shouldShowActionSelector,
+} from './maintenanceRecordFormPresentation';
+import { resolveMaintenanceRecordBackAction } from './maintenanceRecordFormKeyboard';
 
 export type MaintenanceRecordActionOption = {
   ruleId: string;
@@ -107,14 +113,16 @@ export default function MaintenanceRecordForm({
   const [oilType, setOilType] = useState<MaintenanceRecordDraft['oilType']>(null);
   const [oilViscosity, setOilViscosity] = useState('');
   const [mechanicRecommendation, setMechanicRecommendation] = useState('');
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const keyboardVisibleRef = useRef(false);
 
   useEffect(() => {
     if (!visible) return;
     const initialMileage = initialValue?.mileageKm;
     const initialDate = initialValue?.serviceDate;
     const initialActions = defaultSelectedActions(actionOptions, initialValue);
-    setRecordTitle(initialValue?.title ?? (initialActions.length === 1 ? initialActions[0].label : ''));
+    setRecordTitle(initialValue?.title ?? generatedRecordTitle(initialActions));
     setMileage(String(initialMileage ?? currentOdometerKm));
     setMileageUnknown(initialMileage === null);
     setDate(initialDate ?? toIsoDate(new Date()));
@@ -128,28 +136,52 @@ export default function MaintenanceRecordForm({
     setOilType(initialValue?.oilType ?? null);
     setOilViscosity(initialValue?.oilViscosity ?? '');
     setMechanicRecommendation(initialValue?.mechanicRecommendation ?? '');
+    setDetailsExpanded(hasSavedAdditionalDetails(initialValue, initialActions));
     setErrors({});
   }, [actionOptions, currentOdometerKm, initialValue, visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      keyboardVisibleRef.current = false;
+      return;
+    }
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisibleRef.current = true;
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisibleRef.current = false;
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+      keyboardVisibleRef.current = false;
+    };
+  }, [visible]);
 
   const containsOilReplacement = useMemo(() => selectedActions.some(
     (option) => option.componentId === 'engine-oil' && option.action === 'replace'
   ), [selectedActions]);
+  const actionSelectorVisible = shouldShowActionSelector(actionsLocked, actionOptions);
+  const basicTitleVisible = actionOptions.length === 0;
 
   const toggleAction = (option: MaintenanceRecordActionOption) => {
     if (actionsLocked) return;
     setSelectedActions((current) => {
-      if (!allowMultipleActions) return current.some((item) => item.ruleId === option.ruleId) ? [] : [option];
-      return current.some((item) => item.ruleId === option.ruleId)
+      const next = !allowMultipleActions
+        ? current.some((item) => item.ruleId === option.ruleId) ? [] : [option]
+        : current.some((item) => item.ruleId === option.ruleId)
         ? current.filter((item) => item.ruleId !== option.ruleId)
         : [...current, option];
+      setRecordTitle((currentTitle) => currentTitle.trim() ? currentTitle : generatedRecordTitle(next));
+      return next;
     });
     setErrors((current) => ({ ...current, actions: '' }));
   };
 
   const validate = (): MaintenanceRecordDraft | null => {
     const nextErrors: Record<string, string> = {};
-    const trimmedTitle = recordTitle.trim();
-    if (!trimmedTitle) nextErrors.title = t('record.titleRequired');
+    const trimmedTitle = recordTitle.trim() || generatedRecordTitle(selectedActions);
+    if (!trimmedTitle && (basicTitleVisible || selectedActions.length > 0)) nextErrors.title = t('record.titleRequired');
     if (selectedActions.length === 0 && actionOptions.length > 0) {
       nextErrors.actions = t('record.actionRequired');
     }
@@ -210,20 +242,30 @@ export default function MaintenanceRecordForm({
     if (draft) await onSubmit(draft);
   };
 
+  const handleRequestClose = () => {
+    if (resolveMaintenanceRecordBackAction(keyboardVisibleRef.current) === 'dismiss-keyboard') {
+      Keyboard.dismiss();
+      return;
+    }
+    onClose();
+  };
+
   return (
     <ProtectedModal
       accessibilityLabel={formTitle}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleRequestClose}
       transparent
       visible={visible}
     >
       <View className="flex-1 bg-black/70">
-        <AppBottomSheet closeDisabled={saving} onClose={onClose} title={formTitle}>
+        <AppBottomSheet closeDisabled={saving} onClose={onClose} sheetStyle={styles.keyboardSafeSheet} title={formTitle}>
           <ScrollView
-            contentContainerStyle={{ paddingBottom: 12 }}
+            contentContainerStyle={styles.formScrollContent}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            style={styles.formScroll}
           >
             <View className="gap-5">
               {advisoryText ? (
@@ -232,7 +274,18 @@ export default function MaintenanceRecordForm({
                   <Text className="font-body text-xs text-on-surface-variant leading-5 flex-1">{advisoryText}</Text>
                 </View>
               ) : null}
-              {actionOptions.length > 0 ? (
+              {actionsLocked && selectedActions.length > 0 ? (
+                <View className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
+                  <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">
+                    {t('record.componentAction')}
+                  </Text>
+                  <Text className="font-headline text-base font-bold text-on-surface mt-1">
+                    {selectedActions.map((option) => option.label).join(' · ')}
+                  </Text>
+                </View>
+              ) : null}
+
+              {actionSelectorVisible ? (
                 <View>
                   <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">
                     {allowMultipleActions ? t('record.actionsCompleted') : t('record.componentAction')}
@@ -266,32 +319,33 @@ export default function MaintenanceRecordForm({
                 </View>
               ) : null}
 
-              <AppTextField
-                error={errors.title}
-                label={t('record.title')}
-                onChangeText={setRecordTitle}
-                placeholder={allowMultipleActions ? t('record.multiExample') : t('record.singleExample')}
-                value={recordTitle}
-              />
+              {basicTitleVisible ? (
+                <AppTextField
+                  error={errors.title}
+                  label={t('record.title')}
+                  onChangeText={setRecordTitle}
+                  placeholder={t('record.singleExample')}
+                  value={recordTitle}
+                />
+              ) : null}
 
               <View>
-                <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center justify-between mb-1">
                   <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">{t('record.mileageWhenPerformed')}</Text>
                   <TouchableOpacity
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: mileageUnknown }}
-                    className="min-h-11 px-2 flex-row items-center gap-2"
+                    className="min-h-9 px-2 flex-row items-center gap-1"
                     onPress={() => {
                       setMileageUnknown((value) => !value);
                       setErrors((current) => ({ ...current, mileage: '' }));
                     }}
                   >
-                    <MaterialIcons color="#a9c7ff" name={mileageUnknown ? 'check-box' : 'check-box-outline-blank'} size={20} />
+                    <MaterialIcons color="#a9c7ff" name={mileageUnknown ? 'check-box' : 'check-box-outline-blank'} size={18} />
                     <Text className="font-body text-xs text-primary">{t('common.unknown')}</Text>
                   </TouchableOpacity>
                 </View>
                 <AppTextField
-                  containerClassName="-mt-2"
                   editable={!mileageUnknown}
                   error={errors.mileage}
                   keyboardType="number-pad"
@@ -300,27 +354,26 @@ export default function MaintenanceRecordForm({
                   placeholder={formatNumber(currentOdometerKm, locale)}
                   value={mileage}
                 />
-                <Text className="font-body text-xs text-on-surface-variant mt-2">{t('record.currentOdometerValue', { km: formatNumber(currentOdometerKm, locale) })}</Text>
+                <Text className="font-body text-xs text-on-surface-variant mt-1">{t('record.currentOdometerValue', { km: formatNumber(currentOdometerKm, locale) })}</Text>
               </View>
 
               <View>
-                <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center justify-between mb-1">
                   <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest">{t('record.dateWhenPerformed')}</Text>
                   <TouchableOpacity
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: dateUnknown }}
-                    className="min-h-11 px-2 flex-row items-center gap-2"
+                    className="min-h-9 px-2 flex-row items-center gap-1"
                     onPress={() => {
                       setDateUnknown((value) => !value);
                       setErrors((current) => ({ ...current, date: '' }));
                     }}
                   >
-                    <MaterialIcons color="#a9c7ff" name={dateUnknown ? 'check-box' : 'check-box-outline-blank'} size={20} />
+                    <MaterialIcons color="#a9c7ff" name={dateUnknown ? 'check-box' : 'check-box-outline-blank'} size={18} />
                     <Text className="font-body text-xs text-primary">{t('common.unknown')}</Text>
                   </TouchableOpacity>
                 </View>
                 <AppDateField
-                  containerClassName="-mt-2"
                   disabled={dateUnknown}
                   error={errors.date}
                   label=""
@@ -360,35 +413,61 @@ export default function MaintenanceRecordForm({
                 </View>
               ))}
 
-              <AppTextField label={t('record.provider')} onChangeText={setServiceProvider} value={serviceProvider} />
-              <AppTextField error={errors.cost} keyboardType="decimal-pad" label={t('record.costOptional')} onChangeText={setCost} value={cost} />
-              <AppTextField label={t('record.notesOptional')} multiline onChangeText={setNotes} style={{ minHeight: 84, textAlignVertical: 'top' }} value={notes} />
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityState={{ expanded: detailsExpanded }}
+                className="min-h-11 self-start flex-row items-center gap-1 px-1"
+                onPress={() => setDetailsExpanded((value) => !value)}
+              >
+                <MaterialIcons color="#a9c7ff" name={detailsExpanded ? 'expand-less' : 'add'} size={20} />
+                <Text className="font-label text-sm font-bold text-primary">
+                  {detailsExpanded ? t('record.hideDetails') : t('record.addDetails')}
+                </Text>
+              </TouchableOpacity>
 
-              {containsOilReplacement ? (
+              {detailsExpanded ? (
                 <View className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 gap-4">
-                  <View>
-                    <Text className="font-headline text-base font-bold text-on-surface">{t('record.oilDetailsOptional')}</Text>
-                    <Text className="font-body text-xs text-on-surface-variant mt-1">{t('record.oilReminderNotice')}</Text>
-                  </View>
-                  <AppTextField label={t('record.oilBrand')} onChangeText={setOilBrand} value={oilBrand} />
-                  <View>
-                    <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('record.oilType')}</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {OIL_TYPES.map((option) => (
-                        <TouchableOpacity
-                          key={option.value}
-                          accessibilityRole="radio"
-                          accessibilityState={{ checked: oilType === option.value }}
-                          className={`min-h-11 justify-center rounded-lg border px-3 ${oilType === option.value ? 'border-primary bg-primary/15' : 'border-outline-variant/20 bg-surface-container-high'}`}
-                          onPress={() => setOilType((current) => current === option.value ? null : option.value)}
-                        >
-                          <Text className={`font-body text-xs ${oilType === option.value ? 'text-primary' : 'text-on-surface-variant'}`}>{t(option.labelKey)}</Text>
-                        </TouchableOpacity>
-                      ))}
+                  <Text className="font-headline text-base font-bold text-on-surface">{t('record.additionalDetails')}</Text>
+                  {!basicTitleVisible ? (
+                    <AppTextField
+                      error={errors.title}
+                      label={t('record.title')}
+                      onChangeText={setRecordTitle}
+                      placeholder={allowMultipleActions ? t('record.multiExample') : t('record.singleExample')}
+                      value={recordTitle}
+                    />
+                  ) : null}
+                  <AppTextField label={t('record.provider')} onChangeText={setServiceProvider} value={serviceProvider} />
+                  <AppTextField error={errors.cost} keyboardType="decimal-pad" label={t('record.costOptional')} onChangeText={setCost} value={cost} />
+                  <AppTextField label={t('record.notesOptional')} multiline onChangeText={setNotes} style={{ minHeight: 84, textAlignVertical: 'top' }} value={notes} />
+
+                  {containsOilReplacement ? (
+                    <View className="rounded-xl border border-outline-variant/20 bg-surface-container p-4 gap-4">
+                      <View>
+                        <Text className="font-headline text-base font-bold text-on-surface">{t('record.oilDetailsOptional')}</Text>
+                        <Text className="font-body text-xs text-on-surface-variant mt-1">{t('record.oilReminderNotice')}</Text>
+                      </View>
+                      <AppTextField label={t('record.oilBrand')} onChangeText={setOilBrand} value={oilBrand} />
+                      <View>
+                        <Text className="font-label text-xs uppercase font-bold text-on-surface-variant/60 tracking-widest mb-2">{t('record.oilType')}</Text>
+                        <View className="flex-row flex-wrap gap-2">
+                          {OIL_TYPES.map((option) => (
+                            <TouchableOpacity
+                              key={option.value}
+                              accessibilityRole="radio"
+                              accessibilityState={{ checked: oilType === option.value }}
+                              className={`min-h-11 justify-center rounded-lg border px-3 ${oilType === option.value ? 'border-primary bg-primary/15' : 'border-outline-variant/20 bg-surface-container-high'}`}
+                              onPress={() => setOilType((current) => current === option.value ? null : option.value)}
+                            >
+                              <Text className={`font-body text-xs ${oilType === option.value ? 'text-primary' : 'text-on-surface-variant'}`}>{t(option.labelKey)}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                      <AppTextField autoCapitalize="characters" label={t('record.viscosity')} onChangeText={setOilViscosity} placeholder={t('record.viscosityExample')} value={oilViscosity} />
+                      <AppTextField label={t('record.mechanicRecommendation')} multiline onChangeText={setMechanicRecommendation} value={mechanicRecommendation} />
                     </View>
-                  </View>
-                  <AppTextField autoCapitalize="characters" label={t('record.viscosity')} onChangeText={setOilViscosity} placeholder={t('record.viscosityExample')} value={oilViscosity} />
-                  <AppTextField label={t('record.mechanicRecommendation')} multiline onChangeText={setMechanicRecommendation} value={mechanicRecommendation} />
+                  ) : null}
                 </View>
               ) : null}
 
@@ -400,3 +479,16 @@ export default function MaintenanceRecordForm({
     </ProtectedModal>
   );
 }
+
+const styles = StyleSheet.create({
+  keyboardSafeSheet: {
+    flexShrink: 1,
+    maxHeight: '100%',
+  },
+  formScroll: {
+    flexShrink: 1,
+  },
+  formScrollContent: {
+    paddingBottom: 12,
+  },
+});

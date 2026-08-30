@@ -107,6 +107,9 @@ function displayTitle(group: TimelineGroup): string {
   if (group.primary.service_package_title) {
     return safeStoredText(group.primary.service_package_title, t('logs.workshopMaintenance'));
   }
+  if (group.rows.length === 1) {
+    return safeStoredText(group.primary.title, t('logs.olderRecord'));
+  }
   return logActionLabel(group.primary);
 }
 
@@ -225,7 +228,7 @@ function actionInput(
   if (rule) return {
     ruleId: rule.id,
     action: rule.action,
-    title: option.label,
+    title: draft.selectedActions.length === 1 ? draft.title : option.label,
     inspectionResult,
   };
   return {

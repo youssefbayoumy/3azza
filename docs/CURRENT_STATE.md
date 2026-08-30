@@ -1,13 +1,13 @@
 # Current state
 
-Updated: 2026-08-28 (Africa/Cairo)
+Updated: 2026-08-30 (Africa/Cairo)
 
 ## Build and verification
 
 - The current source configuration declares version **2.3.4** and Android version code **16**.
-- The latest connected-device QA report verifies version **2.3.3** / code **12** on 2026-08-03. It is not evidence that the current 2.3.4/16 source has been device-qualified.
+- Narrow connected-device QA for the maintenance-record interaction verifies the debug-signed QA package **2.3.4-qa** / code **16** on 2026-08-30. It was installed in place with `adb install -r` and preserved existing QA data; this is focused form evidence, not full-product device qualification or Play evidence.
 - The production EAS AAB for **2.3.4** / code **16** completed successfully and its compiled base manifest was verified with Bundletool. This verifies the artifact identity and packaged launcher/notification configuration, not connected-device behavior or Play acceptance.
-- The latest maintenance profile-metadata verification passes all **270 tests**; `npm run typecheck`, `npm run lint`, and `git diff --check` also pass. No Android build was needed.
+- The latest compact maintenance-record and keyboard fix verification passes all **278 tests**; `npm run typecheck`, `npm run lint`, and `git diff --check` also pass. An ARM64 QA APK build succeeded.
 - `npm run release:check` currently stops at Expo Doctor. It reports six Expo SDK 57 patch-version mismatches: `expo`, `expo-file-system`, `expo-image-picker`, `expo-notifications`, `expo-sharing`, and `expo-splash-screen`. The subsequent security-audit step does not run when Doctor stops the command.
 
 ## What the product currently does well
@@ -25,6 +25,8 @@ Updated: 2026-08-28 (Africa/Cairo)
 - Provides English and Egyptian Arabic resource coverage, RTL-aware behavior, and automated localization checks.
 - Provides local app-lock behavior, local export/restore, and on-device reminders without claiming cloud, telemetry, or encryption.
 - Prevents duplicate Add Vehicle submissions with an in-flight guard, disabled draft controls, and an explicit Creating state while the local write completes.
+- Keeps the maintenance-record bottom sheet focused on the selected action, mileage, date, and save action. Workshop, cost, notes, custom title, and oil metadata are behind a state-preserving details disclosure; existing optional values open that disclosure during editing. This is presentation-only: record payloads, validation rules, storage, lifecycle, and reminder calculations are unchanged.
+- Keeps the form within the keyboard-reduced viewport. Dragging scrolls to Save without a permanent overlay, and Android Back dismisses an open keyboard before it can close the form or discard its in-memory draft.
 
 ## Product-relevant architecture facts
 
@@ -34,11 +36,11 @@ Updated: 2026-08-28 (Africa/Cairo)
 
 ## Highest-impact known gaps and risks
 
-- The active product task is to fix maintenance-record bottom-sheet behavior around keyboard opening and validation; see `NEXT_TASK.md`.
-- The simplified setup, new/used lifecycle, first-service package, and changed-now/previous-record actions are covered by automated tests but have not yet received connected-device interaction QA (scrolling, keyboard, TalkBack, RTL, and notification output).
+- The compact maintenance-record path has focused connected-device evidence for disclosure, lower-field keyboard behavior, scrolling to Save, Android Back draft safety, touch targets, and a user-confirmed Arabic RTL smoke. Validation-message, large-font, and TalkBack coverage remain unverified.
+- The simplified setup, new/used lifecycle, first-service package, and changed-now/previous-record actions are covered by automated tests but have not yet received broad connected-device interaction QA (TalkBack, font scaling, and notification output).
 - Reminder reconciliation is wired, but permission-enabled scheduled-output verification and notification-tap behavior remain incomplete.
 - Startup recovery, migration-failure handling, and several runtime/device scenarios remain unverified.
-- Current source has not yet received connected-device qualification at its declared 2.3.4/16 version; compiled AAB verification is not a substitute for device QA.
+- Current source has focused maintenance-form qualification at its declared 2.3.4/16 version; compiled AAB verification and narrow QA are not substitutes for broader device qualification.
 - No Google Play upload or Play Console validation has been performed, and the failing Expo Doctor dependency-version check still blocks a release-readiness claim.
 
 ## Intentionally frozen

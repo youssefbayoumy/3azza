@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIconButton from './AppIconButton';
 import { useTranslation } from '../../i18n';
@@ -9,10 +9,17 @@ type AppBottomSheetProps = {
   title: string;
   onClose: () => void;
   closeDisabled?: boolean;
+  sheetStyle?: StyleProp<ViewStyle>;
 };
 
 /** Shared visual shell for write forms presented from the bottom of a screen. */
-export default function AppBottomSheet({ children, closeDisabled = false, onClose, title }: AppBottomSheetProps) {
+export default function AppBottomSheet({
+  children,
+  closeDisabled = false,
+  onClose,
+  sheetStyle,
+  title,
+}: AppBottomSheetProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
@@ -20,7 +27,7 @@ export default function AppBottomSheet({ children, closeDisabled = false, onClos
     <View className="flex-1 justify-end">
       <View
         className="bg-surface-container rounded-t-3xl p-6 border-t border-outline-variant/20"
-        style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}
+        style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }, sheetStyle]}
       >
         <View className="flex-row justify-between items-center mb-6">
           <Text accessibilityRole="header" className="font-headline text-xl font-bold text-on-surface">{title}</Text>
